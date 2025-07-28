@@ -1,0 +1,48 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35818.85
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RCLargeLanguageModels", "src\RCLargeLanguageModels\RCLargeLanguageModels.csproj", "{51948015-F3AA-46EC-B938-C97C77F60693}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RCLargeLanguageModels.Pipelines", "src\RCLargeLanguageModels.Pipelines\RCLargeLanguageModels.Pipelines.csproj", "{EB48C1CF-266B-4B0D-845B-EC9014B8B15C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{36D591C7-65C7-A0D1-1CBC-10CDE441BDC8}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RCLargeLanguageModels.Tests", "tests\RCLargeLanguageModels.Tests\RCLargeLanguageModels.Tests.csproj", "{EFDBEAD1-BAD4-4FEC-8025-B8310907CE9D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RCLargeLanguageModels.SourceGenerators", "src\RCLargeLanguageModels.SourceGenerators\RCLargeLanguageModels.SourceGenerators.csproj", "{2B6BD872-80EA-4899-99E2-BB7A8C3AEB98}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{51948015-F3AA-46EC-B938-C97C77F60693}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{51948015-F3AA-46EC-B938-C97C77F60693}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{51948015-F3AA-46EC-B938-C97C77F60693}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{51948015-F3AA-46EC-B938-C97C77F60693}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EB48C1CF-266B-4B0D-845B-EC9014B8B15C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EB48C1CF-266B-4B0D-845B-EC9014B8B15C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EB48C1CF-266B-4B0D-845B-EC9014B8B15C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EB48C1CF-266B-4B0D-845B-EC9014B8B15C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EFDBEAD1-BAD4-4FEC-8025-B8310907CE9D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EFDBEAD1-BAD4-4FEC-8025-B8310907CE9D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EFDBEAD1-BAD4-4FEC-8025-B8310907CE9D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EFDBEAD1-BAD4-4FEC-8025-B8310907CE9D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2B6BD872-80EA-4899-99E2-BB7A8C3AEB98}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2B6BD872-80EA-4899-99E2-BB7A8C3AEB98}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2B6BD872-80EA-4899-99E2-BB7A8C3AEB98}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2B6BD872-80EA-4899-99E2-BB7A8C3AEB98}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {62891804-F81E-401A-A541-92F818F3286A}
+	EndGlobalSection
+EndGlobal

@@ -123,7 +123,6 @@ namespace RCLargeLanguageModels.Tools
 				else
 				{
 					var argName = param.GetCustomAttribute<JsonPropertyAttribute>()?.PropertyName ?? param.Name;
-					Log.Information("{p}", param);
 
 					mappings.Add(argName, param.Position);
 				}

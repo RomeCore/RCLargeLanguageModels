@@ -58,7 +58,6 @@ namespace RCLargeLanguageModels.Tools
 		/// <param name="id">The tool call identifier.</param>
 		/// <param name="toolName">The original function tool name that been called.</param>
 		/// <param name="args">The args object of the function tool call.</param>
-		[JsonConstructor]
 		public FunctionToolCall(string id, string toolName, JToken args)
 		{
 			Id = id ?? throw new ArgumentNullException(nameof(id));

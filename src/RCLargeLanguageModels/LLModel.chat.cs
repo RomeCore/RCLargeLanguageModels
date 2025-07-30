@@ -87,11 +87,30 @@ namespace RCLargeLanguageModels
 		/// Creates a chat completion using the provided messages.
 		/// </summary>
 		/// <param name="messages">The messages to send to the model.</param>
+		/// <returns>The chat completion result.</returns>
+		public Task<ChatCompletionResult> ChatAsync(
+			IEnumerable<IMessage> messages)
+		{
+			return ChatPrivateAsync(
+				messages,
+				1,
+				CompletionProperties,
+				OutputFormatDefinition,
+				Tools,
+				Injectors,
+				QueueParameters,
+				default);
+		}
+		
+		/// <summary>
+		/// Creates a chat completion using the provided messages.
+		/// </summary>
+		/// <param name="messages">The messages to send to the model.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <returns>The chat completion result.</returns>
 		public Task<ChatCompletionResult> ChatAsync(
 			IEnumerable<IMessage> messages,
-			CancellationToken cancellationToken = default)
+			CancellationToken cancellationToken)
 		{
 			return ChatPrivateAsync(
 				messages,
@@ -109,12 +128,33 @@ namespace RCLargeLanguageModels
 		/// </summary>
 		/// <param name="messages">The messages to send to the model.</param>
 		/// <param name="count">The number of completions to generate.</param>
+		/// <returns>The assistant's response messages.</returns>
+		public async Task<ChatCompletionResult> ChatAsync(
+			IEnumerable<IMessage> messages,
+			int count)
+		{
+			return await ChatPrivateAsync(
+				messages,
+				count,
+				CompletionProperties,
+				OutputFormatDefinition,
+				Tools,
+				Injectors,
+				QueueParameters,
+				default);
+		}
+		
+		/// <summary>
+		/// Creates multiple chat completions using the provided messages.
+		/// </summary>
+		/// <param name="messages">The messages to send to the model.</param>
+		/// <param name="count">The number of completions to generate.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <returns>The assistant's response messages.</returns>
 		public async Task<ChatCompletionResult> ChatAsync(
 			IEnumerable<IMessage> messages,
 			int count,
-			CancellationToken cancellationToken = default)
+			CancellationToken cancellationToken)
 		{
 			return await ChatPrivateAsync(
 				messages,
@@ -195,11 +235,30 @@ namespace RCLargeLanguageModels
 		/// Creates a astreaming chat completion using the provided messages.
 		/// </summary>
 		/// <param name="messages">The messages to send to the model.</param>
+		/// <returns>The streaming partial chat completion result.</returns>
+		public Task<PartialChatCompletionResult> ChatStreamingAsync(
+			IEnumerable<IMessage> messages)
+		{
+			return ChatStreamingPrivateAsync(
+				messages,
+				1,
+				CompletionProperties,
+				OutputFormatDefinition,
+				Tools,
+				Injectors,
+				QueueParameters,
+				default);
+		}
+		
+		/// <summary>
+		/// Creates a astreaming chat completion using the provided messages.
+		/// </summary>
+		/// <param name="messages">The messages to send to the model.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <returns>The streaming partial chat completion result.</returns>
 		public Task<PartialChatCompletionResult> ChatStreamingAsync(
 			IEnumerable<IMessage> messages,
-			CancellationToken cancellationToken = default)
+			CancellationToken cancellationToken)
 		{
 			return ChatStreamingPrivateAsync(
 				messages,
@@ -217,12 +276,33 @@ namespace RCLargeLanguageModels
 		/// </summary>
 		/// <param name="messages">The messages to send to the model.</param>
 		/// <param name="count">The number of completions to generate.</param>
+		/// <returns>The streaming partial assistant's response messages.</returns>
+		public async Task<PartialChatCompletionResult> ChatStreamingAsync(
+			IEnumerable<IMessage> messages,
+			int count)
+		{
+			return await ChatStreamingPrivateAsync(
+				messages,
+				count,
+				CompletionProperties,
+				OutputFormatDefinition,
+				Tools,
+				Injectors,
+				QueueParameters,
+				default);
+		}
+		
+		/// <summary>
+		/// Creates multiple streaming chat completions using the provided messages.
+		/// </summary>
+		/// <param name="messages">The messages to send to the model.</param>
+		/// <param name="count">The number of completions to generate.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <returns>The streaming partial assistant's response messages.</returns>
 		public async Task<PartialChatCompletionResult> ChatStreamingAsync(
 			IEnumerable<IMessage> messages,
 			int count,
-			CancellationToken cancellationToken = default)
+			CancellationToken cancellationToken)
 		{
 			return await ChatStreamingPrivateAsync(
 				messages,

@@ -81,11 +81,29 @@ namespace RCLargeLanguageModels
 		/// Creates a completion using the provided prompt.
 		/// </summary>
 		/// <param name="prompt">The prompt to send to the model.</param>
+		/// <returns>The completion result.</returns>
+		public async Task<CompletionResult> CompleteAsync(
+			string prompt)
+		{
+			return await CompletePrivateAsync(
+				prompt,
+				null,
+				1,
+				CompletionProperties,
+				Injectors,
+				QueueParameters,
+				default);
+		}
+		
+		/// <summary>
+		/// Creates a completion using the provided prompt.
+		/// </summary>
+		/// <param name="prompt">The prompt to send to the model.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <returns>The completion result.</returns>
 		public async Task<CompletionResult> CompleteAsync(
 			string prompt,
-			CancellationToken cancellationToken = default)
+			CancellationToken cancellationToken)
 		{
 			return await CompletePrivateAsync(
 				prompt,
@@ -102,12 +120,32 @@ namespace RCLargeLanguageModels
 		/// </summary>
 		/// <param name="prompt">The prompt to send to the model.</param>
 		/// <param name="count">The number of completions to generate.</param>
+		/// <returns>The completion results.</returns>
+		public async Task<CompletionResult> CompleteAsync(
+			string prompt,
+			int count)
+		{
+			return await CompletePrivateAsync(
+				prompt,
+				null,
+				count,
+				CompletionProperties,
+				Injectors,
+				QueueParameters,
+				default);
+		}
+		
+		/// <summary>
+		/// Creates multiple completions using the provided prompt.
+		/// </summary>
+		/// <param name="prompt">The prompt to send to the model.</param>
+		/// <param name="count">The number of completions to generate.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <returns>The completion results.</returns>
 		public async Task<CompletionResult> CompleteAsync(
 			string prompt,
 			int count,
-			CancellationToken cancellationToken = default)
+			CancellationToken cancellationToken)
 		{
 			return await CompletePrivateAsync(
 				prompt,
@@ -178,12 +216,32 @@ namespace RCLargeLanguageModels
 		/// </summary>
 		/// <param name="prompt">The prompt to send to the model.</param>
 		/// <param name="suffix">The suffix for fill-in-the-middle completion.</param>
+		/// <returns>The completion result.</returns>
+		public async Task<CompletionResult> CompleteAsync(
+			string prompt,
+			string suffix)
+		{
+			return await CompletePrivateAsync(
+				prompt,
+				suffix,
+				1,
+				CompletionProperties,
+				Injectors,
+				QueueParameters,
+				default);
+		}
+		
+		/// <summary>
+		/// Creates a suffix completion (fill-in-the-middle) using the provided prompt and suffix.
+		/// </summary>
+		/// <param name="prompt">The prompt to send to the model.</param>
+		/// <param name="suffix">The suffix for fill-in-the-middle completion.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <returns>The completion result.</returns>
 		public async Task<CompletionResult> CompleteAsync(
 			string prompt,
 			string suffix,
-			CancellationToken cancellationToken = default)
+			CancellationToken cancellationToken)
 		{
 			return await CompletePrivateAsync(
 				prompt,
@@ -201,13 +259,35 @@ namespace RCLargeLanguageModels
 		/// <param name="prompt">The prompt to send to the model.</param>
 		/// <param name="suffix">The suffix for fill-in-the-middle completion.</param>
 		/// <param name="count">The number of completions to generate.</param>
+		/// <returns>The completion results.</returns>
+		public async Task<CompletionResult> CompleteAsync(
+			string prompt,
+			string suffix,
+			int count)
+		{
+			return await CompletePrivateAsync(
+				prompt,
+				suffix,
+				count,
+				CompletionProperties,
+				Injectors,
+				QueueParameters,
+				default);
+		}
+		
+		/// <summary>
+		/// Creates multiple suffix completions (fill-in-the-middle) using the provided prompt and suffix.
+		/// </summary>
+		/// <param name="prompt">The prompt to send to the model.</param>
+		/// <param name="suffix">The suffix for fill-in-the-middle completion.</param>
+		/// <param name="count">The number of completions to generate.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <returns>The completion results.</returns>
 		public async Task<CompletionResult> CompleteAsync(
 			string prompt,
 			string suffix,
 			int count,
-			CancellationToken cancellationToken = default)
+			CancellationToken cancellationToken)
 		{
 			return await CompletePrivateAsync(
 				prompt,
@@ -281,11 +361,29 @@ namespace RCLargeLanguageModels
 		/// Creates a streaming completion using the provided prompt.
 		/// </summary>
 		/// <param name="prompt">The prompt to send to the model.</param>
+		/// <returns>The streaming partial completion result.</returns>
+		public async Task<PartialCompletionResult> CompleteStreamingAsync(
+			string prompt)
+		{
+			return await CompleteStreamingPrivateAsync(
+				prompt,
+				null,
+				1,
+				CompletionProperties,
+				Injectors,
+				QueueParameters,
+				default);
+		}
+		
+		/// <summary>
+		/// Creates a streaming completion using the provided prompt.
+		/// </summary>
+		/// <param name="prompt">The prompt to send to the model.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <returns>The streaming partial completion result.</returns>
 		public async Task<PartialCompletionResult> CompleteStreamingAsync(
 			string prompt,
-			CancellationToken cancellationToken = default)
+			CancellationToken cancellationToken)
 		{
 			return await CompleteStreamingPrivateAsync(
 				prompt,
@@ -302,12 +400,32 @@ namespace RCLargeLanguageModels
 		/// </summary>
 		/// <param name="prompt">The prompt to send to the model.</param>
 		/// <param name="count">The number of completions to generate.</param>
+		/// <returns>The streaming partial completion results.</returns>
+		public async Task<PartialCompletionResult> CompleteStreamingAsync(
+			string prompt,
+			int count)
+		{
+			return await CompleteStreamingPrivateAsync(
+				prompt,
+				null,
+				count,
+				CompletionProperties,
+				Injectors,
+				QueueParameters,
+				default);
+		}
+		
+		/// <summary>
+		/// Creates multiple streaming completions using the provided prompt.
+		/// </summary>
+		/// <param name="prompt">The prompt to send to the model.</param>
+		/// <param name="count">The number of completions to generate.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <returns>The streaming partial completion results.</returns>
 		public async Task<PartialCompletionResult> CompleteStreamingAsync(
 			string prompt,
 			int count,
-			CancellationToken cancellationToken = default)
+			CancellationToken cancellationToken)
 		{
 			return await CompleteStreamingPrivateAsync(
 				prompt,
@@ -378,12 +496,32 @@ namespace RCLargeLanguageModels
 		/// </summary>
 		/// <param name="prompt">The prompt to send to the model.</param>
 		/// <param name="suffix">The suffix for fill-in-the-middle completion.</param>
+		/// <returns>The streaming partial completion result.</returns>
+		public async Task<PartialCompletionResult> CompleteStreamingAsync(
+			string prompt,
+			string suffix)
+		{
+			return await CompleteStreamingPrivateAsync(
+				prompt,
+				suffix,
+				1,
+				CompletionProperties,
+				Injectors,
+				QueueParameters,
+				default);
+		}
+		
+		/// <summary>
+		/// Creates a streaming suffix completion (fill-in-the-middle) using the provided prompt and suffix.
+		/// </summary>
+		/// <param name="prompt">The prompt to send to the model.</param>
+		/// <param name="suffix">The suffix for fill-in-the-middle completion.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <returns>The streaming partial completion result.</returns>
 		public async Task<PartialCompletionResult> CompleteStreamingAsync(
 			string prompt,
 			string suffix,
-			CancellationToken cancellationToken = default)
+			CancellationToken cancellationToken)
 		{
 			return await CompleteStreamingPrivateAsync(
 				prompt,
@@ -401,13 +539,35 @@ namespace RCLargeLanguageModels
 		/// <param name="prompt">The prompt to send to the model.</param>
 		/// <param name="suffix">The suffix for fill-in-the-middle completion.</param>
 		/// <param name="count">The number of completions to generate.</param>
+		/// <returns>The streaming partial completion results.</returns>
+		public async Task<PartialCompletionResult> CompleteStreamingAsync(
+			string prompt,
+			string suffix,
+			int count)
+		{
+			return await CompleteStreamingPrivateAsync(
+				prompt,
+				suffix,
+				count,
+				CompletionProperties,
+				Injectors,
+				QueueParameters,
+				default);
+		}
+		
+		/// <summary>
+		/// Creates multiple streaming suffix completions (fill-in-the-middle) using the provided prompt and suffix.
+		/// </summary>
+		/// <param name="prompt">The prompt to send to the model.</param>
+		/// <param name="suffix">The suffix for fill-in-the-middle completion.</param>
+		/// <param name="count">The number of completions to generate.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <returns>The streaming partial completion results.</returns>
 		public async Task<PartialCompletionResult> CompleteStreamingAsync(
 			string prompt,
 			string suffix,
 			int count,
-			CancellationToken cancellationToken = default)
+			CancellationToken cancellationToken)
 		{
 			return await CompleteStreamingPrivateAsync(
 				prompt,

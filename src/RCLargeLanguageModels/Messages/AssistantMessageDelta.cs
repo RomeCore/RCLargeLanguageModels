@@ -152,5 +152,12 @@ namespace RCLargeLanguageModels.Messages
 				throw new ArgumentNullException(nameof(metadatas));
 			return new AssistantMessageDelta(newPartialMetadata: metadatas.Where(m => m != null));
 		}
+
+		public static implicit operator string(AssistantMessageDelta delta) => delta.DeltaContent;
+
+		public override string ToString()
+		{
+			return DeltaContent;
+		}
 	}
 }

@@ -18,7 +18,7 @@ namespace RCLargeLanguageModels.Tools
 		/// <summary>
 		/// Gets or sets the main content of the tool result.
 		/// </summary>
-		public string Content { get; set; }
+		public string Content { get; }
 
 		/// <summary>
 		/// Gets the collection of attachments associated with this tool result.

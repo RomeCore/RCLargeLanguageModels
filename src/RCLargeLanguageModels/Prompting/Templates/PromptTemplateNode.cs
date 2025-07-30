@@ -14,6 +14,6 @@ namespace RCLargeLanguageModels.Prompting.Templates
 		/// </summary>
 		/// <param name="dataAccessor">The data accessor to use for rendering.</param>
 		/// <returns>The rendered prompt template as a string.</returns>
-		public abstract string Render(ITemplateDataAccessor dataAccessor);
+		public abstract string Render(TemplateDataAccessor dataAccessor);
 	}
 }

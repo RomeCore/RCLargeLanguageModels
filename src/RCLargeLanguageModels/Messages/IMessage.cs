@@ -1,18 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using RCLargeLanguageModels.Completions;
-using RCLargeLanguageModels.Messages.Attachments;
-using RCLargeLanguageModels.Metadata;
-using RCLargeLanguageModels.Tools;
-
-namespace RCLargeLanguageModels.Messages
+﻿namespace RCLargeLanguageModels.Messages
 {
 	/// <summary>
 	/// Represents a message in chat with LLM.

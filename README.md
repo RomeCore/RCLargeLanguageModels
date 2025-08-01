@@ -16,7 +16,7 @@ NuGet will soon provide a package for easy installation.
 
 There is list of general classes that are used to interact with LLM:
 - `LLMClient`: The base class of all LLM clients.
-- `LLModelDescriptor`: The descriptor of the model, needed for interacting with API. It holdsas model name and includes optional information such as capabilities, context length, supported output formats, etc.
+- `LLModelDescriptor`: The descriptor of the model, needed for interacting with API. It holds model name and includes optional information such as capabilities, context length, supported output formats, etc.
 - `LLModel`: The convenient class that contains the parameters for LLM API. The parameters include the completion properties, tool list, output format, API queue parameters, etc. Functionality can be extended via completion property injectors.
 
 ### Examples
@@ -335,4 +335,5 @@ Raw FIM completion prompts for different model families:
 ## Contributing
 
 ### Contributions are welcome!
-Please fork the repository and make your changes in a new branch. Once you're ready, create a pull request to merge your changes into the main branch. Pull requests should include a clear description of what was changed and why.
+If you have an idea about this project, you can report it to Issues.  
+For contributing code, please fork the repository and make your changes in a new branch. Once you're ready, create a pull request to merge your changes into the main branch. Pull requests should include a clear description of what was changed and why.

@@ -33,6 +33,13 @@ namespace RCLargeLanguageModels.Prompting
 			_prompts = new Dictionary<string, MultilingualPrompt>();
 		}
 
+		/// <summary>
+		/// Adds a new prompt to the library.
+		/// </summary>
+		/// <param name="name">The name of the prompt.</param>
+		/// <param name="prompt">The multilingual prompt to add.</param>
+		/// <returns><see langword="true"/> if the prompt was added successfully; otherwise, <see langword="false"/>.</returns>
+		/// <exception cref="ArgumentNullException"></exception>
 		public bool Add(string name, MultilingualPrompt prompt)
 		{
 			if (string.IsNullOrEmpty(name))

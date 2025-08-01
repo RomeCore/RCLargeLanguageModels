@@ -52,6 +52,5 @@
 		<Folder Include="Completions\Properties\" />
 		<Folder Include="Html\" />
 		<Folder Include="Pipelines\" />
-		<Folder Include="Prompting\Templates\TemplateNodes\" />
 	</ItemGroup>
 </Project>

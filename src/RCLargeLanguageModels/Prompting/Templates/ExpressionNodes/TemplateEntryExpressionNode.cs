@@ -7,17 +7,17 @@ namespace RCLargeLanguageModels.Prompting.Templates.ExpressionNodes
 	/// <summary>
 	/// Represents an empty template data node that does not provide any data.
 	/// </summary>
-	public class TemplateEmptyExpressionNode : TemplateExpressionNode
+	public class TemplateEntryExpressionNode : TemplateExpressionNode
 	{
 		/// <summary>
 		/// Gets the singleton instance of the empty template data node.
 		/// </summary>
-		public static TemplateEmptyExpressionNode Instance { get; } = new TemplateEmptyExpressionNode();
+		public static TemplateEntryExpressionNode Instance { get; } = new TemplateEntryExpressionNode();
 
 		/// <summary>
 		/// Use <see cref="Instance"/> instead of creating a new instance.
 		/// </summary>
-		private TemplateEmptyExpressionNode() { }
+		private TemplateEntryExpressionNode() { }
 
 		public override TemplateDataAccessor Evaluate(TemplateContextAccessor context)
 		{

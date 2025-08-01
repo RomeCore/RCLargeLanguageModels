@@ -13,8 +13,8 @@ namespace RCLargeLanguageModels.Prompting.Templates
 		/// <summary>
 		/// Renders the template node based on the provided data.
 		/// </summary>
-		/// <param name="data">The data accessor containing the data to render.</param>
+		/// <param name="context">The context accessor containing the data to render.</param>
 		/// <returns>A collection of messages representing the rendered template node.</returns>
-		public abstract IEnumerable<IMessage> Render(TemplateDataAccessor data);
+		public abstract IEnumerable<IMessage> Render(TemplateContextAccessor context);
 	}
 }

@@ -18,12 +18,12 @@ namespace RCLargeLanguageModels.Prompting.Templates
 		public virtual int Length => 0;
 
 		/// <summary>
-		/// Gets the template data associated with the specified key.
+		/// Gets the template data property associated with the specified property name.
 		/// </summary>
-		/// <param name="key">The key to retrieve the template data for.</param>
-		/// <returns>The template data associated with the specified key.</returns>
-		public virtual TemplateDataAccessor Get(string key) =>
-			throw new TemplateRuntimeException($"Cannot get value for key '{key}'");
+		/// <param name="name">The property name to retrieve the template data for.</param>
+		/// <returns>The template data that is associated with the specified property name.</returns>
+		public virtual TemplateDataAccessor Property(string name) =>
+			throw new TemplateRuntimeException($"Cannot get value for key '{name}'");
 
 		/// <summary>
 		/// Gets the template data associated with the specified index.

@@ -38,14 +38,14 @@ namespace RCLargeLanguageModels.Prompting.Templates.DataAccessors
 
 		public override TemplateDataAccessor Index(TemplateDataAccessor index)
 		{
-			return Get(index.ToString());
+			return Property(index.ToString());
 		}
 
-		public override TemplateDataAccessor Get(string key)
+		public override TemplateDataAccessor Property(string key)
 		{
 			if (_dictionary.TryGetValue(key, out var accessor))
 				return accessor;
-			return base.Get(key);
+			return base.Property(key);
 		}
 
 		public override bool AsBoolean()

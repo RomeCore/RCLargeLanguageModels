@@ -54,7 +54,7 @@ namespace RCLargeLanguageModels.Prompting.Templates.DataAccessors
 			return accessors;
 		}
 
-		public override TemplateDataAccessor Get(string key)
+		public override TemplateDataAccessor Property(string key)
 		{
 			if (_propertyAccessors.TryGetValue(key, out var accessor))
 			{
@@ -72,7 +72,7 @@ namespace RCLargeLanguageModels.Prompting.Templates.DataAccessors
 				}
 			}
 
-			return base.Get(key);
+			return base.Property(key);
 		}
 
 		public override bool AsBoolean() => true;

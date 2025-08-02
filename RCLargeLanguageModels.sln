@@ -16,8 +16,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RCLargeLanguageModels.Tests
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RCLargeLanguageModels.SourceGenerators", "src\RCLargeLanguageModels.SourceGenerators\RCLargeLanguageModels.SourceGenerators.csproj", "{2B6BD872-80EA-4899-99E2-BB7A8C3AEB98}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RCLargeLanguageModels.Templates", "src\RCLargeLanguageModels.Templates\RCLargeLanguageModels.Templates.csproj", "{1583D67E-C6A4-48C1-9D85-8AC7105315A8}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RCLargeLanguageModels.Tests.Templates", "tests\RCLargeLanguageModels.Tests.Templates\RCLargeLanguageModels.Tests.Templates.csproj", "{7E487972-3D8B-49F4-B1CC-B71C6FEE0907}"
 EndProject
 Global
@@ -42,10 +40,6 @@ Global
 		{2B6BD872-80EA-4899-99E2-BB7A8C3AEB98}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2B6BD872-80EA-4899-99E2-BB7A8C3AEB98}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2B6BD872-80EA-4899-99E2-BB7A8C3AEB98}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1583D67E-C6A4-48C1-9D85-8AC7105315A8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1583D67E-C6A4-48C1-9D85-8AC7105315A8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1583D67E-C6A4-48C1-9D85-8AC7105315A8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1583D67E-C6A4-48C1-9D85-8AC7105315A8}.Release|Any CPU.Build.0 = Release|Any CPU
 		{7E487972-3D8B-49F4-B1CC-B71C6FEE0907}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{7E487972-3D8B-49F4-B1CC-B71C6FEE0907}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7E487972-3D8B-49F4-B1CC-B71C6FEE0907}.Release|Any CPU.ActiveCfg = Release|Any CPU

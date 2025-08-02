@@ -18,7 +18,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\RCLargeLanguageModels.Pipelines\RCLargeLanguageModels.Pipelines.csproj" />
-    <ProjectReference Include="..\..\src\RCLargeLanguageModels.Templates\RCLargeLanguageModels.Templates.csproj" />
     <ProjectReference Include="..\..\src\RCLargeLanguageModels\RCLargeLanguageModels.csproj" />
   </ItemGroup>
 

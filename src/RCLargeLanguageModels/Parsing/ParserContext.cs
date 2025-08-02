@@ -30,6 +30,11 @@ namespace RCLargeLanguageModels.Parsing
 		public readonly ParserCache cache;
 
 		/// <summary>
+		/// A list to store any parsing errors encountered during the process.
+		/// </summary>
+		public readonly List<ParsingError> errors;
+
+		/// <summary>
 		/// Creates a new instance of the <see cref="ParserContext"/> class.
 		/// </summary>
 		/// <param name="parser">The parser object that is performing the parsing.</param>
@@ -37,9 +42,11 @@ namespace RCLargeLanguageModels.Parsing
 		public ParserContext(Parser parser, string str)
 		{
 			this.str = str ?? throw new ArgumentNullException(nameof(str));
+			position = 0;
+
 			this.parser = parser ?? throw new ArgumentNullException(nameof(parser));
 			this.cache = new ParserCache();
-			position = 0;
+			this.errors = new List<ParsingError>();
 		}
 
 		/// <summary>
@@ -48,13 +55,16 @@ namespace RCLargeLanguageModels.Parsing
 		/// <param name="parser">The parser object that is performing the parsing.</param>
 		/// <param name="str">The input string to be parsed.</param>
 		/// <param name="cache">A cache to store parsed results for reuse.</param>
-		/// <param name="initialPosition">The initial position in the input string. Default is 0.</param>
-		public ParserContext(Parser parser, string str, ParserCache cache, int initialPosition = 0)
+		/// <param name="initialPosition">The initial position in the input string.</param>
+		/// <param name="errors">A list to store any parsing errors encountered during the process.</param>
+		public ParserContext(Parser parser, string str, ParserCache cache, int initialPosition, List<ParsingError> errors)
 		{
 			this.str = str ?? throw new ArgumentNullException(nameof(str));
+			position = initialPosition;
+
 			this.parser = parser ?? throw new ArgumentNullException(nameof(parser));
 			this.cache = cache ?? throw new ArgumentNullException(nameof(cache));
-			position = initialPosition;
+			this.errors = errors ?? throw new ArgumentNullException(nameof(errors));
 		}
 
 		/// <summary>
@@ -63,7 +73,7 @@ namespace RCLargeLanguageModels.Parsing
 		/// <returns>A new instance of <see cref="ParserContext"/> with the same input and current position.</returns>
 		public readonly ParserContext Copy()
 		{
-			return new ParserContext(parser, str, cache, position);
+			return new ParserContext(parser, str, cache, position, errors);
 		}
 
 		/// <summary>
@@ -72,7 +82,7 @@ namespace RCLargeLanguageModels.Parsing
 		/// <returns>A new instance of <see cref="ParserContext"/> with the same input and new position.</returns>
 		public readonly ParserContext With(int newPosition)
 		{
-			return new ParserContext(parser, str, cache, newPosition);
+			return new ParserContext(parser, str, cache, newPosition, errors);
 		}
 	}
 }

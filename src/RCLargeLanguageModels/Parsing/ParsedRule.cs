@@ -36,14 +36,19 @@ namespace RCLargeLanguageModels.Parsing
 		public readonly bool isToken;
 
 		/// <summary>
-		/// The single token associated with this rule.
+		/// The single token associated with this rule. <see cref="ParsedToken.Fail"/> by default.
 		/// </summary>
 		public readonly ParsedToken token;
 
 		/// <summary>
-		/// Gets the children rules of this rule.
+		/// Gets the occurency index of this rule within its parent parallel rule. -1 by default.
 		/// </summary>
-		public readonly ImmutableArray<ParsedRule> rules;
+		public readonly int occurency;
+
+		/// <summary>
+		/// Gets the children rules of this rule. Valid for parallel and sequence rules.
+		/// </summary>
+		public readonly ImmutableList<ParsedRule> rules;
 
 		/// <summary>
 		/// Gets the parsed value associated with this rule.
@@ -66,7 +71,8 @@ namespace RCLargeLanguageModels.Parsing
 			this.length = length;
 			this.isToken = true;
 			this.token = token;
-			this.rules = ImmutableArray<ParsedRule>.Empty;
+			this.occurency = -1;
+			this.rules = ImmutableList<ParsedRule>.Empty;
 			this.parsedValue = parsedValue;
 		}
 
@@ -79,7 +85,7 @@ namespace RCLargeLanguageModels.Parsing
 		/// <param name="length">The length of the rule in the input text.</param>
 		/// <param name="rules">The children rules of this rule.</param>
 		/// <param name="parsedValue">The parsed value associated with this rule.</param>
-		public ParsedRule(bool success, int ruleId, int startIndex, int length, ImmutableArray<ParsedRule> rules, object? parsedValue = null)
+		public ParsedRule(bool success, int ruleId, int startIndex, int length, ImmutableList<ParsedRule> rules, object? parsedValue = null)
 		{
 			this.success = success;
 			this.ruleId = ruleId;
@@ -87,7 +93,31 @@ namespace RCLargeLanguageModels.Parsing
 			this.length = length;
 			this.isToken = false;
 			this.token = ParsedToken.Fail;
-			this.rules = rules;
+			this.occurency = -1;
+			this.rules = rules ?? throw new ArgumentNullException(nameof(rules));
+			this.parsedValue = parsedValue;
+		}
+
+		/// <summary>
+		/// Initializes a new instance of the <see cref="ParsedRule"/> struct.
+		/// </summary>
+		/// <param name="success">The value of the rule if it was successful.</param>
+		/// <param name="ruleId">The ID of the rule that was parsed.</param>
+		/// <param name="startIndex">The starting index of the rule in the input text.</param>
+		/// <param name="length">The length of the rule in the input text.</param>
+		/// <param name="occurency">The occurency index of this rule within its parent parallel rule.</param>
+		/// <param name="rules">The children rules of this rule.</param>
+		/// <param name="parsedValue">The parsed value associated with this rule.</param>
+		public ParsedRule(bool success, int ruleId, int startIndex, int length, int occurency, ImmutableList<ParsedRule> rules, object? parsedValue = null)
+		{
+			this.success = success;
+			this.ruleId = ruleId;
+			this.startIndex = startIndex;
+			this.length = length;
+			this.isToken = false;
+			this.token = ParsedToken.Fail;
+			this.occurency = occurency;
+			this.rules = rules ?? throw new ArgumentNullException(nameof(rules));
 			this.parsedValue = parsedValue;
 		}
 
@@ -100,9 +130,10 @@ namespace RCLargeLanguageModels.Parsing
 		/// <param name="length">The length of the rule in the input text.</param>
 		/// <param name="isToken">The value indicating whether this rule represents a token.</param>
 		/// <param name="token">The single token associated with this rule.</param>
+		/// <param name="occurency">The occurency index of this rule within its parent parallel rule.</param>
 		/// <param name="rules">The children rules of this rule.</param>
 		/// <param name="parsedValue">The parsed value associated with this rule.</param>
-		private ParsedRule(bool success, int ruleId, int startIndex, int length, bool isToken, ParsedToken token, ImmutableArray<ParsedRule> rules, object? parsedValue = null)
+		private ParsedRule(bool success, int ruleId, int startIndex, int length, bool isToken, ParsedToken token, int occurency, ImmutableList<ParsedRule> rules, object? parsedValue = null)
 		{
 			this.success = success;
 			this.ruleId = ruleId;
@@ -110,14 +141,15 @@ namespace RCLargeLanguageModels.Parsing
 			this.length = length;
 			this.isToken = isToken;
 			this.token = token;
-			this.rules = rules;
+			this.occurency = occurency;
+			this.rules = rules ?? throw new ArgumentNullException(nameof(rules));
 			this.parsedValue = parsedValue;
 		}
 
 		/// <summary>
 		/// Gets a parsed rule that represents failure.
 		/// </summary>
-		public static ParsedRule Fail { get; } = new ParsedRule(false, -1, -1, 0, false, ParsedToken.Fail, ImmutableArray<ParsedRule>.Empty, null);
+		public static ParsedRule Fail { get; } = new ParsedRule(false, -1, -1, 0, false, ParsedToken.Fail, -1, ImmutableList<ParsedRule>.Empty, null);
 
 		/// <summary>
 		/// Gets a text contents of the parsed token.
@@ -150,9 +182,9 @@ namespace RCLargeLanguageModels.Parsing
 		}
 
 		/// <summary>
-		/// Gets the value of the parsed token.
+		/// Gets the value of the parsed rule.
 		/// </summary>
-		/// <returns>The value of the parsed token.</returns>
+		/// <returns>The value of the parsed parsed.</returns>
 		/// <remarks>
 		/// Throws an exception if this result has no value or is a failure.
 		/// </remarks>
@@ -166,9 +198,9 @@ namespace RCLargeLanguageModels.Parsing
 		}
 
 		/// <summary>
-		/// Gets the value of the parsed token of the specified type.
+		/// Gets the value of the parsed parsed of the specified type.
 		/// </summary>
-		/// <returns>The value of the parsed token.</returns>
+		/// <returns>The value of the parsed parsed.</returns>
 		/// <remarks>
 		/// Throws an exception if this result has no value of type <typeparamref name="T"/> or is a failure.
 		/// </remarks>
@@ -181,6 +213,36 @@ namespace RCLargeLanguageModels.Parsing
 			if (parsedValue is T result)
 				return result;
 			throw new InvalidCastException($"The parsed value cannot be cast to {typeof(T)}, it is of type {parsedValue.GetType()}.");
+		}
+
+		/// <summary>
+		/// Tries to get the value of the parsed parsed.
+		/// </summary>
+		/// <returns>The value of the parsed parsed or <see langword="null"/> if no value is set.</returns>
+		/// <remarks>
+		/// Throws an exception if this result is a failure.
+		/// </remarks>
+		public object? TryGetValue()
+		{
+			if (!success)
+				throw new InvalidOperationException("Cannot get value for a failed rule.");
+			return parsedValue;
+		}
+
+		/// <summary>
+		/// Tries to get the value of the parsed parsed of the specified type.
+		/// </summary>
+		/// <returns>The value of the parsed parsed of the specified type or <see langword="default"/> if no value is set.</returns>
+		/// <remarks>
+		/// Throws an exception if this result is a failure.
+		/// </remarks>
+		public T? TryGetValue<T>()
+		{
+			if (!success)
+				throw new InvalidOperationException("Cannot get value for a failed rule.");
+			if (parsedValue is T result)
+				return result;
+			return default;
 		}
 	}
 }

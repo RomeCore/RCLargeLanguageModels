@@ -70,7 +70,7 @@ namespace RCLargeLanguageModels.Parsing
 		/// <summary>
 		/// Creates a copy of the current parser context.
 		/// </summary>
-		/// <returns>A new instance of <see cref="ParserContext"/> with the same input and current position.</returns>
+		/// <returns>A new instance of <see cref="ParserContext"/> with the same properties as the current one.</returns>
 		public readonly ParserContext Copy()
 		{
 			return new ParserContext(parser, str, cache, position, errors);
@@ -79,7 +79,7 @@ namespace RCLargeLanguageModels.Parsing
 		/// <summary>
 		/// Creates a copy of the current parser context with a new position.
 		/// </summary>
-		/// <returns>A new instance of <see cref="ParserContext"/> with the same input and new position.</returns>
+		/// <returns>A new instance of <see cref="ParserContext"/> with the new position.</returns>
 		public readonly ParserContext With(int newPosition)
 		{
 			return new ParserContext(parser, str, cache, newPosition, errors);

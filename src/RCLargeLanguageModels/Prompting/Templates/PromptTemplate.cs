@@ -16,11 +16,11 @@ namespace RCLargeLanguageModels.Prompting.Templates
 		/// <summary>
 		/// Renders the prompt using the provided data accessor.
 		/// </summary>
-		/// <param name="dataAccessor">The data accessor to use for rendering.</param>
+		/// <param name="context">The context accessor to use for rendering.</param>
 		/// <returns>The rendered prompt as a string.</returns>
-		public string Render(TemplateDataAccessor dataAccessor)
+		public string Render(TemplateContextAccessor context)
 		{
-			return _node.Render(dataAccessor);
+			return _node.Render(context);
 		}
 	}
 }

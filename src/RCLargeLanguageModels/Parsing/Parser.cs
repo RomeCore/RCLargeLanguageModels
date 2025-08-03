@@ -44,7 +44,7 @@ namespace RCLargeLanguageModels.Parsing
 				throw new InvalidOperationException("Cannot add token patterns after initialization");
 			if (_tokenPatternsDict.ContainsKey(patternId))
 				throw new InvalidOperationException("Duplicate token pattern ID");
-			if (patternId > 1024)
+			if (patternId > 8096)
 				throw new InvalidOperationException("Token pattern ID too large");
 			_tokenPatternsDict.Add(patternId, pattern);
 		}
@@ -60,7 +60,7 @@ namespace RCLargeLanguageModels.Parsing
 				throw new InvalidOperationException("Cannot add parser rules after initialization");
 			if (_rulesDict.ContainsKey(ruleId))
 				throw new InvalidOperationException("Duplicate parser rule ID");
-			if (ruleId > 1024)
+			if (ruleId > 8096)
 				throw new InvalidOperationException("Rule ID too large");
 			_rulesDict.Add(ruleId, rule);
 		}
@@ -73,8 +73,8 @@ namespace RCLargeLanguageModels.Parsing
 			if (_initialized)
 				throw new InvalidOperationException("Parser is already initialized.");
 
-			var maxPatternId = _tokenPatternsDict.Keys.Max();
-			var maxRuleId = _rulesDict.Keys.Max();
+			var maxPatternId = _tokenPatternsDict.Count == 0 ? 0 : _tokenPatternsDict.Keys.Max();
+			var maxRuleId = _rulesDict.Count == 0 ? 0 : _rulesDict.Keys.Max();
 
 			var tokenPatternsArray = ImmutableArray.CreateBuilder<TokenPattern>(maxPatternId + 1);
 			var rulesArray = ImmutableArray.CreateBuilder<ParserRule>(maxRuleId + 1);
@@ -121,7 +121,7 @@ namespace RCLargeLanguageModels.Parsing
 			if (context.cache.TryGetRule(ruleId, position, out var parsedRule))
 				return parsedRule;
 
-			parsedRule = rule.Parse(context);
+			parsedRule = rule.Parse(ruleId, context);
 			context.cache.AddRule(ruleId, position, parsedRule);
 			if (!parsedRule.success)
 				throw new ParsingException("Parse failed", context.str, position);
@@ -147,9 +147,7 @@ namespace RCLargeLanguageModels.Parsing
 			if (context.cache.TryGetRule(ruleId, position, out parsedRule))
 				return parsedRule.success;
 
-			var success = rule.TryParse(context, out parsedRule);
-			if (success != parsedRule.success)
-				throw new InvalidOperationException("Parsed token and match success fact mismatch");
+			var success = rule.TryParse(ruleId, context, out parsedRule);
 			context.cache.AddRule(ruleId, position, parsedRule);
 
 			return parsedRule.success;
@@ -173,9 +171,7 @@ namespace RCLargeLanguageModels.Parsing
 			if (context.cache.TryGetToken(tokenId, position, out parsedToken))
 				return parsedToken.success;
 
-			var success = pattern.TryMatch(context, out parsedToken);
-			if (success != parsedToken.success)
-				throw new InvalidOperationException("Parsed token and match success fact mismatch");
+			var success = pattern.TryMatch(tokenId, context, out parsedToken);
 			context.cache.AddToken(tokenId, position, parsedToken);
 
 			return parsedToken.success;

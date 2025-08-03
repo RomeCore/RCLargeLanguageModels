@@ -135,5 +135,35 @@ namespace RCLargeLanguageModels.Parsing
 				return result;
 			throw new InvalidCastException($"The parsed value cannot be cast to {typeof(T)}, it is of type {parsedValue.GetType()}.");
 		}
+
+		/// <summary>
+		/// Tries to get the value of the parsed token.
+		/// </summary>
+		/// <returns>The value of the parsed token or <see langword="null"/> if no value is set.</returns>
+		/// <remarks>
+		/// Throws an exception if this result is a failure.
+		/// </remarks>
+		public object? TryGetValue()
+		{
+			if (!success)
+				throw new InvalidOperationException("Cannot get value for a failed rule.");
+			return parsedValue;
+		}
+
+		/// <summary>
+		/// Tries to get the value of the parsed token of the specified type.
+		/// </summary>
+		/// <returns>The value of the parsed token of the specified type or <see langword="default"/> if no value is set.</returns>
+		/// <remarks>
+		/// Throws an exception if this result is a failure.
+		/// </remarks>
+		public T? TryGetValue<T>()
+		{
+			if (!success)
+				throw new InvalidOperationException("Cannot get value for a failed rule.");
+			if (parsedValue is T result)
+				return result;
+			return default;
+		}
 	}
 }

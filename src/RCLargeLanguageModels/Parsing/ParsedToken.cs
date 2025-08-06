@@ -68,6 +68,26 @@ namespace RCLargeLanguageModels.Parsing
 		}
 
 		/// <summary>
+		/// Creates a copy of the current instance with specified token ID.
+		/// </summary>
+		/// <param name="tokenId">The new token ID to use.</param>
+		/// <returns>A copy of this parsed token with the specified token ID.</returns>
+		public ParsedToken WithRuleId(int tokenId)
+		{
+			return new ParsedToken(this.success, tokenId, this.startIndex, this.length, this.parsedValue);
+		}
+
+		/// <summary>
+		/// Creates a copy of this parsed token with the specified parsed value.
+		/// </summary>
+		/// <param name="parsedValue">The parsed value associated with this token.</param>
+		/// <returns>A copy of this parsed token with the specified parsed value.</returns>
+		public ParsedToken WithParsedValue(object? parsedValue)
+		{
+			return new ParsedToken(this.success, this.tokenId, this.startIndex, this.length, parsedValue);
+		}
+
+		/// <summary>
 		/// Gets a parsed token that represents failure.
 		/// </summary>
 		public static ParsedToken Fail { get; } = new ParsedToken(false, -1, -1, 0, null);

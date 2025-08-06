@@ -11,6 +11,11 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 	public class RegexTokenPattern : TokenPattern
 	{
 		/// <summary>
+		/// The regular expression pattern string to match.
+		/// </summary>
+		public string RegexPattern { get; }
+		
+		/// <summary>
 		/// The regular expression to match.
 		/// </summary>
 		public Regex Regex { get; }
@@ -30,9 +35,12 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 		{
 			if (string.IsNullOrEmpty(pattern))
 				throw new ArgumentException("Pattern cannot be null or empty.", nameof(pattern));
-			ParsedValueFactory = parsedValueFactory ?? (m => null);
-			Regex = new Regex($"^{pattern.TrimStart('^')}", options);
+			RegexPattern = pattern.TrimStart('^');
+			Regex = new Regex($"^{RegexPattern}", options);
+			ParsedValueFactory = parsedValueFactory ?? DefaultParsedValueFactory;
 		}
+
+		private static object? DefaultParsedValueFactory(Match m) => m.Value;
 
 		public override bool TryMatch(int thisTokenId, ParserContext context, out ParsedToken token)
 		{
@@ -45,6 +53,21 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 			token = new ParsedToken(thisTokenId, context.position, match.Length, ParsedValueFactory.Invoke(match));
 			return true;
+		}
+
+		public override bool Equals(object? obj)
+		{
+			return obj is RegexTokenPattern pattern &&
+				   RegexPattern == pattern.RegexPattern &&
+				   ParsedValueFactory == pattern.ParsedValueFactory;
+		}
+
+		public override int GetHashCode()
+		{
+			int hashCode = 1824601363;
+			hashCode = hashCode * -1521134295 + RegexPattern.GetHashCode();
+			hashCode = hashCode * -1521134295 + ParsedValueFactory.GetHashCode();
+			return hashCode;
 		}
 	}
 }

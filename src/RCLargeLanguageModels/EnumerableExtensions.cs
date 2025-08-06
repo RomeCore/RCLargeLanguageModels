@@ -37,6 +37,17 @@ namespace RCLargeLanguageModels
 		}
 
 		/// <summary>
+		/// Gets the combined hash code for <see cref="IEnumerable"/>.
+		/// </summary>
+		public static int GetSequenceHashCode(this IEnumerable collection)
+		{
+			int result = 0;
+			foreach (var item in collection)
+				result ^= (item?.GetHashCode() ?? 0) * 397;
+			return result;
+		}
+
+		/// <summary>
 		/// Checks if <see cref="IEnumerable"/> has elements.
 		/// </summary>
 		public static bool Any(this IEnumerable enumerable)
@@ -260,6 +271,14 @@ namespace RCLargeLanguageModels
 			{
 				return GetEnumerator();
 			}
+		}
+
+		/// <summary>
+		/// Creates an enumerable that contains this value.
+		/// </summary>
+		public static IEnumerable<T> WrapIntoEnumerable<T>(this T value)
+		{
+			yield return value;
 		}
 
 		/// <summary>

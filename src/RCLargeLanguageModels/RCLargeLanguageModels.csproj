@@ -51,7 +51,6 @@
 	<ItemGroup>
 		<Folder Include="Completions\Properties\" />
 		<Folder Include="Html\" />
-		<Folder Include="Parsing\ParserRules\" />
 		<Folder Include="Pipelines\" />
 	</ItemGroup>
 </Project>

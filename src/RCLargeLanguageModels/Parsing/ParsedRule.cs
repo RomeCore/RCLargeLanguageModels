@@ -41,7 +41,7 @@ namespace RCLargeLanguageModels.Parsing
 		public readonly ParsedToken token;
 
 		/// <summary>
-		/// Gets the occurency index of this rule within its parent parallel rule. -1 by default.
+		/// Gets the occurency index of this rule within its parent rule. -1 by default.
 		/// </summary>
 		public readonly int occurency;
 
@@ -79,15 +79,14 @@ namespace RCLargeLanguageModels.Parsing
 		/// <summary>
 		/// Initializes a new instance of the <see cref="ParsedRule"/> struct.
 		/// </summary>
-		/// <param name="success">The value of the rule if it was successful.</param>
 		/// <param name="ruleId">The ID of the rule that was parsed.</param>
 		/// <param name="startIndex">The starting index of the rule in the input text.</param>
 		/// <param name="length">The length of the rule in the input text.</param>
 		/// <param name="rules">The children rules of this rule.</param>
 		/// <param name="parsedValue">The parsed value associated with this rule.</param>
-		public ParsedRule(bool success, int ruleId, int startIndex, int length, ImmutableList<ParsedRule> rules, object? parsedValue = null)
+		public ParsedRule(int ruleId, int startIndex, int length, ImmutableList<ParsedRule> rules, object? parsedValue = null)
 		{
-			this.success = success;
+			this.success = true;
 			this.ruleId = ruleId;
 			this.startIndex = startIndex;
 			this.length = length;
@@ -105,32 +104,9 @@ namespace RCLargeLanguageModels.Parsing
 		/// <param name="ruleId">The ID of the rule that was parsed.</param>
 		/// <param name="startIndex">The starting index of the rule in the input text.</param>
 		/// <param name="length">The length of the rule in the input text.</param>
-		/// <param name="occurency">The occurency index of this rule within its parent parallel rule.</param>
-		/// <param name="rules">The children rules of this rule.</param>
-		/// <param name="parsedValue">The parsed value associated with this rule.</param>
-		public ParsedRule(bool success, int ruleId, int startIndex, int length, int occurency, ImmutableList<ParsedRule> rules, object? parsedValue = null)
-		{
-			this.success = success;
-			this.ruleId = ruleId;
-			this.startIndex = startIndex;
-			this.length = length;
-			this.isToken = false;
-			this.token = ParsedToken.Fail;
-			this.occurency = occurency;
-			this.rules = rules ?? throw new ArgumentNullException(nameof(rules));
-			this.parsedValue = parsedValue;
-		}
-
-		/// <summary>
-		/// Initializes a new instance of the <see cref="ParsedRule"/> struct.
-		/// </summary>
-		/// <param name="success">The value of the rule if it was successful.</param>
-		/// <param name="ruleId">The ID of the rule that was parsed.</param>
-		/// <param name="startIndex">The starting index of the rule in the input text.</param>
-		/// <param name="length">The length of the rule in the input text.</param>
 		/// <param name="isToken">The value indicating whether this rule represents a token.</param>
 		/// <param name="token">The single token associated with this rule.</param>
-		/// <param name="occurency">The occurency index of this rule within its parent parallel rule.</param>
+		/// <param name="occurency">The occurency index of this rule within its parent rule.</param>
 		/// <param name="rules">The children rules of this rule.</param>
 		/// <param name="parsedValue">The parsed value associated with this rule.</param>
 		private ParsedRule(bool success, int ruleId, int startIndex, int length, bool isToken, ParsedToken token, int occurency, ImmutableList<ParsedRule> rules, object? parsedValue = null)
@@ -144,6 +120,36 @@ namespace RCLargeLanguageModels.Parsing
 			this.occurency = occurency;
 			this.rules = rules ?? throw new ArgumentNullException(nameof(rules));
 			this.parsedValue = parsedValue;
+		}
+
+		/// <summary>
+		/// Creates a copy of the current instance with specified rule ID.
+		/// </summary>
+		/// <param name="ruleId">The new rule ID to use.</param>
+		/// <returns>A copy of this parsed rule with the specified rule ID.</returns>
+		public ParsedRule WithRuleId(int ruleId)
+		{
+			return new ParsedRule(this.success, ruleId, this.startIndex, this.length, this.isToken, this.token, this.occurency, this.rules, this.parsedValue);
+		}
+
+		/// <summary>
+		/// Creates a copy of this parsed rule with the specified occurency index.
+		/// </summary>
+		/// <param name="occurency">The occurency index of this rule within its parent rule. -1 by default.</param>
+		/// <returns>A copy of this parsed rule with the specified occurency index.</returns>
+		public ParsedRule WithOccurency(int occurency)
+		{
+			return new ParsedRule(this.success, this.ruleId, this.startIndex, this.length, this.isToken, this.token, occurency, this.rules, this.parsedValue);
+		}
+
+		/// <summary>
+		/// Creates a copy of this parsed rule with the specified parsed value.
+		/// </summary>
+		/// <param name="parsedValue">The parsed value associated with this rule.</param>
+		/// <returns>A copy of this parsed rule with the specified parsed value.</returns>
+		public ParsedRule WithParsedValue(object? parsedValue)
+		{
+			return new ParsedRule(this.success, this.ruleId, this.startIndex, this.length, this.isToken, this.token, this.occurency, this.rules, parsedValue);
 		}
 
 		/// <summary>

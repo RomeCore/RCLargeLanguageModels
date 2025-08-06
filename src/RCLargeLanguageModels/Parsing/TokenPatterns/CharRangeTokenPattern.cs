@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace RCLargeLanguageModels.Parsing.TokenPatterns
 {
@@ -29,11 +30,15 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 		/// </summary>
 		/// <param name="minInclusiveChar">The minimum inclusive character that can be matched by this pattern.</param>
 		/// <param name="maxInclusiveChar">The maximum inclusive character that can be matched by this pattern.</param>
-		public CharRangeTokenPattern(char minInclusiveChar, char maxInclusiveChar)
+		/// <param name="parsedValueFactory">The factory function that creates a parsed value for a matched character.</param>
+		public CharRangeTokenPattern(char minInclusiveChar, char maxInclusiveChar, Func<char, object?>? parsedValueFactory = null)
 		{
 			MinChar = minInclusiveChar;
 			MaxChar = maxInclusiveChar;
+			ParsedValueFactory = parsedValueFactory ?? DefaultParsedValueFactory;
 		}
+
+		private static object? DefaultParsedValueFactory(char c) => c;
 
 		public override bool TryMatch(int thisTokenId, ParserContext context, out ParsedToken token)
 		{
@@ -54,6 +59,28 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 				token = ParsedToken.Fail;
 				return false;
 			}
+		}
+
+		public override string ToString()
+		{
+			return $"[{MinChar}-{MaxChar}]";
+		}
+
+		public override bool Equals(object? obj)
+		{
+			return obj is CharRangeTokenPattern pattern &&
+				   MinChar == pattern.MinChar &&
+				   MaxChar == pattern.MaxChar &&
+				   ParsedValueFactory == pattern.ParsedValueFactory;
+		}
+
+		public override int GetHashCode()
+		{
+			int hashCode = 516612889;
+			hashCode = hashCode * -1521134295 + MinChar.GetHashCode();
+			hashCode = hashCode * -1521134295 + MaxChar.GetHashCode();
+			hashCode = hashCode * -1521134295 + ParsedValueFactory.GetHashCode();
+			return hashCode;
 		}
 	}
 }

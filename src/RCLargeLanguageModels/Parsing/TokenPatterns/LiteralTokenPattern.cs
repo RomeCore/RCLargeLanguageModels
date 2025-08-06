@@ -20,9 +20,9 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 		public StringComparer Comparer { get; }
 
 		/// <summary>
-		/// Gets the parsed value to put in the token.
+		/// Gets the factory function that creates a parsed value from the matched literal string.
 		/// </summary>
-		public object? ParsedValue { get; }
+		public Func<string, object?> ParsedValueFactory { get; }
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="LiteralTokenPattern"/> class.
@@ -31,11 +31,12 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 		/// Defaults to case-sensitive ordinal comparison.
 		/// </remarks>
 		/// <param name="literal">The literal string to match.</param>
-		public LiteralTokenPattern(string literal)
+		/// <param name="parsedValueFactory">The factory function that creates a parsed value from the matched literal string.</param>
+		public LiteralTokenPattern(string literal, Func<string, object?>? parsedValueFactory = null)
 		{
 			Literal = string.IsNullOrEmpty(literal) ? throw new ArgumentException("Literal cannot be null or empty.", nameof(literal)) : literal;
 			Comparer = StringComparer.Ordinal;
-			ParsedValue = null;
+			ParsedValueFactory = parsedValueFactory ?? DefaultParsedValueFactory;
 		}
 
 		/// <summary>
@@ -43,25 +44,15 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 		/// </summary>
 		/// <param name="literal">The literal string to match.</param>
 		/// <param name="comparer">The comparer to use for matching.</param>
-		public LiteralTokenPattern(string literal, StringComparer comparer)
+		/// <param name="parsedValueFactory">The factory function that creates a parsed value from the matched literal string.</param>
+		public LiteralTokenPattern(string literal, StringComparer comparer, Func<string, object?>? parsedValueFactory = null)
 		{
 			Literal = string.IsNullOrEmpty(literal) ? throw new ArgumentException("Literal cannot be null or empty.", nameof(literal)) : literal;
 			Comparer = comparer ?? throw new ArgumentNullException(nameof(comparer));
-			ParsedValue = null;
+			ParsedValueFactory = parsedValueFactory ?? DefaultParsedValueFactory;
 		}
 
-		/// <summary>
-		/// Initializes a new instance of the <see cref="LiteralTokenPattern"/> class.
-		/// </summary>
-		/// <param name="literal">The literal string to match.</param>
-		/// <param name="comparer">The comparer to use for matching.</param>
-		/// <param name="parsedValue">The value to put in the token.</param>
-		public LiteralTokenPattern(string literal, StringComparer comparer, object? parsedValue)
-		{
-			Literal = literal ?? throw new ArgumentNullException(nameof(literal));
-			Comparer = comparer ?? throw new ArgumentNullException(nameof(comparer));
-			ParsedValue = parsedValue;
-		}
+		private static object? DefaultParsedValueFactory(string s) => s;
 
 		public override bool TryMatch(int thisTokenId, ParserContext context, out ParsedToken token)
 		{
@@ -78,8 +69,25 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 				return false;
 			}
 
-			token = new ParsedToken(thisTokenId, context.position, Literal.Length, ParsedValue);
+			token = new ParsedToken(thisTokenId, context.position, Literal.Length, ParsedValueFactory.Invoke(inputSlice));
 			return true;
+		}
+
+		public override bool Equals(object? obj)
+		{
+			return obj is LiteralTokenPattern pattern &&
+				   Literal == pattern.Literal &&
+				   Comparer == pattern.Comparer &&
+				   ParsedValueFactory == pattern.ParsedValueFactory;
+		}
+
+		public override int GetHashCode()
+		{
+			int hashCode = 2015609103;
+			hashCode = hashCode * -1521134295 + Literal.GetHashCode();
+			hashCode = hashCode * -1521134295 + Comparer.GetHashCode();
+			hashCode = hashCode * -1521134295 + ParsedValueFactory.GetHashCode();
+			return hashCode;
 		}
 	}
 }

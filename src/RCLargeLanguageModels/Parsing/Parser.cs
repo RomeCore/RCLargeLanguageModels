@@ -19,8 +19,11 @@ namespace RCLargeLanguageModels.Parsing
 		private bool _initialized = false;
 
 		private Dictionary<int, TokenPattern>? _tokenPatternsDict = new Dictionary<int, TokenPattern>();
+		private Dictionary<string, int>? _tokenPatternsAliases = new Dictionary<string, int>();
 		private ImmutableArray<TokenPattern> _tokenPatterns;
+
 		private Dictionary<int, ParserRule>? _rulesDict = new Dictionary<int, ParserRule>();
+		private Dictionary<string, int>? _rulesAliases = new Dictionary<string, int>();
 		private ImmutableArray<ParserRule> _rules;
 
 		/// <summary>
@@ -34,7 +37,7 @@ namespace RCLargeLanguageModels.Parsing
 		public ImmutableArray<ParserRule> Rules => _initialized ? _rules : throw new InvalidOperationException("Parser is not initialized.");
 
 		/// <summary>
-		/// Adds a token pattern to the parser.
+		/// Adds a token pattern to the parser. Will not work after initialization.
 		/// </summary>
 		/// <param name="patternId">The unique identifier for the token pattern.</param>
 		/// <param name="pattern">The token pattern to add.</param>
@@ -50,7 +53,20 @@ namespace RCLargeLanguageModels.Parsing
 		}
 
 		/// <summary>
-		/// Adds a parser rule to the parser.
+		/// Adds an alias for a token pattern.
+		/// </summary>
+		/// <param name="alias">The alias to add.</param>
+		/// <param name="tokenPatternId">The ID of the token pattern to which the alias should be added.</param>
+		/// <exception cref="InvalidOperationException">Thrown if the alias already exists.</exception>
+		public void AddTokenPatternAlias(string alias, int tokenPatternId)
+		{
+			if (_tokenPatternsAliases.ContainsKey(alias))
+				throw new InvalidOperationException("Duplicate alias");
+			_tokenPatternsAliases.Add(alias, tokenPatternId);
+		}
+
+		/// <summary>
+		/// Adds a parser rule to the parser. Will not work after initialization.
 		/// </summary>
 		/// <param name="ruleId">The unique identifier for the parser rule.</param>
 		/// <param name="rule">The parser rule to add.</param>
@@ -63,6 +79,19 @@ namespace RCLargeLanguageModels.Parsing
 			if (ruleId > 8096)
 				throw new InvalidOperationException("Rule ID too large");
 			_rulesDict.Add(ruleId, rule);
+		}
+
+		/// <summary>
+		/// Adds an alias for a parser rule.
+		/// </summary>
+		/// <param name="alias">The alias to add.</param>
+		/// <param name="parserRuleId">The ID of the parser rule to which the alias should be added.</param>
+		/// <exception cref="InvalidOperationException">Thrown if the alias already exists.</exception>
+		public void AddParserRuleAlias(string alias, int parserRuleId)
+		{
+			if (_rulesAliases.ContainsKey(alias))
+				throw new InvalidOperationException("Duplicate alias");
+			_rulesAliases.Add(alias, parserRuleId);
 		}
 
 		/// <summary>
@@ -113,7 +142,7 @@ namespace RCLargeLanguageModels.Parsing
 		public ParsedRule ParseRule(int ruleId, ParserContext context)
 		{
 			if (!_initialized)
-				throw new InvalidOperationException("Parser must be initialized before parsing rules");
+				throw new InvalidOperationException("Parser must be initialized before parsing");
 			if (ruleId < 0 || ruleId >= _rules.Length || _rules[ruleId] is not ParserRule rule)
 				throw new ArgumentException("Invalid rule ID", nameof(ruleId));
 
@@ -130,6 +159,19 @@ namespace RCLargeLanguageModels.Parsing
 		}
 
 		/// <summary>
+		/// Parses the given input using the specified rule alias and parser context.
+		/// </summary>
+		/// <param name="ruleAlias">The alias for the parser rule to use.</param>
+		/// <param name="context">The parser context to use for parsing.</param>
+		/// <returns>A parsed rule object containing the result of the parse.</returns>
+		public ParsedRule ParseRule(string ruleAlias, ParserContext context)
+		{
+			if (!_rulesAliases.TryGetValue(ruleAlias, out var ruleId))
+				throw new ArgumentException("Invalid rule alias", nameof(ruleAlias));
+			return ParseRule(ruleAlias, context);
+		}
+
+		/// <summary>
 		/// Tries to parse a rule using the specified rule identifier and parser context.
 		/// </summary>
 		/// <param name="ruleId">The unique identifier for the parser rule to use.</param>
@@ -139,7 +181,7 @@ namespace RCLargeLanguageModels.Parsing
 		public bool TryParseRule(int ruleId, ParserContext context, out ParsedRule parsedRule)
 		{
 			if (!_initialized)
-				throw new InvalidOperationException("Parser must be initialized before parsing rules");
+				throw new InvalidOperationException("Parser must be initialized before parsing");
 			if (ruleId < 0 || ruleId >= _rules.Length || _rules[ruleId] is not ParserRule rule)
 				throw new ArgumentException("Invalid rule ID", nameof(ruleId));
 
@@ -154,27 +196,55 @@ namespace RCLargeLanguageModels.Parsing
 		}
 
 		/// <summary>
+		/// Tries to parse a rule using the specified rule alias and parser context.
+		/// </summary>
+		/// <param name="ruleAlias">The alias for the parser rule to use.</param>
+		/// <param name="context">The parser context to use for parsing.</param>
+		/// <param name="parsedRule">The parsed rule object containing the result of the parse.</param>
+		/// <returns>True if a rule was parsed successfully, false otherwise.</returns>
+		public bool TryParseRule(string ruleAlias, ParserContext context, out ParsedRule parsedRule)
+		{
+			if (!_rulesAliases.TryGetValue(ruleAlias, out var ruleId))
+				throw new ArgumentException("Invalid rule alias", nameof(ruleAlias));
+			return TryParseRule(ruleAlias, context, out parsedRule);
+		}
+
+		/// <summary>
 		/// Parses the given input using the specified token pattern.
 		/// </summary>
-		/// <param name="tokenId">The unique identifier for the token pattern to use.</param>
+		/// <param name="tokenPatternId">The unique identifier for the token pattern to use.</param>
 		/// <param name="context">The parser context to use for parsing.</param>
 		/// <param name="parsedToken">The parsed token object containing the result of the parse.</param>
 		/// <returns>True if a token was matched, false otherwise.</returns>
-		public bool TryMatchToken(int tokenId, ParserContext context, out ParsedToken parsedToken)
+		public bool TryMatchToken(int tokenPatternId, ParserContext context, out ParsedToken parsedToken)
 		{
 			if (!_initialized)
-				throw new InvalidOperationException("Parser must be initialized before parsing rules");
-			if (tokenId < 0 || tokenId >= _tokenPatterns.Length || _tokenPatterns[tokenId] is not TokenPattern pattern)
-				throw new ArgumentException("Invalid token pattern ID", nameof(tokenId));
+				throw new InvalidOperationException("Parser must be initialized before parsing");
+			if (tokenPatternId < 0 || tokenPatternId >= _tokenPatterns.Length || _tokenPatterns[tokenPatternId] is not TokenPattern pattern)
+				throw new ArgumentException("Invalid token pattern ID", nameof(tokenPatternId));
 
 			var position = context.position;
-			if (context.cache.TryGetToken(tokenId, position, out parsedToken))
+			if (context.cache.TryGetToken(tokenPatternId, position, out parsedToken))
 				return parsedToken.success;
 
-			var success = pattern.TryMatch(tokenId, context, out parsedToken);
-			context.cache.AddToken(tokenId, position, parsedToken);
+			var success = pattern.TryMatch(tokenPatternId, context, out parsedToken);
+			context.cache.AddToken(tokenPatternId, position, parsedToken);
 
 			return parsedToken.success;
+		}
+
+		/// <summary>
+		/// Parses the given input using the specified token pattern alias.
+		/// </summary>
+		/// <param name="tokenPatternAlias">The alias for the token pattern to use.</param>
+		/// <param name="context">The parser context to use for parsing.</param>
+		/// <param name="parsedToken">The parsed token object containing the result of the parse.</param>
+		/// <returns>True if a token was matched, false otherwise.</returns>
+		public bool TryMatchToken(string tokenPatternAlias, ParserContext context, out ParsedToken parsedToken)
+		{
+			if (!_tokenPatternsAliases.TryGetValue(tokenPatternAlias, out var tokenPatternId))
+				throw new ArgumentException("Invalid token pattern alias", nameof(tokenPatternAlias));
+			return TryMatchToken(tokenPatternAlias, context, out parsedToken);
 		}
 	}
 }

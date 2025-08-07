@@ -74,6 +74,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 					break;
 				}
 
+				context.position = matchedToken.startIndex + matchedToken.length;
 				tokens.Add(matchedToken);
 			}
 

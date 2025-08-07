@@ -52,7 +52,7 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 					return false;
 				}
 				rules.Add(parsedRule.WithOccurency(i++));
-				context = context.With(parsedRule.startIndex + parsedRule.length);
+				context.position = parsedRule.startIndex + parsedRule.length;
 			}
 
 			result = new ParsedRule(thisRuleId, startIndex, context.position - startIndex, rules.ToImmutableList(), ParsedValueFactory(rules));

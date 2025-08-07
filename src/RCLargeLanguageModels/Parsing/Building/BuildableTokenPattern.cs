@@ -7,6 +7,9 @@ namespace RCLargeLanguageModels.Parsing.Building
 	/// <summary>
 	/// The buildable token pattern. This is an abstract class that represents a token pattern that can be built into a token.
 	/// </summary>
+	/// <remarks>
+	/// Its recommended to implement the Equals and GetHashCode methods to remove redudancy when compiling parser.
+	/// </remarks>
 	public abstract class BuildableTokenPattern
 	{
 		/// <summary>

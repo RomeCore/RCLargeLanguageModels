@@ -35,13 +35,15 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 		public override bool TryParse(int thisRuleId, ParserContext context, out ParsedRule result)
 		{
+			int i = 0;
 			foreach (var rule in Choices)
 			{
 				if (context.parser.TryParseRule(rule, context, out result))
 				{
-					result = result.WithRuleId(thisRuleId).WithParsedValue(ParsedValueFactory.Invoke(result));
+					result = result.WithRuleId(thisRuleId).WithOccurency(i).WithParsedValue(ParsedValueFactory.Invoke(result));
 					return true;
 				}
+				i++;
 			}
 
 			context.errors.Add(new ParsingError(context.position, $"No matching choice found from ({string.Join(", ", Choices)})."));

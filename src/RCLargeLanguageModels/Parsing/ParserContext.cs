@@ -68,6 +68,25 @@ namespace RCLargeLanguageModels.Parsing
 		}
 
 		/// <summary>
+		/// Skips characters in the input string that match the specified predicate.
+		/// </summary>
+		/// <param name="predicate">The predicate to match against.</param>
+		public void Skip(Func<char, bool> predicate)
+		{
+			while (position < str.Length && predicate(str[position]))
+				position++;
+		}
+
+		/// <summary>
+		/// Skips whitespace characters in the input string.
+		/// </summary>
+		public void SkipWhiteSpace()
+		{
+			while (position < str.Length && char.IsWhiteSpace(str[position]))
+				position++;
+		}
+
+		/// <summary>
 		/// Creates a copy of the current parser context.
 		/// </summary>
 		/// <returns>A new instance of <see cref="ParserContext"/> with the same properties as the current one.</returns>

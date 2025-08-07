@@ -64,20 +64,20 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 				{
 					break;
 				}
-				currentPosition = parsedRule.startIndex + parsedRule.length;
+				context.position = parsedRule.startIndex + parsedRule.length;
 				rules.Add(parsedRule.WithOccurency(i));
 			}
 
 			if (rules.Count < MinCount)
 			{
 				throw new ParsingException($"Expected at least {MinCount} repetitions of rule '{context.parser.Rules[Rule]}', but found {rules.Count}.",
-					context.str, context.position);
+					context.str, currentPosition);
 			}
 
 			return new ParsedRule(
 				thisRuleId,
-				context.position,
-				currentPosition - context.position,
+				currentPosition,
+				context.position - currentPosition,
 				rules.ToImmutableList(),
 				ParsedValueFactory(rules));
 

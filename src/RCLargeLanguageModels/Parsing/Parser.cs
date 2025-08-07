@@ -108,10 +108,14 @@ namespace RCLargeLanguageModels.Parsing
 			var tokenPatternsArray = ImmutableArray.CreateBuilder<TokenPattern>(maxPatternId + 1);
 			var rulesArray = ImmutableArray.CreateBuilder<ParserRule>(maxRuleId + 1);
 
+			for (int i = 0; i <= maxPatternId; i++)
+				tokenPatternsArray.Add(null);
 			foreach (var tokenPattern in _tokenPatternsDict)
 				tokenPatternsArray[tokenPattern.Key] = tokenPattern.Value;
 			_tokenPatterns = tokenPatternsArray.ToImmutable();
 
+			for (int i = 0; i <= maxRuleId; i++)
+				rulesArray.Add(null);
 			foreach (var rule in _rulesDict)
 				rulesArray[rule.Key] = rule.Value;
 			_rules = rulesArray.ToImmutable();
@@ -146,6 +150,7 @@ namespace RCLargeLanguageModels.Parsing
 			if (ruleId < 0 || ruleId >= _rules.Length || _rules[ruleId] is not ParserRule rule)
 				throw new ArgumentException("Invalid rule ID", nameof(ruleId));
 
+			context.SkipWhiteSpace();
 			var position = context.position;
 			if (context.cache.TryGetRule(ruleId, position, out var parsedRule))
 				return parsedRule;
@@ -168,7 +173,7 @@ namespace RCLargeLanguageModels.Parsing
 		{
 			if (!_rulesAliases.TryGetValue(ruleAlias, out var ruleId))
 				throw new ArgumentException("Invalid rule alias", nameof(ruleAlias));
-			return ParseRule(ruleAlias, context);
+			return ParseRule(ruleId, context);
 		}
 
 		/// <summary>
@@ -185,6 +190,7 @@ namespace RCLargeLanguageModels.Parsing
 			if (ruleId < 0 || ruleId >= _rules.Length || _rules[ruleId] is not ParserRule rule)
 				throw new ArgumentException("Invalid rule ID", nameof(ruleId));
 
+			context.SkipWhiteSpace();
 			var position = context.position;
 			if (context.cache.TryGetRule(ruleId, position, out parsedRule))
 				return parsedRule.success;
@@ -206,7 +212,7 @@ namespace RCLargeLanguageModels.Parsing
 		{
 			if (!_rulesAliases.TryGetValue(ruleAlias, out var ruleId))
 				throw new ArgumentException("Invalid rule alias", nameof(ruleAlias));
-			return TryParseRule(ruleAlias, context, out parsedRule);
+			return TryParseRule(ruleId, context, out parsedRule);
 		}
 
 		/// <summary>
@@ -244,7 +250,7 @@ namespace RCLargeLanguageModels.Parsing
 		{
 			if (!_tokenPatternsAliases.TryGetValue(tokenPatternAlias, out var tokenPatternId))
 				throw new ArgumentException("Invalid token pattern alias", nameof(tokenPatternAlias));
-			return TryMatchToken(tokenPatternAlias, context, out parsedToken);
+			return TryMatchToken(tokenPatternId, context, out parsedToken);
 		}
 	}
 }

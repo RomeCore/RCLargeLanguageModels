@@ -38,7 +38,7 @@ namespace RCLargeLanguageModels.Parsing.Building.TokenPatterns
 		{
 			int hashCode = 17;
 			hashCode ^= Elements.GetSequenceHashCode() * 23;
-			hashCode ^= ParsedValueFactory.GetHashCode() * 47;
+			hashCode ^= (ParsedValueFactory?.GetHashCode() ?? 0) * 47;
 			return hashCode;
 		}
 	}

@@ -29,7 +29,7 @@ namespace RCLargeLanguageModels.Parsing.Building.TokenPatterns
 		public override int GetHashCode()
 		{
 			int hashCode = 17;
-			hashCode ^= TokenPattern.GetHashCode() * 23;
+			hashCode ^= (TokenPattern?.GetHashCode() ?? 0) * 23;
 			return hashCode;
 		}
 	}

@@ -36,7 +36,7 @@ namespace RCLargeLanguageModels.Parsing.Building.TokenPatterns
 		{
 			int hashCode = 17;
 			hashCode ^= Child.GetHashCode() * 23;
-			hashCode ^= ParsedValueFactory.GetHashCode() * 47;
+			hashCode ^= (ParsedValueFactory?.GetHashCode() ?? 0) * 47;
 			return hashCode;
 		}
 	}

@@ -65,12 +65,12 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			var inputSlice = context.str.Substring(context.position, Literal.Length);
 			if (Comparer.Compare(inputSlice, Literal) == 0)
 			{
-				token = ParsedToken.Fail;
-				return false;
+				token = new ParsedToken(thisTokenId, context.position, Literal.Length, ParsedValueFactory.Invoke(inputSlice));
+				return true;
 			}
 
-			token = new ParsedToken(thisTokenId, context.position, Literal.Length, ParsedValueFactory.Invoke(inputSlice));
-			return true;
+			token = ParsedToken.Fail;
+			return false;
 		}
 
 		public override bool Equals(object? obj)

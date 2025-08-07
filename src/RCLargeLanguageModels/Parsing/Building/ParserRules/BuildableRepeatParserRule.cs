@@ -57,7 +57,7 @@ namespace RCLargeLanguageModels.Parsing.Building.ParserRules
 			hashCode ^= Child.GetHashCode() * 23;
 			hashCode ^= MinCount.GetHashCode() * 29;
 			hashCode ^= MaxCount.GetHashCode() * 31;
-			hashCode ^= ParsedValueFactory.GetHashCode() * 47;
+			hashCode ^= (ParsedValueFactory?.GetHashCode() ?? 0) * 47;
 			return hashCode;
 		}
 	}

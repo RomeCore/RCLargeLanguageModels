@@ -44,8 +44,8 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 		public override bool TryMatch(int thisTokenId, ParserContext context, out ParsedToken token)
 		{
-			var match = Regex.Match(context.str, context.position);
-			if (!match.Success || match.Index != context.position)
+			var match = Regex.Match(context.str.Substring(context.position));
+			if (!match.Success || match.Index != 0)
 			{
 				token = ParsedToken.Fail;
 				return false;

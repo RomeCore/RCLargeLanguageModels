@@ -38,7 +38,6 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 		public override bool TryMatch(int thisTokenId, ParserContext context, out ParsedToken token)
 		{
-			var currentContext = context.Copy();
 			var totalLength = 0;
 			var tokens = new List<ParsedToken>();
 
@@ -52,7 +51,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 				totalLength += subToken.length;
 				tokens.Add(subToken);
-				currentContext = currentContext.With(subToken.startIndex + subToken.length);
+				context.position = subToken.startIndex + subToken.length;
 			}
 
 			token = new ParsedToken(thisTokenId, context.position, totalLength, ParsedValueFactory.Invoke(tokens));

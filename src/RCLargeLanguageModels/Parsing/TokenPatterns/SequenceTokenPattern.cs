@@ -58,6 +58,13 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			return true;
 		}
 
+		public override string ToString(ParserContext context)
+		{
+			return $"sequence:\n" +
+				string.Join("\n", TokenPatterns.Select(c => context.parser.TokenPatterns[c].ToString(context)))
+				.Indent("  ");
+		}
+
 		public override bool Equals(object? obj)
 		{
 			return obj is SequenceTokenPattern pattern &&

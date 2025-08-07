@@ -55,6 +55,11 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			return true;
 		}
 
+		public override string ToString(ParserContext context)
+		{
+			return $"regex: '{RegexPattern}'";
+		}
+
 		public override bool Equals(object? obj)
 		{
 			return obj is RegexTokenPattern pattern &&

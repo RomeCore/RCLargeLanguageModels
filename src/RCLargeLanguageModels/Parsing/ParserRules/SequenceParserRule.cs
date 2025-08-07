@@ -69,13 +69,20 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 			{
 				if (!context.parser.TryParseRule(rule, context, out var parsedRule))
 				{
-					throw new ParsingException($"Failed to parse rule {context.parser.Rules[rule]}", context.str, context.position);
+					throw new ParsingException($"Failed to parse rule {context.parser.Rules[rule].ToString(context)}", context.str, context.position);
 				}
 				rules.Add(parsedRule.WithOccurency(i++));
 				context.position = parsedRule.startIndex + parsedRule.length;
 			}
 
 			return new ParsedRule(thisRuleId, startIndex, context.position - startIndex, rules.ToImmutableList(), ParsedValueFactory(rules));
+		}
+
+		public override string ToString(ParserContext context)
+		{
+			return $"Sequence:\n" +
+				string.Join("\n", Rules.Select(c => context.parser.Rules[c].ToString(context)))
+				.Indent("  ");
 		}
 
 		public override bool Equals(object? obj)

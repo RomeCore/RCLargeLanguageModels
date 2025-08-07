@@ -37,7 +37,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			return 0;
 		}
 
-		public override string ToString()
+		public override string ToString(ParserContext context)
 		{
 			return "[EOF]";
 		}

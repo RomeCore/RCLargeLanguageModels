@@ -39,7 +39,7 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 			if (!context.parser.TryMatchToken(TokenPattern, context, out parsedToken))
 			{
-				context.errors.Add(new ParsingError(context.position, $"Expected token '{context.parser.TokenPatterns[TokenPattern]}'"));
+				context.errors.Add(new ParsingError(context.position, $"Expected token {context.parser.TokenPatterns[TokenPattern].ToString(context)}"));
 				result = ParsedRule.Fail;
 				return false;
 			}
@@ -56,6 +56,11 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 			}
 
 			throw new ParsingException($"Expected token '{context.parser.TokenPatterns[TokenPattern]}'", context.str, context.position);
+		}
+
+		public override string ToString(ParserContext context)
+		{
+			return context.parser.TokenPatterns[TokenPattern].ToString(context);
 		}
 
 		public override bool Equals(object? obj)

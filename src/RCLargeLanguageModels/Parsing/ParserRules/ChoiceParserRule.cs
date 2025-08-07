@@ -46,7 +46,7 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 				i++;
 			}
 
-			context.errors.Add(new ParsingError(context.position, $"No matching choice found from ({string.Join(", ", Choices)})."));
+			context.errors.Add(new ParsingError(context.position, $"No matching choice found from {ToString(context)}."));
 			result = ParsedRule.Fail;
 			return false;
 		}
@@ -68,6 +68,13 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 			}
 
 			throw exceptions[0];
+		}
+
+		public override string ToString(ParserContext context)
+		{
+			return $"Choice:\n" +
+				string.Join("\n", Choices.Select(c => context.parser.Rules[c].ToString(context)))
+				.Indent("  ");
 		}
 
 		public override bool Equals(object? obj)

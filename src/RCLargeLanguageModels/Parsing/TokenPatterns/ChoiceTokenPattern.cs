@@ -52,6 +52,13 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			return false;
 		}
 
+		public override string ToString(ParserContext context)
+		{
+			return $"choice:\n" +
+				string.Join("\n", Choices.Select(c => context.parser.TokenPatterns[c].ToString(context)))
+				.Indent("  ");
+		}
+
 		public override bool Equals(object? obj)
 		{
 			return obj is ChoiceTokenPattern other &&

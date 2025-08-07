@@ -60,6 +60,11 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 			}
 		}
 
+		public override string ToString(ParserContext context)
+		{
+			return $"Optional: {context.parser.Rules[Rule].ToString(context)}";
+		}
+
 		public override bool Equals(object? obj)
 		{
 			return obj is OptionalParserRule rule &&

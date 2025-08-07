@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Text;
 
 namespace RCLargeLanguageModels.Parsing.TokenPatterns
@@ -44,6 +45,11 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 				token = new ParsedToken(thisTokenId, context.position, 0, ParsedValueFactory(null));
 				return true;
 			}
+		}
+
+		public override string ToString(ParserContext context)
+		{
+			return $"optional: {context.parser.TokenPatterns[TokenPattern].ToString(context)}";
 		}
 
 		public override bool Equals(object? obj)

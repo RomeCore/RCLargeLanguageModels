@@ -17,5 +17,12 @@ namespace RCLargeLanguageModels.Parsing
 		/// <param name="token">The parsed token if the match is successful. Otherwise <see langword="null"/>.</param>
 		/// <returns><see langword="true"/> if the pattern matches; otherwise, <see langword="false"/>.</returns>
 		public abstract bool TryMatch(int thisTokenId, ParserContext context, out ParsedToken token);
+
+		/// <summary>
+		/// Returns a string representation of the pattern using the given parsing context.
+		/// </summary>
+		/// <param name="context">The current parsing context.</param>
+		/// <returns>A string representation of the pattern.</returns>
+		public abstract string ToString(ParserContext context);
 	}
 }

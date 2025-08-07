@@ -57,7 +57,7 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 			var rules = new List<ParsedRule>();
 			var currentPosition = context.position;
 
-			for (int i = 0; i < this.MaxCount; i++)
+			for (int i = 0; i < this.MaxCount || this.MaxCount == -1; i++)
 			{
 				ParsedRule parsedRule = ParsedRule.Fail;
 				if (!context.parser.TryParseRule(Rule, context, out parsedRule))
@@ -88,7 +88,7 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 			var rules = new List<ParsedRule>();
 			var currentPosition = context.position;
 
-			for (int i = 0; i < this.MaxCount; i++)
+			for (int i = 0; i < this.MaxCount || this.MaxCount == -1; i++)
 			{
 				ParsedRule parsedRule = ParsedRule.Fail;
 				if (!context.parser.TryParseRule(Rule, context, out parsedRule))
@@ -102,7 +102,7 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 			if (rules.Count < MinCount)
 			{
 				context.errors.Add(new ParsingError(context.position,
-					$"Expected at least {MinCount} repetitions of rule '{context.parser.Rules[Rule]}', but found {rules.Count}."));
+					$"Expected at least {MinCount} repetitions of rule '{context.parser.Rules[Rule].ToString(context)}', but found {rules.Count}."));
 				result = ParsedRule.Fail;
 				return false;
 			}
@@ -115,6 +115,11 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 				ParsedValueFactory(rules));
 
 			return true;
+		}
+
+		public override string ToString(ParserContext context)
+		{
+			return $"Repeat{{{MinCount}..{(MaxCount == -1 ? "" : MaxCount)}}}: {context.parser.Rules[Rule].ToString(context)}";
 		}
 
 		public override bool Equals(object? obj)

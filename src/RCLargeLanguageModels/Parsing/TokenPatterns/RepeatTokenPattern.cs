@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text;
 using Newtonsoft.Json.Linq;
@@ -66,7 +67,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			var tokens = new List<ParsedToken>();
 			var currentPosition = context.position;
 
-			for (int i = 0; i < this.MaxCount; i++)
+			for (int i = 0; i < this.MaxCount || this.MaxCount == -1; i++)
 			{
 				ParsedToken matchedToken = ParsedToken.Fail;
 				if (!context.parser.TryMatchToken(TokenPattern, context, out matchedToken))
@@ -91,6 +92,12 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 				ParsedValueFactory(tokens));
 
 			return true;
+		}
+
+		public override string ToString(ParserContext context)
+		{
+			return $"repeat{{{MinCount}..{(MaxCount == -1 ? "" : MaxCount)}}}: " +
+				$"{context.parser.TokenPatterns[TokenPattern].ToString(context)}";
 		}
 
 		public override bool Equals(object? obj)

@@ -25,5 +25,12 @@ namespace RCLargeLanguageModels.Parsing
 		/// <param name="context">The parser context containing the input string and other relevant information.</param>
 		/// <returns>The parsed rule.</returns>
 		public abstract ParsedRule Parse(int thisRuleId, ParserContext context);
+
+		/// <summary>
+		/// Returns a string representation of the rule using the given parsing context.
+		/// </summary>
+		/// <param name="context">The current parsing context.</param>
+		/// <returns>A string representation of the rule.</returns>
+		public abstract string ToString(ParserContext context);
 	}
 }

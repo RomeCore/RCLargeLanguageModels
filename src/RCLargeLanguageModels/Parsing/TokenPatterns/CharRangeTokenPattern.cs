@@ -61,7 +61,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			}
 		}
 
-		public override string ToString()
+		public override string ToString(ParserContext context)
 		{
 			return $"[{MinChar}-{MaxChar}]";
 		}

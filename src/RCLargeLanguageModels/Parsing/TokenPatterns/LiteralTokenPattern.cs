@@ -73,6 +73,11 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			return false;
 		}
 
+		public override string ToString(ParserContext context)
+		{
+			return $"literal: '{Literal}'";
+		}
+
 		public override bool Equals(object? obj)
 		{
 			return obj is LiteralTokenPattern pattern &&

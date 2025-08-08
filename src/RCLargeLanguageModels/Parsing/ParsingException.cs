@@ -39,59 +39,7 @@ namespace RCLargeLanguageModels.Parsing
 
 		private static string FormatMessage(string message, string input, int position)
 		{
-			if (position < 0 || position >= input.Length)
-				return $"{message}\nPosition {position} is out of range (0..{input.Length - 1})";
-
-			int lineNumber = 1;
-			int column = 1;
-			int currentLineStart = 0;
-			bool prevWasCR = false;
-
-			for (int i = 0; i <= position && i < input.Length; i++)
-			{
-				char c = input[i];
-
-				if (c == '\r')
-				{
-					lineNumber++;
-					column = 1;
-					currentLineStart = i + 1;
-					prevWasCR = true;
-				}
-				else if (c == '\n')
-				{
-					if (!prevWasCR)
-					{
-						lineNumber++;
-						column = 1;
-						currentLineStart = i + 1;
-					}
-					prevWasCR = false;
-				}
-				else
-				{
-					column++;
-					prevWasCR = false;
-				}
-			}
-
-			int lineEnd = input.Length;
-			for (int i = position; i < input.Length; i++)
-			{
-				char c = input[i];
-				if (c == '\r' || c == '\n')
-				{
-					lineEnd = i;
-					break;
-				}
-			}
-
-			string errorLine = input.Substring(currentLineStart, lineEnd - currentLineStart);
-
-			int errorOffset = position - currentLineStart;
-			string pointerLine = new string(' ', errorOffset) + '^';
-
-			return $"{message}\n{errorLine}\n{pointerLine} line {lineNumber}, column {column}";
+			return $"{message}\n{PositionalFormatter.Format(input, position)}";
 		}
 	}
 }

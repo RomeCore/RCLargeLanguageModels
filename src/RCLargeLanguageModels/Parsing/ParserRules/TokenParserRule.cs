@@ -33,34 +33,34 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 		private static object? DefaultParsedValueFactory(ParsedToken token) => token.parsedValue;
 
-		public override bool TryParse(int thisRuleId, ParserContext context, out ParsedRule result)
+		public override bool TryParse(ParserContext context, out ParsedRule result)
 		{
 			ParsedToken parsedToken = ParsedToken.Fail;
 
 			if (!context.parser.TryMatchToken(TokenPattern, context, out parsedToken))
 			{
-				context.errors.Add(new ParsingError(context.position, $"Expected token {context.parser.TokenPatterns[TokenPattern].ToString(context)}"));
+				context.errors.Add(new ParsingError(context.position, $"Failed to parse {GetTokenPattern(TokenPattern)}"));
 				result = ParsedRule.Fail;
 				return false;
 			}
 
-			result = new ParsedRule(thisRuleId, context.position, parsedToken.length, parsedToken, ParsedValueFactory(parsedToken));
+			result = new ParsedRule(Id, context.position, parsedToken.length, parsedToken, ParsedValueFactory(parsedToken));
 			return true;
 		}
 
-		public override ParsedRule Parse(int thisRuleId, ParserContext context)
+		public override ParsedRule Parse(ParserContext context)
 		{
 			if (context.parser.TryMatchToken(TokenPattern, context, out var parsedToken))
 			{
-				return new ParsedRule(thisRuleId, context.position, parsedToken.length, parsedToken, ParsedValueFactory(parsedToken));
+				return new ParsedRule(Id, context.position, parsedToken.length, parsedToken, ParsedValueFactory(parsedToken));
 			}
 
-			throw new ParsingException($"Expected token '{context.parser.TokenPatterns[TokenPattern]}'", context.str, context.position);
+			throw new ParsingException($"Failed to parse '{context.parser.TokenPatterns[TokenPattern]}'", context.str, context.position);
 		}
 
-		public override string ToString(ParserContext context)
+		public override string ToString(int remainingDepth)
 		{
-			return context.parser.TokenPatterns[TokenPattern].ToString(context);
+			return GetTokenPattern(TokenPattern).ToString(remainingDepth);
 		}
 
 		public override bool Equals(object? obj)

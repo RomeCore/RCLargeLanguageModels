@@ -31,11 +31,11 @@ namespace RCLargeLanguageModels.Tests.Parsing
 			var context = parser.CreateContext(testString);
 			var parsed = parser.ParseRule("expression", context);
 
-			var a = parsed.rules[0].GetText(context);
+			var a = parsed.Result.rules[0].GetText(context);
 			Assert.Equal("a", a);
-			var op = parsed.rules[1].GetText(context);
+			var op = parsed.Result.rules[1].GetText(context);
 			Assert.Equal("+", op);
-			var b = parsed.rules[2].GetText(context);
+			var b = parsed.Result.rules[2].GetText(context);
 			Assert.Equal("b", b);
 		}
 
@@ -55,9 +55,9 @@ namespace RCLargeLanguageModels.Tests.Parsing
 			var input = "x, y, z";
 			var result = parser.ParseRule("id_list", parser.CreateContext(input));
 
-			Assert.Equal(3, result.rules.Count);
-			Assert.Equal("x", result.rules[0].GetText(input));
-			Assert.Equal("y", result.rules[2].GetText(input));
+			Assert.Equal("x", result.Result.rules[0].GetText(input));
+			Assert.Equal("y", result.Result.rules[1].rules[0].rules[1].GetText(input));
+			Assert.Equal("z", result.Result.rules[1].rules[1].rules[1].GetText(input));
 		}
 
 		[Fact]
@@ -77,10 +77,9 @@ namespace RCLargeLanguageModels.Tests.Parsing
 			var input = @"""hello"", ""world\n"", ""\""escaped\""""";
 			var result = parser.ParseRule("string_list", parser.CreateContext(input));
 
-			Assert.Equal(3, result.rules.Count);
-			Assert.Equal("hello", result.rules[0].token.parsedValue);
-			Assert.Equal("world\n", result.rules[2].token.parsedValue);
-			Assert.Equal("\"escaped\"", result.rules[4].token.parsedValue);
+			Assert.Equal("hello", result.Result.rules[0].parsedValue);
+			Assert.Equal("world\\n", result.Result.rules[1].rules[0].rules[1].parsedValue);
+			Assert.Equal("\"escaped\"", result.Result.rules[1].rules[1].rules[1].parsedValue);
 		}
 
 		[Fact]
@@ -94,16 +93,20 @@ namespace RCLargeLanguageModels.Tests.Parsing
 			builder.CreateRule("expression")
 				.Token("number")
 				.ZeroOrMore(z => z
-					.Choice("+", "-")
+					.Choice(
+						c => c.Literal("+"),
+						c => c.Literal("-"))
 					.Token("number"));
 
 			var parser = builder.Build();
 			var input = "10 + 20 - 5";
 			var result = parser.ParseRule("expression", parser.CreateContext(input));
 
-			Assert.Equal(5, result.rules.Count);
-			Assert.Equal("+", result.rules[1].token.GetText(input));
-			Assert.Equal(20, result.rules[2].token.parsedValue);
+			var joined = result.GetJoinedChildren(maxDepth: 999).ToList();
+
+			Assert.Equal(5, joined.Count);
+			Assert.Equal("+", joined[1].Text);
+			Assert.Equal(20, joined[2].Value);
 		}
 
 		[Fact]
@@ -169,7 +172,11 @@ namespace RCLargeLanguageModels.Tests.Parsing
 """;
 
 			var context = jsonParser.CreateContext(json);
-			var parsed = jsonParser.ParseRule("object", context);
+			var parsed = jsonParser.ParseRule("value", context);
+
+			var rule = jsonParser.GetRule("value");
+			var ruleString = rule.ToString(4);
+
 		}
 	}
 }

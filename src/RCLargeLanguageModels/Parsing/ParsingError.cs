@@ -29,5 +29,10 @@ namespace RCLargeLanguageModels.Parsing
 			this.position = position;
 			this.message = message;
 		}
+
+		public string ToString(ParserContext context)
+		{
+			return $"{message}\n{PositionalFormatter.Format(context.str, position)}";
+		}
 	}
 }

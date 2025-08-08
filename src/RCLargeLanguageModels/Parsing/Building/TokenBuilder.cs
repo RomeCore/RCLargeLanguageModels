@@ -13,43 +13,39 @@ namespace RCLargeLanguageModels.Parsing.Building
 	/// </summary>
 	public class TokenBuilder
 	{
-		private BuildableTokenPattern? _pattern;
+		private Or<string, BuildableTokenPattern>? _pattern;
 
 		/// <summary>
 		/// Gets the token being built.
 		/// </summary>
-		public BuildableTokenPattern? BuildingPattern => _pattern;
+		public Or<string, BuildableTokenPattern>? BuildingPattern => _pattern;
 
-		public TokenBuilder Add(BuildableTokenPattern childToken)
+		/// <summary>
+		/// Gets the value indicating whether this builder has a valid pattern that can be built.
+		/// </summary>
+		public bool CanBeBuilt => _pattern.HasValue;
+
+		/// <summary>
+		/// Adds a token (name or child pattern) to the current pattern.
+		/// </summary>
+		/// <param name="childToken"></param>
+		/// <returns></returns>
+		public TokenBuilder Add(Or<string, BuildableTokenPattern> childToken)
 		{
-			if (_pattern == null)
+			if (!_pattern.HasValue)
 			{
 				_pattern = childToken;
 			}
-			else if (_pattern is BuildableSequenceTokenPattern sequencePattern)
+			else if (_pattern.Value.VariantIndex == 1 &&
+					_pattern.Value.AsT2() is BuildableSequenceTokenPattern sequencePattern)
 			{
 				sequencePattern.Elements.Add(childToken);
 			}
 			else
 			{
 				var newSequence = new BuildableSequenceTokenPattern();
-				newSequence.Elements.Add(_pattern);
+				newSequence.Elements.Add(_pattern.Value);
 				newSequence.Elements.Add(childToken);
-				_pattern = newSequence;
-			}
-			return this;
-		}
-
-		public TokenBuilder Add(string tokenName)
-		{
-			if (_pattern is BuildableSequenceTokenPattern sequencePattern)
-			{
-				sequencePattern.Elements.Add(tokenName);
-			}
-			else
-			{
-				var newSequence = new BuildableSequenceTokenPattern();
-				newSequence.Elements.Add(tokenName);
 				_pattern = newSequence;
 			}
 			return this;
@@ -68,10 +64,10 @@ namespace RCLargeLanguageModels.Parsing.Building
 
 		public TokenBuilder SetParsedValueFactory(Func<List<ParsedToken>, object?>? parsedValueFactory)
 		{
-			if (_pattern is BuildableSequenceTokenPattern sequencePattern)
+			if (_pattern?.AsT2() is BuildableSequenceTokenPattern sequencePattern)
 				sequencePattern.ParsedValueFactory = parsedValueFactory;
 			else
-				throw new ParserBuildingException("Parsed value factory can only be set on a sequence token pattern (must be added at least one named element or two child elements first).");
+				throw new ParserBuildingException("Parsed value factory can only be set on a sequence token pattern (must be added at least two child elements first).");
 			return this;
 		}
 
@@ -80,12 +76,12 @@ namespace RCLargeLanguageModels.Parsing.Building
 			var builder = new TokenBuilder();
 			builderAction(builder);
 
-			if (builder.BuildingPattern == null)
+			if (!builder.CanBeBuilt)
 				throw new ParserBuildingException("Optional child token pattern cannot be empty.");
 
 			return Add(new BuildableOptionalTokenPattern
 			{
-				Child = builder.BuildingPattern,
+				Child = builder.BuildingPattern.Value,
 				ParsedValueFactory = parsedValueFactory
 			});
 		}
@@ -95,14 +91,14 @@ namespace RCLargeLanguageModels.Parsing.Building
 			var builder = new TokenBuilder();
 			builderAction(builder);
 
-			if (builder.BuildingPattern == null)
+			if (!builder.CanBeBuilt)
 				throw new ParserBuildingException("Repeated child token pattern cannot be empty.");
 
 			return Add(new BuildableRepeatTokenPattern
 			{
 				MinCount = min,
 				MaxCount = max,
-				Child = builder.BuildingPattern,
+				Child = builder.BuildingPattern.Value,
 				ParsedValueFactory = parsedValueFactory
 			});
 		}
@@ -131,9 +127,9 @@ namespace RCLargeLanguageModels.Parsing.Building
 				if (c.VariantIndex == 0)
 				{
 					c.AsT1().Invoke(builder);
-					if (builder.BuildingPattern == null)
+					if (!builder.CanBeBuilt)
 						throw new ParserBuildingException("Choice child token pattern cannot be empty.");
-					return new Or<string, BuildableTokenPattern>(builder.BuildingPattern);
+					return builder.BuildingPattern.Value;
 				}
 				else
 				{
@@ -185,6 +181,9 @@ namespace RCLargeLanguageModels.Parsing.Building
 			return Add(new RegexTokenPattern(regex, parsedValueFactory));
 		}
 
-
+		public TokenBuilder EOF()
+		{
+			return Add(new EOFTokenPattern());
+		}
 	}
 }

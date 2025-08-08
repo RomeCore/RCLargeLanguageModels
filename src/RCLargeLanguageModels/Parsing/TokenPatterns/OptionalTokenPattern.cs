@@ -33,23 +33,25 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 		private static object? DefaultParsedValueFactory(ParsedToken? c) => c.GetValueOrDefault();
 
-		public override bool TryMatch(int thisTokenId, ParserContext context, out ParsedToken token)
+		public override bool TryMatch(ParserContext context, out ParsedToken token)
 		{
 			if (context.parser.TryMatchToken(TokenPattern, context, out var matchedToken))
 			{
-				token = new ParsedToken(thisTokenId, matchedToken.startIndex, matchedToken.length, ParsedValueFactory(matchedToken));
+				token = new ParsedToken(Id, matchedToken.startIndex, matchedToken.length, ParsedValueFactory(matchedToken));
 				return true;
 			}
 			else
 			{
-				token = new ParsedToken(thisTokenId, context.position, 0, ParsedValueFactory(null));
+				token = new ParsedToken(Id, context.position, 0, ParsedValueFactory(null));
 				return true;
 			}
 		}
 
-		public override string ToString(ParserContext context)
+		public override string ToString(int remainingDepth = 2)
 		{
-			return $"optional: {context.parser.TokenPatterns[TokenPattern].ToString(context)}";
+			if (remainingDepth <= 0)
+				return "optional...";
+			return $"optional: {GetTokenPattern(TokenPattern).ToString(remainingDepth - 1)}";
 		}
 
 		public override bool Equals(object? obj)

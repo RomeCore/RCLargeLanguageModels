@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Data;
 using System.Linq;
 using System.Text;
 using RCLargeLanguageModels.Parsing.Building.ParserRules;
@@ -90,153 +92,173 @@ namespace RCLargeLanguageModels.Parsing.Building
 		public Parser Build()
 		{
 			int ruleCounter = 0;
-			Dictionary<BuildableParserRule, int> rules = new Dictionary<BuildableParserRule, int>();
-			Dictionary<BuildableParserRule, List<BuildableParserRule>> rulesArgMap = new Dictionary<BuildableParserRule, List<BuildableParserRule>>();
+			Dictionary<string, BuildableParserRule> namedRules = new();
+			Dictionary<BuildableParserRule, int> rules = new();
+			Dictionary<BuildableParserRule, (List<BuildableParserRule>?, List<BuildableTokenPattern>?)> rulesArgMap = new();
 			
 			int tokenCounter = 0;
-			Dictionary<BuildableTokenPattern, int> tokenPatterns = new Dictionary<BuildableTokenPattern, int>();
-			Dictionary<BuildableTokenPattern, List<BuildableTokenPattern>> tokenPatternsArgMap = new Dictionary<BuildableTokenPattern, List<BuildableTokenPattern>>();
+			Dictionary<string, BuildableTokenPattern> namedTokenPatterns = new();
+			Dictionary<BuildableTokenPattern, int> tokenPatterns = new();
+			Dictionary<BuildableTokenPattern, List<BuildableTokenPattern>?> tokenPatternsArgMap = new();
 			
-			Stack<BuildableParserRule> ruleStack = new Stack<BuildableParserRule>();
-			Stack<BuildableTokenPattern> tokenStack = new Stack<BuildableTokenPattern>();
+			Queue<BuildableParserRule> rulesToProcess = new();
+			Queue<BuildableTokenPattern> tokensToProcess = new();
 
-			foreach (var rule in _rules.Values)
+			foreach (var rule in _rules)
 			{
-				if (rule.BuildingRule == null)
-					throw new ParserBuildingException("Rule cannot be null.");
-				ruleStack.Push(rule.BuildingRule);
-			}
-			foreach (var pattern in _tokenPatterns.Values)
-			{
-				if (pattern.BuildingPattern == null)
-					throw new ParserBuildingException("Token pattern cannot be null.");
-				tokenStack.Push(pattern.BuildingPattern);
+				if (!rule.Value.CanBeBuilt)
+					throw new ParserBuildingException($"Rule '{rule.Key}' cannot be built, because it's empty.");
+				if (rule.Value.BuildingRule.Value.VariantIndex != 1)
+					throw new ParserBuildingException($"Rule '{rule.Key}' cannot be built, because it directly points " +
+						$"to another rule (single name reference).");
+
+				var brule = rule.Value.BuildingRule.Value.Value2;
+				rulesToProcess.Enqueue(brule);
+				namedRules.Add(rule.Key, brule);
 			}
 
-			while (ruleStack.Count > 0)
+			foreach (var pattern in _tokenPatterns)
 			{
-				var rule = ruleStack.Pop();
+				if (!pattern.Value.CanBeBuilt)
+					throw new ParserBuildingException($"Token pattern '{pattern.Key}' cannot be built, because it's empty.");
+				if (pattern.Value.BuildingPattern.Value.VariantIndex != 1)
+					throw new ParserBuildingException($"Token pattern '{pattern.Key}' cannot be built, because it directly points " +
+						$"to another token pattern (single name reference).");
+
+				var bpattern = pattern.Value.BuildingPattern.Value.Value2;
+				tokensToProcess.Enqueue(bpattern);
+				namedTokenPatterns.Add(pattern.Key, bpattern);
+			}
+
+			while (rulesToProcess.Count > 0)
+			{
+				var rule = rulesToProcess.Dequeue();
 				if (rules.ContainsKey(rule))
 					continue;
 
 				rules.Add(rule, ruleCounter++);
 
-				if (rule is BuildableTokenParserRule tokenRule)
-				{
-					if (tokenRule.Child.VariantIndex == 0)
-					{
-						if (_tokenPatterns.TryGetValue(tokenRule.Child.AsT1(), out var tb))
-							tokenStack.Push(tb.BuildingPattern);
-						else
-							throw new ParserBuildingException($"Unknown token pattern '{tokenRule.Child.AsT1()}'.");
-					}
-					else
-						tokenStack.Push(tokenRule.Child.AsT2());
-				}
-				else
-				{
-					var children = rule.Children?.Select(o =>
-					{
-						if (o.VariantIndex == 0)
-						{
-							if (_rules.TryGetValue(o.AsT1(), out var rb))
-								return rb.BuildingRule;
-							else
-								throw new ParserBuildingException($"Unknown rule '{o.AsT1()}'.");
-						}
-						else
-							return o.AsT2();
-					}).ToList();
+				List<BuildableParserRule> childrenToArgs = null;
+				List<BuildableTokenPattern> tokenChildrenToArgs = null;
 
+				var children = rule.Children;
+				if (children != null)
+				{
+					childrenToArgs = new();
 					foreach (var child in children)
-						ruleStack.Push(child);
-					rulesArgMap.Add(rule, children);
+					{
+						child.Switch(name =>
+						{
+							if (namedRules.TryGetValue(name, out var namedRule))
+								childrenToArgs.Add(namedRule);
+							else
+								throw new ParserBuildingException($"Unknown rule reference '{name}'.");
+						}, brule =>
+						{
+							childrenToArgs.Add(brule);
+							rulesToProcess.Enqueue(brule);
+						});
+					}
 				}
+
+				var tokenChildren = rule.TokenChildren;
+				if (tokenChildren != null)
+				{
+					tokenChildrenToArgs = new();
+					foreach (var tokenChild in tokenChildren)
+					{
+						tokenChild.Switch(name =>
+						{
+							if (namedTokenPatterns.TryGetValue(name, out var namedPattern))
+								tokenChildrenToArgs.Add(namedPattern);
+							else
+								throw new ParserBuildingException($"Unknown token pattern reference '{name}'.");
+						}, bpattern =>
+						{
+							tokenChildrenToArgs.Add(bpattern);
+							tokensToProcess.Enqueue(bpattern);
+						});
+					}
+				}
+
+				rulesArgMap[rule] = (childrenToArgs, tokenChildrenToArgs);
 			}
 
-			while (tokenStack.Count > 0)
+			while (tokensToProcess.Count > 0)
 			{
-				var pattern = tokenStack.Pop();
+				var pattern = tokensToProcess.Dequeue();
 				if (tokenPatterns.ContainsKey(pattern))
 					continue;
 
 				tokenPatterns.Add(pattern, tokenCounter++);
 
-				if (pattern is BuildableLeafTokenPattern leafToken)
-				{
-					// Skip leaf token patterns for now.
-				}
-				else
-				{
-					var children = pattern.Children?.Select(o =>
-					{
-						if (o.VariantIndex == 0)
-						{
-							if (_tokenPatterns.TryGetValue(o.AsT1(), out var tb))
-								return tb.BuildingPattern;
-							else
-								throw new ParserBuildingException($"Unknown token pattern '{o.AsT1()}'.");
-						}
-						else
-							return o.AsT2();
-					}).ToList();
+				List<BuildableTokenPattern> childrenToArgs = null;
 
+				var children = pattern.Children;
+				if (children != null)
+				{
+					childrenToArgs = new();
 					foreach (var child in children)
-						tokenStack.Push(child);
-					tokenPatternsArgMap.Add(pattern, children);
+					{
+						child.Switch(name =>
+						{
+							if (namedTokenPatterns.TryGetValue(name, out var namedPattern))
+								childrenToArgs.Add(namedPattern);
+							else
+								throw new ParserBuildingException($"Unknown rule reference '{name}'.");
+						}, bpattern =>
+						{
+							childrenToArgs.Add(bpattern);
+							tokensToProcess.Enqueue(bpattern);
+						});
+					}
 				}
+
+				tokenPatternsArgMap[pattern] = childrenToArgs;
 			}
 
-			var parser = new Parser();
+			ParserRule[] resultRules = new ParserRule[rules.Count];
 
 			foreach (var rule in rules)
 			{
-				if (rule.Key is BuildableTokenParserRule tokenRule)
-				{
-					var pattern = tokenRule.Child.Match(v1 =>
-					{
-						return _tokenPatterns[v1].BuildingPattern;
-					}, v2 =>
-					{
-						return v2;
-					});
-					var index = tokenPatterns[pattern];
-					parser.AddParserRule(rule.Value, tokenRule.Build(new List<int> { index }));
-				}
-				else
-				{
-					var indices = rulesArgMap[rule.Key].Select(r => rules[r]).ToList();
-					parser.AddParserRule(rule.Value, rule.Key.Build(indices));
-				}
+				var (children, tokenChildren) = rulesArgMap[rule.Key];
+
+				var builtRule = rule.Key.Build(
+					children?.Select(r => rules[r]).ToList(),
+					tokenChildren?.Select(p => tokenPatterns[p]).ToList());
+
+				builtRule.Id = rule.Value;
+
+				resultRules[rule.Value] = builtRule;
 			}
 
-			foreach (var rule in _rules)
+			foreach (var rule in namedRules)
 			{
-				var index = rules[rule.Value.BuildingRule];
-				parser.AddParserRuleAlias(rule.Key, index);
+				var index = rules[rule.Value];
+				resultRules[index].Alias = rule.Key;
 			}
 
-			foreach (var pattern in tokenPatterns)
+			TokenPattern[] resultTokenPatterns = new TokenPattern[tokenPatterns.Count];
+
+			foreach (var tokenPattern in tokenPatterns)
 			{
-				if (pattern.Key is BuildableLeafTokenPattern leafToken)
-				{
-					parser.AddTokenPattern(pattern.Value, leafToken.Build(null));
-				}
-				else
-				{
-					var indices = tokenPatternsArgMap[pattern.Key].Select(p => tokenPatterns[p]).ToList();
-					parser.AddTokenPattern(pattern.Value, pattern.Key.Build(indices));
-				}
+				var children = tokenPatternsArgMap[tokenPattern.Key];
+
+				var builtTokenPattern = tokenPattern.Key.Build(
+					children?.Select(p => tokenPatterns[p]).ToList());
+
+				builtTokenPattern.Id = tokenPattern.Value;
+
+				resultTokenPatterns[tokenPattern.Value] = builtTokenPattern;
 			}
 
-			foreach (var pattern in _tokenPatterns)
+			foreach (var pattern in namedTokenPatterns)
 			{
-				var index = tokenPatterns[pattern.Value.BuildingPattern];
-				parser.AddTokenPatternAlias(pattern.Key, index);
+				var index = tokenPatterns[pattern.Value];
+				resultTokenPatterns[index].Alias = pattern.Key;
 			}
 
-			parser.Initialize();
-			return parser;
+			return new Parser(resultTokenPatterns.ToImmutableArray(), resultRules.ToImmutableArray());
 		}
 	}
 }

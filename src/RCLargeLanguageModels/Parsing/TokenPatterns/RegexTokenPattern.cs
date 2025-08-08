@@ -42,7 +42,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 		private static object? DefaultParsedValueFactory(Match m) => m.Value;
 
-		public override bool TryMatch(int thisTokenId, ParserContext context, out ParsedToken token)
+		public override bool TryMatch(ParserContext context, out ParsedToken token)
 		{
 			var match = Regex.Match(context.str.Substring(context.position));
 			if (!match.Success || match.Index != 0)
@@ -51,11 +51,11 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 				return false;
 			}
 
-			token = new ParsedToken(thisTokenId, context.position, match.Length, ParsedValueFactory.Invoke(match));
+			token = new ParsedToken(Id, context.position, match.Length, ParsedValueFactory.Invoke(match));
 			return true;
 		}
 
-		public override string ToString(ParserContext context)
+		public override string ToString(int remainingDepth)
 		{
 			return $"regex: '{RegexPattern}'";
 		}

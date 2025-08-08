@@ -55,17 +55,10 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 		private static object? DefaultParsedValueFactory(List<ParsedToken> tokens) => tokens.Select(t => t.parsedValue).ToList();
 
-		/// <summary>
-		/// Attempts to match the token pattern at the current position in the parser context.
-		/// </summary>
-		/// <param name="thisTokenId">The ID of the current token being parsed.</param>
-		/// <param name="context">The current parser context.</param>
-		/// <param name="token">The parsed token if the match was successful.</param>
-		/// <returns>True if the match was successful; otherwise, false.</returns>
-		public override bool TryMatch(int thisTokenId, ParserContext context, out ParsedToken token)
+		public override bool TryMatch(ParserContext context, out ParsedToken token)
 		{
 			var tokens = new List<ParsedToken>();
-			var currentPosition = context.position;
+			var initialPosition = context.position;
 
 			for (int i = 0; i < this.MaxCount || this.MaxCount == -1; i++)
 			{
@@ -86,18 +79,20 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			}
 
 			token = new ParsedToken(
-				thisTokenId,
-				currentPosition,
-				context.position - currentPosition,
+				Id,
+				initialPosition,
+				context.position - initialPosition,
 				ParsedValueFactory(tokens));
 
 			return true;
 		}
 
-		public override string ToString(ParserContext context)
+		public override string ToString(int remainingDepth)
 		{
+			if (remainingDepth <= 0)
+				return $"repeat{{{MinCount}..{(MaxCount == -1 ? "" : MaxCount)}}}...";
 			return $"repeat{{{MinCount}..{(MaxCount == -1 ? "" : MaxCount)}}}: " +
-				$"{context.parser.TokenPatterns[TokenPattern].ToString(context)}";
+				$"{GetTokenPattern(TokenPattern).ToString(remainingDepth - 1)}";
 		}
 
 		public override bool Equals(object? obj)

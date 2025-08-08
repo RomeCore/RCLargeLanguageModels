@@ -7,6 +7,9 @@ using Newtonsoft.Json.Linq;
 
 namespace RCLargeLanguageModels.Parsing.ParserRules
 {
+	/// <summary>
+	/// A parser rule that repeats a specified rule the specified range of times.
+	/// </summary>
 	public class RepeatParserRule : ParserRule
 	{
 		/// <summary>
@@ -52,10 +55,10 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 		private static object? DefaultParsedValueFactory(List<ParsedRule> rules) => rules.Select(t => t.parsedValue).ToList();
 
-		public override ParsedRule Parse(int thisRuleId, ParserContext context)
+		public override ParsedRule Parse(ParserContext context)
 		{
 			var rules = new List<ParsedRule>();
-			var currentPosition = context.position;
+			var initialPosition = context.position;
 
 			for (int i = 0; i < this.MaxCount || this.MaxCount == -1; i++)
 			{
@@ -70,23 +73,23 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 			if (rules.Count < MinCount)
 			{
-				throw new ParsingException($"Expected at least {MinCount} repetitions of rule '{context.parser.Rules[Rule]}', but found {rules.Count}.",
-					context.str, currentPosition);
+				throw new ParsingException($"Expected at least {MinCount} repetitions of {GetRule(Rule)}\nbut found {rules.Count}.",
+					context.str, initialPosition);
 			}
 
 			return new ParsedRule(
-				thisRuleId,
-				currentPosition,
-				context.position - currentPosition,
+				Id,
+				initialPosition,
+				context.position - initialPosition,
 				rules.ToImmutableList(),
 				ParsedValueFactory(rules));
 
 		}
 
-		public override bool TryParse(int thisRuleId, ParserContext context, out ParsedRule result)
+		public override bool TryParse(ParserContext context, out ParsedRule result)
 		{
 			var rules = new List<ParsedRule>();
-			var currentPosition = context.position;
+			var initialPosition = context.position;
 
 			for (int i = 0; i < this.MaxCount || this.MaxCount == -1; i++)
 			{
@@ -95,31 +98,34 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 				{
 					break;
 				}
-				currentPosition = parsedRule.startIndex + parsedRule.length;
+				context.position = parsedRule.startIndex + parsedRule.length;
 				rules.Add(parsedRule.WithOccurency(i));
 			}
 
 			if (rules.Count < MinCount)
 			{
 				context.errors.Add(new ParsingError(context.position,
-					$"Expected at least {MinCount} repetitions of rule '{context.parser.Rules[Rule].ToString(context)}', but found {rules.Count}."));
+					$"Expected at least {MinCount} repetitions of {GetRule(Rule)}\nbut found {rules.Count}."));
 				result = ParsedRule.Fail;
 				return false;
 			}
 
 			result = new ParsedRule(
-				thisRuleId,
-				context.position,
-				currentPosition - context.position,
+				Id,
+				initialPosition,
+				context.position - initialPosition,
 				rules.ToImmutableList(),
 				ParsedValueFactory(rules));
 
 			return true;
 		}
 
-		public override string ToString(ParserContext context)
+		public override string ToString(int remainingDepth)
 		{
-			return $"Repeat{{{MinCount}..{(MaxCount == -1 ? "" : MaxCount)}}}: {context.parser.Rules[Rule].ToString(context)}";
+			if (remainingDepth <= 0)
+				return $"Repeat{{{MinCount}..{(MaxCount == -1 ? "" : MaxCount)}}}...";
+			return $"Repeat{{{MinCount}..{(MaxCount == -1 ? "" : MaxCount)}}}: " +
+				$"{GetRule(Rule).ToString(remainingDepth - 1)}";
 		}
 
 		public override bool Equals(object? obj)

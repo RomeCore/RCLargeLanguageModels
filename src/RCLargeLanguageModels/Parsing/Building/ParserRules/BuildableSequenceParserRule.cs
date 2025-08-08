@@ -16,13 +16,14 @@ namespace RCLargeLanguageModels.Parsing.Building.ParserRules
 		/// </summary>
 		public List<Or<string, BuildableParserRule>> Elements { get; } = new List<Or<string, BuildableParserRule>>();
 		public override IEnumerable<Or<string, BuildableParserRule>>? Children => Elements;
+		public override IEnumerable<Or<string, BuildableTokenPattern>>? TokenChildren => null;
 
 		/// <summary>
 		/// The factory method to create a parsed value from the matched rules.
 		/// </summary>
 		public Func<List<ParsedRule>, object?>? ParsedValueFactory { get; set; } = null;
 
-		public override ParserRule Build(List<int>? children)
+		public override ParserRule Build(List<int>? children, List<int>? tokenChildren)
 		{
 			return new SequenceParserRule(children, ParsedValueFactory);
 		}

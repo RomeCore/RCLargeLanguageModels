@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Data;
 using System.Linq;
 using System.Text;
 
@@ -37,7 +38,7 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 		private static object? DefaultParsedValueFactory(List<ParsedRule> rules) => rules.Select(t => t.parsedValue).ToList();
 
-		public override bool TryParse(int thisRuleId, ParserContext context, out ParsedRule result)
+		public override bool TryParse(ParserContext context, out ParsedRule result)
 		{
 			var startIndex = context.position;
 			var rules = new List<ParsedRule>();
@@ -47,7 +48,8 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 			{
 				if (!context.parser.TryParseRule(rule, context, out var parsedRule))
 				{
-					context.errors.Add(new ParsingError(context.position, $"Failed to parse rule {context.parser.Rules[rule]}"));
+					context.errors.Add(new ParsingError(context.position,
+						$"Failed to parse {GetRule(rule)}"));
 					result = ParsedRule.Fail;
 					return false;
 				}
@@ -55,33 +57,39 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 				context.position = parsedRule.startIndex + parsedRule.length;
 			}
 
-			result = new ParsedRule(thisRuleId, startIndex, context.position - startIndex, rules.ToImmutableList(), ParsedValueFactory(rules));
+			result = new ParsedRule(Id, startIndex, context.position - startIndex,
+				rules.ToImmutableList(), ParsedValueFactory(rules));
 			return true;
 		}
 
-		public override ParsedRule Parse(int thisRuleId, ParserContext context)
+		public override ParsedRule Parse(ParserContext context)
 		{
 			var startIndex = context.position;
 			var rules = new List<ParsedRule>();
 			int i = 0;
 
+			var str = ToString(8);
 			foreach (var rule in Rules)
 			{
 				if (!context.parser.TryParseRule(rule, context, out var parsedRule))
 				{
-					throw new ParsingException($"Failed to parse rule {context.parser.Rules[rule].ToString(context)}", context.str, context.position);
+					throw new ParsingException($"Failed to parse {GetRule(rule)}",
+						context.str, context.position);
 				}
 				rules.Add(parsedRule.WithOccurency(i++));
 				context.position = parsedRule.startIndex + parsedRule.length;
 			}
 
-			return new ParsedRule(thisRuleId, startIndex, context.position - startIndex, rules.ToImmutableList(), ParsedValueFactory(rules));
+			return new ParsedRule(Id, startIndex, context.position - startIndex,
+				rules.ToImmutableList(), ParsedValueFactory(rules));
 		}
 
-		public override string ToString(ParserContext context)
+		public override string ToString(int remainingDepth)
 		{
+			if (remainingDepth <= 0)
+				return "Sequence...";
 			return $"Sequence:\n" +
-				string.Join("\n", Rules.Select(c => context.parser.Rules[c].ToString(context)))
+				string.Join("\n", Rules.Select(c => GetRule(c).ToString(remainingDepth - 1)))
 				.Indent("  ");
 		}
 

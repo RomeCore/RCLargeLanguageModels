@@ -21,10 +21,11 @@ namespace RCLargeLanguageModels.Parsing.Building.ParserRules
 		public Func<ParsedToken, object?>? ParsedValueFactory { get; set; } = null;
 
 		public override IEnumerable<Or<string, BuildableParserRule>>? Children => null;
+		public override IEnumerable<Or<string, BuildableTokenPattern>>? TokenChildren => Child.WrapIntoEnumerable();
 
-		public override ParserRule Build(List<int>? children)
+		public override ParserRule Build(List<int>? children, List<int>? tokenChildren)
 		{
-			return new TokenParserRule(children[0], ParsedValueFactory);
+			return new TokenParserRule(tokenChildren[0], ParsedValueFactory);
 		}
 
 		public override bool Equals(object? obj)

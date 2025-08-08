@@ -54,7 +54,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 		private static object? DefaultParsedValueFactory(string s) => s;
 
-		public override bool TryMatch(int thisTokenId, ParserContext context, out ParsedToken token)
+		public override bool TryMatch(ParserContext context, out ParsedToken token)
 		{
 			if (context.position + Literal.Length > context.str.Length)
 			{
@@ -65,7 +65,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			var inputSlice = context.str.Substring(context.position, Literal.Length);
 			if (Comparer.Compare(inputSlice, Literal) == 0)
 			{
-				token = new ParsedToken(thisTokenId, context.position, Literal.Length, ParsedValueFactory.Invoke(inputSlice));
+				token = new ParsedToken(Id, context.position, Literal.Length, ParsedValueFactory.Invoke(inputSlice));
 				return true;
 			}
 
@@ -73,7 +73,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			return false;
 		}
 
-		public override string ToString(ParserContext context)
+		public override string ToString(int remainingDepth)
 		{
 			return $"literal: '{Literal}'";
 		}

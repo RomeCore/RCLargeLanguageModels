@@ -18,10 +18,16 @@ namespace RCLargeLanguageModels.Parsing.Building
 		public abstract IEnumerable<Or<string, BuildableParserRule>>? Children { get; }
 
 		/// <summary>
+		/// Gets the token children of this parser rule. Each child can be a name reference or a buildable token pattern.
+		/// </summary>
+		public abstract IEnumerable<Or<string, BuildableTokenPattern>>? TokenChildren { get; }
+
+		/// <summary>
 		/// Builds the parser rule with the given children.
 		/// </summary>
 		/// <param name="children">The children IDs to build the parser rule with.</param>
+		/// <param name="tokenChildren">The token children IDs to build the parser rule with.</param>
 		/// <returns>A token pattern representing the built parser rule.</returns>
-		public abstract ParserRule Build(List<int>? children);
+		public abstract ParserRule Build(List<int>? children, List<int>? tokenChildren);
 	}
 }

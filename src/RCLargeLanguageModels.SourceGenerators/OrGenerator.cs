@@ -32,6 +32,21 @@ namespace RCLargeLanguageModels.SourceGenerators
 			var fields = string.Join("\n\t\t", Enumerable.Range(1, typeParamCount).Select(i =>
 				$"private readonly T{i} _value{i};"));
 
+			var staticConstructor =
+		$@"		static Or()
+		{{
+			{GenerateTypeCheck(typeParamCount, typeParams)}
+		}}";
+
+			var valueProperties = string.Join("\n\n", Enumerable.Range(1, typeParamCount).Select(i =>
+			$@"		/// <summary>
+		/// Gets the value of the currently active variant as <typeparamref name=""T{i}""/>. Throws an exception if the wrong type is accessed.
+		/// </summary>
+		public T{i} Value{i} =>
+			_variantIndex == {i - 1}
+				? _value{i}
+				: throw new InvalidOperationException($""Active variant is not {{typeof(T{i})}}."");"));
+
 			// Generate constructors
 			var constructors = string.Join("\n\n", Enumerable.Range(1, typeParamCount).Select(i =>
 		$@"		/// <summary>
@@ -41,7 +56,6 @@ namespace RCLargeLanguageModels.SourceGenerators
 		/// <exception cref=""InvalidOperationException"">Thrown when any two type parameters are the same type.</exception>
 		public Or(T{i} value)
 		{{
-			{GenerateTypeCheck(typeParamCount, typeParams)}
 			_variantIndex = {i - 1};
 			_value{i} = value;
 			{GenerateDefaultAssignments(typeParamCount, i)}
@@ -59,18 +73,16 @@ namespace RCLargeLanguageModels.SourceGenerators
 			return new Or<{typeParams}>(value);
 		}}"));
 
-
 			// Generate AsT methods
 			var asMethods = string.Join("\n\n", Enumerable.Range(1, typeParamCount).Select(i =>
 		$@"		/// <summary>
-		/// Gets the value as <typeparamref name=""T{i}""/> if the active variant is <typeparamref name=""T{i}""/>.
+		/// Gets the value as <typeparamref name=""T{i}""/> or <see langword=""default""/> if the active variant is not <typeparamref name=""T{i}""/>.
 		/// </summary>
-		/// <returns>The value as <typeparamref name=""T{i}""/>.</returns>
-		/// <exception cref=""InvalidOperationException"">Thrown when the active variant is not <typeparamref name=""T{i}""/>.</exception>
+		/// <returns>The value as <typeparamref name=""T{i}""/> or <see langword=""default""/>.</returns>
 		public T{i} AsT{i}() =>
 			_variantIndex == {i - 1}
 				? _value{i}
-				: throw new InvalidOperationException($""Active variant is not {{typeof(T{i})}}."");"));
+				: default;"));
 
 			// Generate TryGet methods
 			var tryGetMethods = string.Join("\n\n", Enumerable.Range(1, typeParamCount).Select(i =>
@@ -281,6 +293,10 @@ namespace RCLargeLanguageModels
 		/// Gets the index of the currently active variant ({string.Join(", ", Enumerable.Range(0, typeParamCount).Select(i => $"{i} for <typeparamref name=\"T{i + 1}\"/>"))}).
 		/// </summary>
 		public int VariantIndex => _variantIndex;
+
+{valueProperties}
+
+{staticConstructor}
 
 {constructors}
 

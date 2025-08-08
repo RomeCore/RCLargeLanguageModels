@@ -1,0 +1,94 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace RCLargeLanguageModels.Parsing
+{
+	/// <summary>
+	/// Represents a parser element. This is an abstract base class for both token patterns and rules.
+	/// </summary>
+	public abstract class ParserElement
+	{
+		/// <summary>
+		/// Gets the unique identifier for this parser element.
+		/// </summary>
+		public int Id { get; internal set; }
+
+		/// <summary>
+		/// Gets the alias for this parser element. If no alias has been assigned, this property returns null.
+		/// </summary>
+		public string? Alias { get; internal set; } = null;
+
+		/// <summary>
+		/// Gets the parser that contains this parser element.
+		/// </summary>
+		public Parser Parser { get; internal set; }
+
+		/// <summary>
+		/// Returns a string representation of the parser element using a specified depth for expansion.
+		/// </summary>
+		/// <param name="remainingDepth">The maximum depth to which the element should be expanded in the string representation. Defaults to 2.</param>
+		/// <returns>A string representation of the rule.</returns>
+		public abstract string ToString(int remainingDepth);
+
+		/// <summary>
+		/// Gets the rule by index within the current parser.
+		/// </summary>
+		/// <param name="index">The index of the rule to retrieve.</param>
+		/// <returns>The rule at the specified index.</returns>
+		protected ParserRule GetRule(int index)
+		{
+			return Parser.Rules[index];
+		}
+
+		/// <summary>
+		/// Gets the token pattern by index within the current parser.
+		/// </summary>
+		/// <param name="index">The index of the token pattern to retrieve.</param>
+		/// <returns>The token pattern at the specified index.</returns>
+		protected TokenPattern GetTokenPattern(int index)
+		{
+			return Parser.TokenPatterns[index];
+		}
+
+		/// <summary>
+		/// Tries to parse a rule with the given ID using the specified parsing context.
+		/// </summary>
+		/// <param name="ruleId">The ID of the rule to parse.</param>
+		/// <param name="context">The parsing context to use for the parse operation.</param>
+		/// <param name="parsedRule">The output parameter to store the parsed rule. If parsing fails, this will be set to a failure rule.</param>
+		/// <returns><see langword="true"/> if parsing was successful; otherwise, <see langword="false"/> if parsing failed.</returns>
+		protected bool TryParseRule(int ruleId, ParserContext context, out ParsedRule parsedRule)
+		{
+			return Parser.TryParseRule(ruleId, context, out parsedRule);
+		}
+
+		/// <summary>
+		/// Tries to parse a token pattern with the given ID using the specified parsing context.
+		/// </summary>
+		/// <param name="ruleId">The ID of the token pattern to parse.</param>
+		/// <param name="context">The parsing context to use for the parse operation.</param>
+		/// <returns>The parsed rule result.</returns>
+		protected ParsedRule ParseRule(int ruleId, ParserContext context)
+		{
+			return Parser.ParseRule(ruleId, context);
+		}
+
+		/// <summary>
+		/// Tries to match a token with the given ID using the specified parsing context.
+		/// </summary>
+		/// <param name="tokenId">The ID of the token to match.</param>
+		/// <param name="context">The parsing context to use for the match operation.</param>
+		/// <param name="parsedToken">The output parameter to store the parsed token. If matching fails, this will be set to a failure token.</param>
+		/// <returns><see langword="true"/> if matching was successful; otherwise, <see langword="false"/> if matching failed.</returns>
+		protected bool TryMatchToken(int tokenId, ParserContext context, out ParsedToken parsedToken)
+		{
+			return Parser.TryMatchToken(tokenId, context, out parsedToken);
+		}
+
+		public override string ToString()
+		{
+			return ToString(2); // Default depth is 2.
+		}
+	}
+}

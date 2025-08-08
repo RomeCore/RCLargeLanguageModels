@@ -37,13 +37,13 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 		private static object? DefaultParsedValueFactory(ParsedToken r) => r.parsedValue;
 
-		public override bool TryMatch(int thisTokenId, ParserContext context, out ParsedToken token)
+		public override bool TryMatch(ParserContext context, out ParsedToken token)
 		{
 			foreach (var tokenId in Choices)
 			{
 				if (context.parser.TryMatchToken(tokenId, context, out token))
 				{
-					token = new ParsedToken(thisTokenId, token.startIndex, token.length, token.parsedValue);
+					token = new ParsedToken(Id, token.startIndex, token.length, token.parsedValue);
 					return true;
 				}
 			}
@@ -52,10 +52,12 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			return false;
 		}
 
-		public override string ToString(ParserContext context)
+		public override string ToString(int remainingDepth)
 		{
+			if (remainingDepth <= 0)
+				return "choice...";
 			return $"choice:\n" +
-				string.Join("\n", Choices.Select(c => context.parser.TokenPatterns[c].ToString(context)))
+				string.Join("\n", Choices.Select(c => GetTokenPattern(c).ToString(remainingDepth - 1)))
 				.Indent("  ");
 		}
 

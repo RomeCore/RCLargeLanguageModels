@@ -14,43 +14,34 @@ namespace RCLargeLanguageModels.Parsing.Building
 	/// </summary>
 	public class RuleBuilder
 	{
-		private BuildableParserRule? _rule;
+		private Or<string, BuildableParserRule>? _rule;
 
 		/// <summary>
 		/// Gets the rule being built.
 		/// </summary>
-		public BuildableParserRule? BuildingRule => _rule;
+		public Or<string, BuildableParserRule>? BuildingRule => _rule;
 
-		public RuleBuilder Add(BuildableParserRule childRule)
+		/// <summary>
+		/// Gets the value indicating whether this builder has a valid rule that can be built.
+		/// </summary>
+		public bool CanBeBuilt => _rule.HasValue;
+
+		public RuleBuilder Add(Or<string, BuildableParserRule> childRule)
 		{
-			if (_rule == null)
+			if (!_rule.HasValue)
 			{
 				_rule = childRule;
 			}
-			else if (_rule is BuildableSequenceParserRule sequenceRule)
+			else if (_rule.Value.VariantIndex == 1 &&
+					_rule.Value.AsT2() is BuildableSequenceParserRule sequenceRule)
 			{
 				sequenceRule.Elements.Add(childRule);
 			}
 			else
 			{
 				var newSequence = new BuildableSequenceParserRule();
-				newSequence.Elements.Add(_rule);
+				newSequence.Elements.Add(_rule.Value);
 				newSequence.Elements.Add(childRule);
-				_rule = newSequence;
-			}
-			return this;
-		}
-
-		public RuleBuilder Add(string ruleName)
-		{
-			if (_rule is BuildableSequenceParserRule sequenceRule)
-			{
-				sequenceRule.Elements.Add(ruleName);
-			}
-			else
-			{
-				var newSequence = new BuildableSequenceParserRule();
-				newSequence.Elements.Add(ruleName);
 				_rule = newSequence;
 			}
 			return this;
@@ -87,22 +78,22 @@ namespace RCLargeLanguageModels.Parsing.Building
 			var builder = new TokenBuilder();
 			builderAction(builder);
 
-			if (builder.BuildingPattern == null)
+			if (!builder.CanBeBuilt)
 				throw new ParserBuildingException("Builder action did not add any tokens.");
 
 			return Add(new BuildableTokenParserRule
 			{
-				Child = builder.BuildingPattern,
+				Child = builder.BuildingPattern.Value,
 				ParsedValueFactory = parsedValueFactory
 			});
 		}
 
 		public RuleBuilder SetParsedValueFactory(Func<List<ParsedRule>, object?>? parsedValueFactory)
 		{
-			if (_rule is BuildableSequenceParserRule sequencePattern)
-				sequencePattern.ParsedValueFactory = parsedValueFactory;
+			if (_rule?.AsT2() is BuildableSequenceParserRule sequenceRule)
+				sequenceRule.ParsedValueFactory = parsedValueFactory;
 			else
-				throw new ParserBuildingException("Parsed value factory can only be set on a sequence rule (must be added at least one named element or two child elements first).");
+				throw new ParserBuildingException("Parsed value factory can only be set on a sequence rule (must be added at least two child elements first).");
 			return this;
 		}
 
@@ -111,12 +102,12 @@ namespace RCLargeLanguageModels.Parsing.Building
 			var builder = new RuleBuilder();
 			builderAction(builder);
 
-			if (builder.BuildingRule == null)
+			if (!builder.CanBeBuilt)
 				throw new ParserBuildingException("Optional child rule cannot be empty.");
 
 			return Add(new BuildableOptionalParserRule
 			{
-				Child = builder.BuildingRule,
+				Child = builder.BuildingRule.Value,
 				ParsedValueFactory = parsedValueFactory
 			});
 		}
@@ -126,14 +117,14 @@ namespace RCLargeLanguageModels.Parsing.Building
 			var builder = new RuleBuilder();
 			builderAction(builder);
 
-			if (builder.BuildingRule == null)
+			if (!builder.CanBeBuilt)
 				throw new ParserBuildingException("Repeated child rule cannot be empty.");
 
 			return Add(new BuildableRepeatParserRule
 			{
 				MinCount = min,
 				MaxCount = max,
-				Child = builder.BuildingRule,
+				Child = builder.BuildingRule.Value,
 				ParsedValueFactory = parsedValueFactory
 			});
 		}
@@ -171,9 +162,9 @@ namespace RCLargeLanguageModels.Parsing.Building
 				{
 					var builder = new RuleBuilder();
 					c.AsT1().Invoke(builder);
-					if (builder.BuildingRule == null)
+					if (!builder.CanBeBuilt)
 						throw new ParserBuildingException("Choice child rule cannot be empty.");
-					return new Or<string, BuildableParserRule>(builder.BuildingRule);
+					return builder.BuildingRule.Value;
 				}
 				else
 				{
@@ -212,6 +203,11 @@ namespace RCLargeLanguageModels.Parsing.Building
 		public RuleBuilder Regex(string regex, Func<Match, object?>? parsedValueFactory)
 		{
 			return Token(new RegexTokenPattern(regex, parsedValueFactory));
+		}
+
+		public RuleBuilder EOF()
+		{
+			return Token(new EOFTokenPattern());
 		}
 	}
 }

@@ -33,25 +33,25 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 		private static object? DefaultParsedValueFactory(ParsedRule r) => r.parsedValue;
 
-		public override bool TryParse(int thisRuleId, ParserContext context, out ParsedRule result)
+		public override bool TryParse(ParserContext context, out ParsedRule result)
 		{
 			int i = 0;
 			foreach (var rule in Choices)
 			{
 				if (context.parser.TryParseRule(rule, context, out result))
 				{
-					result = result.WithRuleId(thisRuleId).WithOccurency(i).WithParsedValue(ParsedValueFactory.Invoke(result));
+					result = result.WithRuleId(Id).WithOccurency(i).WithParsedValue(ParsedValueFactory.Invoke(result));
 					return true;
 				}
 				i++;
 			}
 
-			context.errors.Add(new ParsingError(context.position, $"No matching choice found from {ToString(context)}."));
+			context.errors.Add(new ParsingError(context.position, $"No matching choice found from {this}."));
 			result = ParsedRule.Fail;
 			return false;
 		}
 
-		public override ParsedRule Parse(int thisRuleId, ParserContext context)
+		public override ParsedRule Parse(ParserContext context)
 		{
 			List<ParsingException> exceptions = new List<ParsingException>();
 
@@ -70,10 +70,12 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 			throw exceptions[0];
 		}
 
-		public override string ToString(ParserContext context)
+		public override string ToString(int remainingDepth)
 		{
+			if (remainingDepth <= 0)
+				return "Choice...";
 			return $"Choice:\n" +
-				string.Join("\n", Choices.Select(c => context.parser.Rules[c].ToString(context)))
+				string.Join("\n", Choices.Select(c => Parser.Rules[c].ToString(remainingDepth - 1)))
 				.Indent("  ");
 		}
 

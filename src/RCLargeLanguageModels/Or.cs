@@ -20,15 +20,34 @@ namespace RCLargeLanguageModels
 		public int VariantIndex => _variantIndex;
 
 		/// <summary>
+		/// Gets the value of the currently active variant as <typeparamref name="T1"/>. Throws an exception if the wrong type is accessed.
+		/// </summary>
+		public T1 Value1 =>
+			_variantIndex == 0
+				? _value1
+				: throw new InvalidOperationException($"Active variant is not {typeof(T1)}.");
+
+		/// <summary>
+		/// Gets the value of the currently active variant as <typeparamref name="T2"/>. Throws an exception if the wrong type is accessed.
+		/// </summary>
+		public T2 Value2 =>
+			_variantIndex == 1
+				? _value2
+				: throw new InvalidOperationException($"Active variant is not {typeof(T2)}.");
+
+		static Or()
+		{
+			if (typeof(T1) == typeof(T2))
+				throw new InvalidOperationException($"Types in {nameof(Or<T1, T2>)} cannot be same!");
+		}
+
+		/// <summary>
 		/// Initializes a new instance of the <see cref="Or{T1, T2}"/> struct with a value of type <typeparamref name="T1"/>.
 		/// </summary>
 		/// <param name="value">The value to store.</param>
 		/// <exception cref="Exception">Thrown when <typeparamref name="T1"/> and <typeparamref name="T2"/> are the same type.</exception>
 		public Or(T1 value)
 		{
-			if (typeof(T1) == typeof(T2))
-				throw new InvalidOperationException($"Types in {nameof(Or<T1, T2>)} cannot be same!");
-
 			_variantIndex = 0;
 			_value1 = value;
 			_value2 = default!;
@@ -41,9 +60,6 @@ namespace RCLargeLanguageModels
 		/// <exception cref="Exception">Thrown when <typeparamref name="T1"/> and <typeparamref name="T2"/> are the same type.</exception>
 		public Or(T2 value)
 		{
-			if (typeof(T1) == typeof(T2))
-				throw new InvalidOperationException($"Types in {nameof(Or<T1, T2>)} cannot be same!");
-
 			_variantIndex = 1;
 			_value1 = default!;
 			_value2 = value;
@@ -54,7 +70,7 @@ namespace RCLargeLanguageModels
 		/// </summary>
 		/// <param name="value">The value to store.</param>
 		/// <returns>A new created <see cref="Or{T1, T2}"/> with used <typeparamref name="T1"/> type as active.</returns>
-		public Or<T1, T2> CreateT1(T1 value)
+		public static Or<T1, T2> CreateT1(T1 value)
 		{
 			return new Or<T1, T2>(value);
 		}
@@ -64,33 +80,31 @@ namespace RCLargeLanguageModels
 		/// </summary>
 		/// <param name="value">The value to store.</param>
 		/// <returns>A new created <see cref="Or{T1, T2}"/> with used <typeparamref name="T2"/> type as active.</returns>
-		public Or<T1, T2> CreateT2(T2 value)
+		public static Or<T1, T2> CreateT2(T2 value)
 		{
 			return new Or<T1, T2>(value);
 		}
 
 		/// <summary>
-		/// Gets the value as <typeparamref name="T1"/> if the active variant is <typeparamref name="T1"/>.
+		/// Gets the value as <typeparamref name="T1"/> or <see langword="default"/> if the active variant is not <typeparamref name="T1"/>.
 		/// </summary>
-		/// <returns>The value as <typeparamref name="T1"/>.</returns>
-		/// <exception cref="InvalidOperationException">Thrown when the active variant is not <typeparamref name="T1"/>.</exception>
+		/// <returns>The value as <typeparamref name="T1"/> or <see langword="default"/>.</returns>
 		public T1 AsT1() =>
 			_variantIndex == 0
 				? _value1
-				: throw new InvalidOperationException($"Active variant is not {typeof(T1)}.");
+				: default;
 
 		/// <summary>
-		/// Gets the value as <typeparamref name="T2"/> if the active variant is <typeparamref name="T2"/>.
+		/// Gets the value as <typeparamref name="T2"/> or <see langword="default"/> if the active variant is not <typeparamref name="T2"/>.
 		/// </summary>
-		/// <returns>The value as <typeparamref name="T2"/>.</returns>
-		/// <exception cref="InvalidOperationException">Thrown when the active variant is not <typeparamref name="T2"/>.</exception>
+		/// <returns>The value as <typeparamref name="T2"/> or <see langword="default"/>.</returns>
 		public T2 AsT2() =>
 			_variantIndex == 1
 				? _value2
-				: throw new InvalidOperationException("Active variant is not {typeof(T2)}.");
+				: default;
 
 		/// <summary>
-		/// Attempts to get the value as <typeparamref name="T1"/>.
+		/// Gets the value as <typeparamref name="T2"/> or <see langword="default"/> if the active variant is not <typeparamref name="T2"/>.
 		/// </summary>
 		/// <param name="value">When this method returns, contains the value if the active variant is <typeparamref name="T1"/>; otherwise, the default value.</param>
 		/// <returns>true if the active variant is <typeparamref name="T1"/>; otherwise, false.</returns>

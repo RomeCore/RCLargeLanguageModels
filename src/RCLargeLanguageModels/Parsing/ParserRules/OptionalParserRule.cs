@@ -34,35 +34,38 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 		private static object? DefaultParsedValueFactory(ParsedRule? r) => r?.parsedValue;
 
-		public override bool TryParse(int thisRuleId, ParserContext context, out ParsedRule result)
+		public override bool TryParse(ParserContext context, out ParsedRule result)
 		{
+			var str = ToString(4);
 			if (context.parser.TryParseRule(Rule, context, out var parsedRule))
 			{
-				result = new ParsedRule(thisRuleId, parsedRule.startIndex, parsedRule.length, ImmutableList.Create(parsedRule), ParsedValueFactory(parsedRule));
+				result = new ParsedRule(Id, parsedRule.startIndex, parsedRule.length, ImmutableList.Create(parsedRule), ParsedValueFactory(parsedRule));
 				return true;
 			}
 			else
 			{
-				result = new ParsedRule(thisRuleId, parsedRule.startIndex, parsedRule.length, ImmutableList<ParsedRule>.Empty, ParsedValueFactory(null));
+				result = new ParsedRule(Id, context.position, 0, ImmutableList<ParsedRule>.Empty, ParsedValueFactory(null));
 				return true;
 			}
 		}
 
-		public override ParsedRule Parse(int thisRuleId, ParserContext context)
+		public override ParsedRule Parse(ParserContext context)
 		{
 			if (context.parser.TryParseRule(Rule, context, out var parsedRule))
 			{
-				return new ParsedRule(thisRuleId, parsedRule.startIndex, parsedRule.length, ImmutableList.Create(parsedRule), ParsedValueFactory(parsedRule));
+				return new ParsedRule(Id, parsedRule.startIndex, parsedRule.length, ImmutableList.Create(parsedRule), ParsedValueFactory(parsedRule));
 			}
 			else
 			{
-				return new ParsedRule(thisRuleId, parsedRule.startIndex, parsedRule.length, ImmutableList<ParsedRule>.Empty, ParsedValueFactory(null));
+				return new ParsedRule(Id, context.position, 0, ImmutableList<ParsedRule>.Empty, ParsedValueFactory(null));
 			}
 		}
 
-		public override string ToString(ParserContext context)
+		public override string ToString(int remainingDepth)
 		{
-			return $"Optional: {context.parser.Rules[Rule].ToString(context)}";
+			if (remainingDepth <= 0)
+				return "Optional...";
+			return $"Optional: {GetRule(Rule).ToString(remainingDepth - 1)}";
 		}
 
 		public override bool Equals(object? obj)

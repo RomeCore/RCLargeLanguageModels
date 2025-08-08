@@ -22,22 +22,15 @@ namespace RCLargeLanguageModels.Parsing.Building.ParserRules
 		/// </summary>
 		public int MaxCount { get; set; } = -1;
 
-		/// <summary>
-		/// Gets the children of this parser rule.
-		/// </summary>
 		public override IEnumerable<Or<string, BuildableParserRule>>? Children => Child.WrapIntoEnumerable();
+		public override IEnumerable<Or<string, BuildableTokenPattern>>? TokenChildren => null;
 
 		/// <summary>
 		/// Gets or sets the factory that creates a parsed value from the matched token.
 		/// </summary>
 		public Func<List<ParsedRule>, object?>? ParsedValueFactory { get; set; } = null;
 
-		/// <summary>
-		/// Builds the parser rule with the given children.
-		/// </summary>
-		/// <param name="children">The children IDs of this parser rule.</param>
-		/// <returns>The built parser rule.</returns>
-		public override ParserRule Build(List<int>? children)
+		public override ParserRule Build(List<int>? children, List<int>? tokenChildren)
 		{
 			return new RepeatParserRule(children[0], MinCount, MaxCount, ParsedValueFactory);
 		}

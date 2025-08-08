@@ -16,11 +16,11 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 		{
 		}
 
-		public override bool TryMatch(int thisTokenId, ParserContext context, out ParsedToken token)
+		public override bool TryMatch(ParserContext context, out ParsedToken token)
 		{
 			if (context.position >= context.str.Length)
 			{
-				token = new ParsedToken(thisTokenId, context.position, 0);
+				token = new ParsedToken(Id, context.position, 0);
 				return true;
 			}
 			token = ParsedToken.Fail;
@@ -37,7 +37,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			return 0;
 		}
 
-		public override string ToString(ParserContext context)
+		public override string ToString(int remainingDepth)
 		{
 			return "[EOF]";
 		}

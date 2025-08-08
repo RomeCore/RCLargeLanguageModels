@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace RCLargeLanguageModels.Parsing
@@ -33,6 +34,44 @@ namespace RCLargeLanguageModels.Parsing
 		/// A list to store any parsing errors encountered during the process.
 		/// </summary>
 		public readonly List<ParsingError> errors;
+
+		/// <summary>
+		/// Gets a summary of all parsing errors encountered during the process.
+		/// </summary>
+		/// <remarks>
+		/// Needed for debugging purposes.
+		/// </remarks>
+		public string ErrorSummary
+		{
+			get
+			{
+				if (errors.Count == 0)
+					return "No errors encountered.";
+
+				ParserContext t = this;
+
+				return $"Errors ({errors.Count} total):\n" +
+					$"{string.Join("\n\n", errors.Take(10).Select(e => e.ToString(t)))}" +
+					$"{(errors.Count > 10 ? $"\n\nand {errors.Count - 10} more..." : "")}";
+			}
+		}
+
+		/// <summary>
+		/// Gets the text after the current position in the input string.
+		/// </summary>
+		/// <remarks>
+		/// Needed for debugging purposes.
+		/// </remarks>
+		public string TextAfterPosition
+		{
+			get
+			{
+				var substring = this.str.Substring(this.position);
+				if (substring.Length > 20)
+					return substring.Substring(0, 20) + "...";
+				return substring;
+			}
+		}
 
 		/// <summary>
 		/// Creates a new instance of the <see cref="ParserContext"/> class.

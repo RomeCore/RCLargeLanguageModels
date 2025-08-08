@@ -40,7 +40,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 		private static object? DefaultParsedValueFactory(char c) => c;
 
-		public override bool TryMatch(int thisTokenId, ParserContext context, out ParsedToken token)
+		public override bool TryMatch(ParserContext context, out ParsedToken token)
 		{
 			if (context.position >= context.str.Length)
 			{
@@ -51,7 +51,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			char currentChar = context.str[context.position];
 			if (currentChar >= MinChar && currentChar <= MaxChar)
 			{
-				token = new ParsedToken(thisTokenId, context.position, 1, ParsedValueFactory(currentChar));
+				token = new ParsedToken(Id, context.position, 1, ParsedValueFactory(currentChar));
 				return true;
 			}
 			else
@@ -61,7 +61,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			}
 		}
 
-		public override string ToString(ParserContext context)
+		public override string ToString(int remainingDepth)
 		{
 			return $"[{MinChar}-{MaxChar}]";
 		}

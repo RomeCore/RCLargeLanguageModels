@@ -110,6 +110,20 @@ namespace RCLargeLanguageModels.Tests.Parsing
 		}
 
 		[Fact]
+		public void CircularReferenceTest()
+		{
+			var builder = new ParserBuilder();
+
+			builder.CreateToken("number")
+				.Token("integer");
+
+			builder.CreateToken("integer")
+				.Token("number");
+
+			Assert.Throws<ParserBuildingException>(() => builder.Build());
+		}
+
+		[Fact]
 		public void SimpleJSONParsing()
 		{
 			var builder = new ParserBuilder();
@@ -167,10 +181,14 @@ namespace RCLargeLanguageModels.Tests.Parsing
     "age": 25,
     "tags": ["json", "parser", 123],
     "isValid": true,
-    "metadata": null
+    "metadata": {
+        "description": "This is a test JSON object",
+		"author": "John Doe",
+		"additionalData": null
+	}
 }
 """;
-
+			
 			var context = jsonParser.CreateContext(json);
 			var parsed = jsonParser.ParseRule("value", context);
 

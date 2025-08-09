@@ -108,11 +108,30 @@ namespace RCLargeLanguageModels.Parsing.Building
 			{
 				if (!rule.Value.CanBeBuilt)
 					throw new ParserBuildingException($"Rule '{rule.Key}' cannot be built, because it's empty.");
-				if (rule.Value.BuildingRule.Value.VariantIndex != 1)
-					throw new ParserBuildingException($"Rule '{rule.Key}' cannot be built, because it directly points " +
-						$"to another rule (single name reference).");
 
-				var brule = rule.Value.BuildingRule.Value.Value2;
+				HashSet<string> checkedNames = new HashSet<string>();
+				var currentRule = rule.Value.BuildingRule.Value;
+
+				while (currentRule.VariantIndex != 1)
+				{
+					if (!checkedNames.Add(currentRule.Value1))
+						throw new ParserBuildingException($"Circular reference detected in rule '{rule.Key}': " +
+							$"{string.Join(" -> ", checkedNames.Append(currentRule.Value1).Select(n => $"'{n}'"))}");
+
+					if (_rules.TryGetValue(currentRule.Value1, out var nextRule))
+					{
+						if (!nextRule.CanBeBuilt)
+							throw new ParserBuildingException($"Rule '{currentRule.Value1}' cannot be built, because it's empty.");
+
+						currentRule = nextRule.BuildingRule.Value;
+					}
+					else
+					{
+						throw new ParserBuildingException($"Rule '{currentRule.Value1}' cannot be found.");
+					}
+				}
+
+				var brule = currentRule.Value2;
 				rulesToProcess.Enqueue(brule);
 				namedRules.Add(rule.Key, brule);
 			}
@@ -121,13 +140,33 @@ namespace RCLargeLanguageModels.Parsing.Building
 			{
 				if (!pattern.Value.CanBeBuilt)
 					throw new ParserBuildingException($"Token pattern '{pattern.Key}' cannot be built, because it's empty.");
-				if (pattern.Value.BuildingPattern.Value.VariantIndex != 1)
-					throw new ParserBuildingException($"Token pattern '{pattern.Key}' cannot be built, because it directly points " +
-						$"to another token pattern (single name reference).");
 
-				var bpattern = pattern.Value.BuildingPattern.Value.Value2;
+				HashSet<string> checkedNames = new HashSet<string>();
+				var currentPattern = pattern.Value.BuildingPattern.Value;
+
+				while (currentPattern.VariantIndex != 1)
+				{
+					if (!checkedNames.Add(currentPattern.Value1))
+						throw new ParserBuildingException($"Circular reference detected in token pattern '{pattern.Key}': " +
+							$"{string.Join(" -> ", checkedNames.Append(currentPattern.Value1).Select(n => $"'{n}'"))}");
+
+					if (_tokenPatterns.TryGetValue(currentPattern.Value1, out var nextPattern))
+					{
+						if (!nextPattern.CanBeBuilt)
+							throw new ParserBuildingException($"Token pattern '{currentPattern.Value1}' cannot be built, because it's empty.");
+
+						currentPattern = nextPattern.BuildingPattern.Value;
+					}
+					else
+					{
+						throw new ParserBuildingException($"Token pattern '{currentPattern.Value1}' cannot be found.");
+					}
+				}
+
+				var bpattern = currentPattern.Value2;
 				tokensToProcess.Enqueue(bpattern);
 				namedTokenPatterns.Add(pattern.Key, bpattern);
+
 			}
 
 			while (rulesToProcess.Count > 0)
@@ -235,7 +274,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 			foreach (var rule in namedRules)
 			{
 				var index = rules[rule.Value];
-				resultRules[index].Alias = rule.Key;
+				resultRules[index].Aliases = resultRules[index].Aliases.Add(rule.Key);
 			}
 
 			TokenPattern[] resultTokenPatterns = new TokenPattern[tokenPatterns.Count];
@@ -255,7 +294,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 			foreach (var pattern in namedTokenPatterns)
 			{
 				var index = tokenPatterns[pattern.Value];
-				resultTokenPatterns[index].Alias = pattern.Key;
+				resultTokenPatterns[index].Aliases = resultTokenPatterns[index].Aliases.Add(pattern.Key);
 			}
 
 			return new Parser(resultTokenPatterns.ToImmutableArray(), resultRules.ToImmutableArray());

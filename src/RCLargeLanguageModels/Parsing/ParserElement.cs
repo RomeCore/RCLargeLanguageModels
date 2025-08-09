@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Text;
 
 namespace RCLargeLanguageModels.Parsing
@@ -15,9 +16,9 @@ namespace RCLargeLanguageModels.Parsing
 		public int Id { get; internal set; }
 
 		/// <summary>
-		/// Gets the alias for this parser element. If no alias has been assigned, this property returns null.
+		/// Gets the aliases for this parser element.
 		/// </summary>
-		public string? Alias { get; internal set; } = null;
+		public ImmutableList<string> Aliases { get; internal set; } = ImmutableList<string>.Empty;
 
 		/// <summary>
 		/// Gets the parser that contains this parser element.

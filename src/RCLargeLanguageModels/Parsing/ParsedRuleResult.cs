@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
@@ -52,9 +53,9 @@ namespace RCLargeLanguageModels.Parsing
 		public ParserRule Rule => Context.parser.Rules[Result.ruleId];
 
 		/// <summary>
-		/// Gets the alias for the parser rule that was parsed. Returns <see langword="null"/> if no alias is defined.
+		/// Gets the aliases for the parser rule that was parsed.
 		/// </summary>
-		public string? RuleAlias => Rule.Alias;
+		public ImmutableList<string> RuleAliases => Rule.Aliases;
 
 		/// <summary>
 		/// Gets the starting index of the rule in the input text.

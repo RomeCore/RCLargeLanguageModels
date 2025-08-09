@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Data;
 using System.Text;
 
 namespace RCLargeLanguageModels.Parsing
@@ -40,9 +42,9 @@ namespace RCLargeLanguageModels.Parsing
 		public TokenPattern Token => Context.parser.TokenPatterns[Result.tokenId];
 
 		/// <summary>
-		/// Gets the alias for the token pattern that was parsed. Returns <see langword="null"/> if no alias is defined.
+		/// Gets the aliases for the token pattern that was parsed.
 		/// </summary>
-		public string? TokenAlias => Token.Alias;
+		public ImmutableList<string> TokenAliases => Token.Aliases;
 
 		/// <summary>
 		/// Gets the starting index of the token in the input text.

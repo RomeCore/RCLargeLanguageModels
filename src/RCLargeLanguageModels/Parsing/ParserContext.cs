@@ -41,20 +41,7 @@ namespace RCLargeLanguageModels.Parsing
 		/// <remarks>
 		/// Needed for debugging purposes.
 		/// </remarks>
-		public string ErrorSummary
-		{
-			get
-			{
-				if (errors.Count == 0)
-					return "No errors encountered.";
-
-				ParserContext t = this;
-
-				return $"Errors ({errors.Count} total):\n" +
-					$"{string.Join("\n\n", errors.Take(10).Select(e => e.ToString(t)))}" +
-					$"{(errors.Count > 10 ? $"\n\nand {errors.Count - 10} more..." : "")}";
-			}
-		}
+		public string ErrorSummary => GetErrorSummary(10);
 
 		/// <summary>
 		/// Gets the text after the current position in the input string.
@@ -141,6 +128,26 @@ namespace RCLargeLanguageModels.Parsing
 		public readonly ParserContext With(int newPosition)
 		{
 			return new ParserContext(parser, str, cache, newPosition, errors);
+		}
+
+		/// <summary>
+		/// Returns a summary of all parsing errors encountered during the process, limited to a specified number of errors.
+		/// </summary>
+		/// <param name="maxErrors">The maximum number of errors to include in the summary.</param>
+		/// <returns>A summary of the parsing errors.</returns>
+		/// <exception cref="ArgumentOutOfRangeException">Thrown if the specified number of errors is negative.</exception>
+		public string GetErrorSummary(int maxErrors)
+		{
+			if (maxErrors < 0)
+				throw new ArgumentOutOfRangeException(nameof(maxErrors));
+			if (errors.Count == 0)
+				return "No errors encountered.";
+
+			ParserContext t = this;
+
+			return $"Errors ({errors.Count} total):\n" +
+				$"{string.Join("\n\n", errors.Take(maxErrors).Select(e => e.ToString(t)))}" +
+				$"{(errors.Count > maxErrors ? $"\n\nand {errors.Count - maxErrors} more..." : "")}";
 		}
 	}
 }

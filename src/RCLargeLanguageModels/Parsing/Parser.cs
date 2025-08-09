@@ -44,11 +44,11 @@ namespace RCLargeLanguageModels.Parsing
 					throw new InvalidOperationException("Parser already set for a rule.");
 				rule.Parser = this;
 
-				if (rule.Alias != null)
+				foreach (var alias in rule.Aliases)
 				{
-					if (_rulesAliases.ContainsKey(rule.Alias))
+					if (_rulesAliases.ContainsKey(alias))
 						throw new InvalidOperationException("Alias already used by another rule.");
-					_rulesAliases.Add(rule.Alias, rule.Id);
+					_rulesAliases.Add(alias, rule.Id);
 				}
 			}
 
@@ -58,11 +58,11 @@ namespace RCLargeLanguageModels.Parsing
 					throw new InvalidOperationException("Parser already set for a token pattern.");
 				pattern.Parser = this;
 
-				if (pattern.Alias != null)
+				foreach (var alias in pattern.Aliases)
 				{
-					if (_tokenPatternsAliases.ContainsKey(pattern.Alias))
-						throw new InvalidOperationException("Alias already used by another token pattern.");
-					_tokenPatternsAliases.Add(pattern.Alias, pattern.Id);
+					if (_tokenPatternsAliases.ContainsKey(alias))
+						throw new InvalidOperationException("Alias already used by another rule.");
+					_tokenPatternsAliases.Add(alias, pattern.Id);
 				}
 			}
 		}

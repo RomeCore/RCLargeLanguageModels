@@ -15,7 +15,7 @@ namespace RCLargeLanguageModels.Parsing.Building.ParserRules
 		/// The elements of the sequence parser rule.
 		/// </summary>
 		public List<Or<string, BuildableParserRule>> Elements { get; } = new List<Or<string, BuildableParserRule>>();
-		public override IEnumerable<Or<string, BuildableParserRule>>? Children => Elements;
+		public override IEnumerable<Or<string, BuildableParserRule>>? RuleChildren => Elements;
 		public override IEnumerable<Or<string, BuildableTokenPattern>>? TokenChildren => null;
 
 		/// <summary>
@@ -23,9 +23,9 @@ namespace RCLargeLanguageModels.Parsing.Building.ParserRules
 		/// </summary>
 		public Func<List<ParsedRule>, object?>? ParsedValueFactory { get; set; } = null;
 
-		public override ParserRule Build(List<int>? children, List<int>? tokenChildren)
+		protected override ParserRule BuildRule(List<int>? ruleChildren, List<int>? tokenChildren)
 		{
-			return new SequenceParserRule(children, ParsedValueFactory);
+			return new SequenceParserRule(ruleChildren, ParsedValueFactory);
 		}
 
 		public override bool Equals(object? obj)

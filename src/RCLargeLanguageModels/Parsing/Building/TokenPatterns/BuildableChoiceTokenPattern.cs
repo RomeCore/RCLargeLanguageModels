@@ -15,16 +15,16 @@ namespace RCLargeLanguageModels.Parsing.Building.TokenPatterns
 		/// The choices of this token pattern.
 		/// </summary>
 		public List<Or<string, BuildableTokenPattern>> Choices { get; } = new List<Or<string, BuildableTokenPattern>>();
-		public override IEnumerable<Or<string, BuildableTokenPattern>>? Children => Choices;
+		public override IEnumerable<Or<string, BuildableTokenPattern>>? TokenChildren => Choices;
 
 		/// <summary>
 		/// The factory function that creates a parsed value from the matched token.
 		/// </summary>
 		public Func<ParsedToken, object?>? ParsedValueFactory { get; set; } = null;
 
-		public override TokenPattern Build(List<int>? children)
+		protected override TokenPattern BuildToken(List<int>? tokenChildren)
 		{
-			return new ChoiceTokenPattern(children, ParsedValueFactory);
+			return new ChoiceTokenPattern(tokenChildren, ParsedValueFactory);
 		}
 
 		public override bool Equals(object? obj)

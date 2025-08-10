@@ -13,9 +13,9 @@ namespace RCLargeLanguageModels.Parsing.Building.TokenPatterns
 		/// </summary>
 		public TokenPattern TokenPattern { get; set; }
 
-		public override IEnumerable<Or<string, BuildableTokenPattern>>? Children => null;
+		public override IEnumerable<Or<string, BuildableTokenPattern>>? TokenChildren => null;
 
-		public override TokenPattern Build(List<int>? children)
+		protected override TokenPattern BuildToken(List<int>? tokenChildren)
 		{
 			return TokenPattern ?? throw new ParserBuildingException("Token pattern cannot be null.");
 		}

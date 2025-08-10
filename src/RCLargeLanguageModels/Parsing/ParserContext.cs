@@ -16,9 +16,19 @@ namespace RCLargeLanguageModels.Parsing
 		public readonly string str;
 
 		/// <summary>
-		/// The current position in the input string during parsing.
+		/// The current position in the input string.
 		/// </summary>
 		public int position;
+
+		/// <summary>
+		/// The current recursion depth.
+		/// </summary>
+		public int recursionDepth;
+
+		/// <summary>
+		/// The inherited settings that control the behavior of the parser during parsing operations.
+		/// </summary>
+		public ParserSettings settings;
 
 		/// <summary>
 		/// The parser object that is performing the parsing.
@@ -36,7 +46,12 @@ namespace RCLargeLanguageModels.Parsing
 		public readonly List<ParsingError> errors;
 
 		/// <summary>
-		/// Gets a summary of all parsing errors encountered during the process.
+		/// A list to store any rules that were skipped during the parsing process.
+		/// </summary>
+		public readonly List<ParsedRule> skippedRules;
+
+		/// <summary>
+		/// Gets a summary of first 10 parsing errors encountered during the process.
 		/// </summary>
 		/// <remarks>
 		/// Needed for debugging purposes.
@@ -69,28 +84,37 @@ namespace RCLargeLanguageModels.Parsing
 		{
 			this.str = str ?? throw new ArgumentNullException(nameof(str));
 			position = 0;
+			recursionDepth = 0;
+			settings = default;
 
 			this.parser = parser ?? throw new ArgumentNullException(nameof(parser));
 			this.cache = new ParserCache();
 			this.errors = new List<ParsingError>();
+			this.skippedRules = new List<ParsedRule>();
 		}
 
 		/// <summary>
 		/// Creates a new instance of the <see cref="ParserContext"/> class.
 		/// </summary>
-		/// <param name="parser">The parser object that is performing the parsing.</param>
 		/// <param name="str">The input string to be parsed.</param>
-		/// <param name="cache">A cache to store parsed results for reuse.</param>
 		/// <param name="initialPosition">The initial position in the input string.</param>
+		/// <param name="initialRecursionDepth">The initial recursion depth.</param>
+		/// <param name="settings">The settings that control the behavior of the parser during parsing operations.</param>
+		/// <param name="parser">The parser object that is performing the parsing.</param>
+		/// <param name="cache">A cache to store parsed results for reuse.</param>
 		/// <param name="errors">A list to store any parsing errors encountered during the process.</param>
-		public ParserContext(Parser parser, string str, ParserCache cache, int initialPosition, List<ParsingError> errors)
+		/// <param name="skippedRules">A list to store any rules that were skipped during the parsing process.</param>
+		public ParserContext(string str, int initialPosition, int initialRecursionDepth, ParserSettings settings, Parser parser, ParserCache cache, List<ParsingError> errors, List<ParsedRule> skippedRules)
 		{
 			this.str = str ?? throw new ArgumentNullException(nameof(str));
-			position = initialPosition;
+			this.position = initialPosition;
+			this.recursionDepth = initialRecursionDepth;
+			this.settings = settings;
 
 			this.parser = parser ?? throw new ArgumentNullException(nameof(parser));
 			this.cache = cache ?? throw new ArgumentNullException(nameof(cache));
 			this.errors = errors ?? throw new ArgumentNullException(nameof(errors));
+			this.skippedRules = skippedRules ?? throw new ArgumentNullException(nameof(skippedRules));
 		}
 
 		/// <summary>
@@ -110,24 +134,6 @@ namespace RCLargeLanguageModels.Parsing
 		{
 			while (position < str.Length && char.IsWhiteSpace(str[position]))
 				position++;
-		}
-
-		/// <summary>
-		/// Creates a copy of the current parser context.
-		/// </summary>
-		/// <returns>A new instance of <see cref="ParserContext"/> with the same properties as the current one.</returns>
-		public readonly ParserContext Copy()
-		{
-			return new ParserContext(parser, str, cache, position, errors);
-		}
-
-		/// <summary>
-		/// Creates a copy of the current parser context with a new position.
-		/// </summary>
-		/// <returns>A new instance of <see cref="ParserContext"/> with the new position.</returns>
-		public readonly ParserContext With(int newPosition)
-		{
-			return new ParserContext(parser, str, cache, newPosition, errors);
 		}
 
 		/// <summary>

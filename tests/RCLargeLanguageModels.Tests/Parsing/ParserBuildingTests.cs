@@ -110,20 +110,6 @@ namespace RCLargeLanguageModels.Tests.Parsing
 		}
 
 		[Fact]
-		public void CircularReferenceTest()
-		{
-			var builder = new ParserBuilder();
-
-			builder.CreateToken("number")
-				.Token("integer");
-
-			builder.CreateToken("integer")
-				.Token("number");
-
-			Assert.Throws<ParserBuildingException>(() => builder.Build());
-		}
-
-		[Fact]
 		public void SimpleJSONParsing()
 		{
 			var builder = new ParserBuilder();
@@ -195,6 +181,76 @@ namespace RCLargeLanguageModels.Tests.Parsing
 			var rule = jsonParser.GetRule("value");
 			var ruleString = rule.ToString(4);
 
+		}
+
+		[Fact]
+		public void SelfReferenceRule()
+		{
+			var builder = new ParserBuilder();
+
+			builder.CreateRule("Loop").Rule("Loop");
+
+			Assert.Throws<ParserBuildingException>(() => builder.Build());
+		}
+
+		[Fact]
+		public void RuleCircularReference()
+		{
+			var builder = new ParserBuilder();
+
+			builder.CreateRule("A")
+				.Rule("B");
+
+			builder.CreateRule("B")
+				.Rule("A");
+
+			Assert.Throws<ParserBuildingException>(() => builder.Build());
+		}
+
+		[Fact]
+		public void TokenCircularReference()
+		{
+			var builder = new ParserBuilder();
+
+			builder.CreateToken("number")
+				.Token("integer");
+
+			builder.CreateToken("integer")
+				.Token("number");
+
+			Assert.Throws<ParserBuildingException>(() => builder.Build());
+		}
+
+		[Fact]
+		public void IndirectCircularReferenceDeep()
+		{
+			var builder = new ParserBuilder();
+
+			builder.CreateRule("A").Rule("B");
+			builder.CreateRule("B").Rule("C");
+			builder.CreateRule("C").Rule("A");
+
+			Assert.Throws<ParserBuildingException>(() => builder.Build());
+		}
+
+		[Fact]
+		public void SameReferenceRule()
+		{
+			var builder = new ParserBuilder();
+
+			builder.CreateToken("number")
+				.Regex(@"\d+", match => int.Parse(match.Value));
+
+			builder.CreateToken("int").Token("number");
+			builder.CreateToken("integer").Token("int");
+			builder.CreateToken("double").Token("number");
+
+			var parser = builder.Build();
+
+			Assert.Single(parser.TokenPatterns);
+			Assert.True(parser.GetTokenPattern("number").Id == parser.GetTokenPattern("integer").Id);
+			Assert.True(parser.GetTokenPattern("number").Id == parser.GetTokenPattern("int").Id);
+			Assert.True(parser.GetTokenPattern("double").Id == parser.GetTokenPattern("int").Id);
 		}
 	}
 }

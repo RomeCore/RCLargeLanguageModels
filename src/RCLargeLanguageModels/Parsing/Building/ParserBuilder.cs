@@ -45,6 +45,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 	{
 		private readonly Dictionary<string, TokenBuilder> _tokenPatterns = new Dictionary<string, TokenBuilder>();
 		private readonly Dictionary<string, RuleBuilder> _rules = new Dictionary<string, RuleBuilder>();
+		private readonly ParserSettingsBuilder _settingsBuilder = new ParserSettingsBuilder();
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="ParserBuilder"/> class.
@@ -86,29 +87,44 @@ namespace RCLargeLanguageModels.Parsing.Building
 		}
 
 		/// <summary>
+		/// Gets the current settings builder for configuring additional options.
+		/// </summary>
+		/// <returns>A <see cref="ParserSettingsBuilder"/> instance for configuring additional options.</returns>
+		public ParserSettingsBuilder Settings()
+		{
+			return _settingsBuilder;
+		}
+
+		/// <summary>
 		/// Builds the parser from the registered token patterns and rules.
 		/// </summary>
 		/// <returns>A <see cref="Parser"/> instance representing the built parser.</returns>
 		public Parser Build()
 		{
+			// Counters for assigning unique IDs to rules and tokens
 			int ruleCounter = 0;
-			Dictionary<string, BuildableParserRule> namedRules = new();
-			Dictionary<BuildableParserRule, int> rules = new();
-			Dictionary<BuildableParserRule, (List<BuildableParserRule>?, List<BuildableTokenPattern>?)> rulesArgMap = new();
-			
 			int tokenCounter = 0;
-			Dictionary<string, BuildableTokenPattern> namedTokenPatterns = new();
-			Dictionary<BuildableTokenPattern, int> tokenPatterns = new();
-			Dictionary<BuildableTokenPattern, List<BuildableTokenPattern>?> tokenPatternsArgMap = new();
-			
-			Queue<BuildableParserRule> rulesToProcess = new();
-			Queue<BuildableTokenPattern> tokensToProcess = new();
 
+			// Maps for named rules and tokens to their buildable representations
+			Dictionary<string, BuildableParserRule> namedRules = new();
+			Dictionary<string, BuildableTokenPattern> namedTokenPatterns = new();
+
+			// Maps for buildable rules and tokens to their assigned integer IDs
+			Dictionary<BuildableParserElement, int> elements = new();
+
+			// Maps for rules and tokens to their children dependencies
+			Dictionary<BuildableParserElement, (List<BuildableParserRule>?, List<BuildableTokenPattern>?)> argMap = new();
+
+			// Queues to process rules and tokens breadth-first
+			Queue<BuildableParserElement> elementsToProcess = new();
+
+			// Initialize processing queue and namedRules map with root rules
 			foreach (var rule in _rules)
 			{
 				if (!rule.Value.CanBeBuilt)
 					throw new ParserBuildingException($"Rule '{rule.Key}' cannot be built, because it's empty.");
 
+				// Detect circular references and resolve to the base rule
 				HashSet<string> checkedNames = new HashSet<string>();
 				var currentRule = rule.Value.BuildingRule.Value;
 
@@ -132,15 +148,17 @@ namespace RCLargeLanguageModels.Parsing.Building
 				}
 
 				var brule = currentRule.Value2;
-				rulesToProcess.Enqueue(brule);
+				elementsToProcess.Enqueue(brule);
 				namedRules.Add(rule.Key, brule);
 			}
 
+			// Initialize processing queue and namedTokenPatterns map with root token patterns
 			foreach (var pattern in _tokenPatterns)
 			{
 				if (!pattern.Value.CanBeBuilt)
 					throw new ParserBuildingException($"Token pattern '{pattern.Key}' cannot be built, because it's empty.");
 
+				// Detect circular references and resolve to the base token pattern
 				HashSet<string> checkedNames = new HashSet<string>();
 				var currentPattern = pattern.Value.BuildingPattern.Value;
 
@@ -164,23 +182,28 @@ namespace RCLargeLanguageModels.Parsing.Building
 				}
 
 				var bpattern = currentPattern.Value2;
-				tokensToProcess.Enqueue(bpattern);
+				elementsToProcess.Enqueue(bpattern);
 				namedTokenPatterns.Add(pattern.Key, bpattern);
-
 			}
 
-			while (rulesToProcess.Count > 0)
+			// Process all rules in the queue, assign IDs and collect dependencies
+			while (elementsToProcess.Count > 0)
 			{
-				var rule = rulesToProcess.Dequeue();
-				if (rules.ContainsKey(rule))
+				// Register a rule ID if it's not already registered
+				var element = elementsToProcess.Dequeue();
+				if (elements.ContainsKey(element))
 					continue;
 
-				rules.Add(rule, ruleCounter++);
+				if (element is BuildableParserRule rule)
+					elements.Add(element, ruleCounter++);
+				else if (element is BuildableTokenPattern pattern)
+					elements.Add(element, tokenCounter++);
 
 				List<BuildableParserRule> childrenToArgs = null;
 				List<BuildableTokenPattern> tokenChildrenToArgs = null;
 
-				var children = rule.Children;
+				// Queue child rules for processing
+				var children = element.RuleChildren;
 				if (children != null)
 				{
 					childrenToArgs = new();
@@ -195,12 +218,13 @@ namespace RCLargeLanguageModels.Parsing.Building
 						}, brule =>
 						{
 							childrenToArgs.Add(brule);
-							rulesToProcess.Enqueue(brule);
+							elementsToProcess.Enqueue(brule);
 						});
 					}
 				}
 
-				var tokenChildren = rule.TokenChildren;
+				// Queue child token patterns for processing
+				var tokenChildren = element.TokenChildren;
 				if (tokenChildren != null)
 				{
 					tokenChildrenToArgs = new();
@@ -215,88 +239,53 @@ namespace RCLargeLanguageModels.Parsing.Building
 						}, bpattern =>
 						{
 							tokenChildrenToArgs.Add(bpattern);
-							tokensToProcess.Enqueue(bpattern);
+							elementsToProcess.Enqueue(bpattern);
 						});
 					}
 				}
 
-				rulesArgMap[rule] = (childrenToArgs, tokenChildrenToArgs);
+				// Register rule dependencies for rule building
+				argMap[element] = (childrenToArgs, tokenChildrenToArgs);
 			}
 
-			while (tokensToProcess.Count > 0)
+			// Build final ParserRule instances with resolved children and assign their IDs
+			ParserRule[] resultRules = new ParserRule[elements.Count(e => e.Key is BuildableParserRule)];
+			TokenPattern[] resultTokenPatterns = new TokenPattern[elements.Count(e => e.Key is BuildableTokenPattern)];
+
+			foreach (var elem in elements)
 			{
-				var pattern = tokensToProcess.Dequeue();
-				if (tokenPatterns.ContainsKey(pattern))
-					continue;
+				var element = elem.Key;
+				var id = elem.Value;
 
-				tokenPatterns.Add(pattern, tokenCounter++);
+				var (children, tokenChildren) = argMap[element];
 
-				List<BuildableTokenPattern> childrenToArgs = null;
+				var builtElement = element.Build(
+					children?.Select(r => elements[r]).ToList(),
+					tokenChildren?.Select(p => elements[p]).ToList());
 
-				var children = pattern.Children;
-				if (children != null)
-				{
-					childrenToArgs = new();
-					foreach (var child in children)
-					{
-						child.Switch(name =>
-						{
-							if (namedTokenPatterns.TryGetValue(name, out var namedPattern))
-								childrenToArgs.Add(namedPattern);
-							else
-								throw new ParserBuildingException($"Unknown rule reference '{name}'.");
-						}, bpattern =>
-						{
-							childrenToArgs.Add(bpattern);
-							tokensToProcess.Enqueue(bpattern);
-						});
-					}
-				}
+				builtElement.Id = id;
 
-				tokenPatternsArgMap[pattern] = childrenToArgs;
+				if (builtElement is ParserRule rule)
+					resultRules[id] = rule;
+				else if (builtElement is TokenPattern pattern)
+					resultTokenPatterns[id] = pattern;
 			}
 
-			ParserRule[] resultRules = new ParserRule[rules.Count];
-
-			foreach (var rule in rules)
-			{
-				var (children, tokenChildren) = rulesArgMap[rule.Key];
-
-				var builtRule = rule.Key.Build(
-					children?.Select(r => rules[r]).ToList(),
-					tokenChildren?.Select(p => tokenPatterns[p]).ToList());
-
-				builtRule.Id = rule.Value;
-
-				resultRules[rule.Value] = builtRule;
-			}
-
+			// Add aliases to the built rules for name lookup
 			foreach (var rule in namedRules)
 			{
-				var index = rules[rule.Value];
+				var index = elements[rule.Value];
 				resultRules[index].Aliases = resultRules[index].Aliases.Add(rule.Key);
 			}
 
-			TokenPattern[] resultTokenPatterns = new TokenPattern[tokenPatterns.Count];
-
-			foreach (var tokenPattern in tokenPatterns)
-			{
-				var children = tokenPatternsArgMap[tokenPattern.Key];
-
-				var builtTokenPattern = tokenPattern.Key.Build(
-					children?.Select(p => tokenPatterns[p]).ToList());
-
-				builtTokenPattern.Id = tokenPattern.Value;
-
-				resultTokenPatterns[tokenPattern.Value] = builtTokenPattern;
-			}
-
+			// Add aliases to the built token patterns for name lookup
 			foreach (var pattern in namedTokenPatterns)
 			{
-				var index = tokenPatterns[pattern.Value];
+				var index = elements[pattern.Value];
 				resultTokenPatterns[index].Aliases = resultTokenPatterns[index].Aliases.Add(pattern.Key);
 			}
 
+			// Return the fully built parser instance with rules and token patterns
 			return new Parser(resultTokenPatterns.ToImmutableArray(), resultRules.ToImmutableArray());
 		}
 	}

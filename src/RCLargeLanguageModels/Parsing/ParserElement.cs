@@ -23,7 +23,12 @@ namespace RCLargeLanguageModels.Parsing
 		/// <summary>
 		/// Gets the parser that contains this parser element.
 		/// </summary>
-		public Parser Parser { get; internal set; }
+		public Parser Parser { get; internal set; } = null!;
+
+		/// <summary>
+		/// Gets the local settings for this parser element with each setting configurable override modes.
+		/// </summary>
+		public ParserLocalSettings Settings { get; internal set; } = default;
 
 		/// <summary>
 		/// Returns a string representation of the parser element using a specified depth for expansion.
@@ -31,6 +36,17 @@ namespace RCLargeLanguageModels.Parsing
 		/// <param name="remainingDepth">The maximum depth to which the element should be expanded in the string representation. Defaults to 2.</param>
 		/// <returns>A string representation of the rule.</returns>
 		public abstract string ToString(int remainingDepth);
+
+		/// <summary>
+		/// Gets the settings for this parser element based on the local and global settings for the parser context.
+		/// </summary>
+		/// <param name="context">The parser context to extract inherited settings from.</param>
+		/// <param name="forLocal">The settings to use for this element.</param>
+		/// <param name="forChildren">The settings to use for child elements.</param>
+		protected void ResolveSettings(ParserContext context, out ParserSettings forLocal, out ParserSettings forChildren)
+		{
+			context.settings.Resolve(Settings, Parser.Settings, out forLocal, out forChildren);
+		}
 
 		/// <summary>
 		/// Gets the rule by index within the current parser.

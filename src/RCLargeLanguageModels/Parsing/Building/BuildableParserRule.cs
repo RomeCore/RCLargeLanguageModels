@@ -10,24 +10,19 @@ namespace RCLargeLanguageModels.Parsing.Building
 	/// <remarks>
 	/// Its recommended to implement the Equals and GetHashCode methods to remove redudancy when compiling parser.
 	/// </remarks>
-	public abstract class BuildableParserRule
+	public abstract class BuildableParserRule : BuildableParserElement
 	{
-		/// <summary>
-		/// Gets the children of this parser rule. Each child can be name reference or a buildable parser rule.
-		/// </summary>
-		public abstract IEnumerable<Or<string, BuildableParserRule>>? Children { get; }
-
-		/// <summary>
-		/// Gets the token children of this parser rule. Each child can be a name reference or a buildable token pattern.
-		/// </summary>
-		public abstract IEnumerable<Or<string, BuildableTokenPattern>>? TokenChildren { get; }
-
 		/// <summary>
 		/// Builds the parser rule with the given children.
 		/// </summary>
-		/// <param name="children">The children IDs to build the parser rule with.</param>
+		/// <param name="ruleChildren">The rule children IDs to build the parser rule with.</param>
 		/// <param name="tokenChildren">The token children IDs to build the parser rule with.</param>
-		/// <returns>A token pattern representing the built parser rule.</returns>
-		public abstract ParserRule Build(List<int>? children, List<int>? tokenChildren);
+		/// <returns>The built parser rule.</returns>
+		protected abstract ParserRule BuildRule(List<int>? ruleChildren, List<int>? tokenChildren);
+
+		public sealed override ParserElement Build(List<int>? ruleChildren, List<int>? tokenChildren)
+		{
+			return BuildRule(ruleChildren, tokenChildren);
+		}
 	}
 }

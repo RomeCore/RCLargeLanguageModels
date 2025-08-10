@@ -20,10 +20,10 @@ namespace RCLargeLanguageModels.Parsing.Building.ParserRules
 		/// </summary>
 		public Func<ParsedToken, object?>? ParsedValueFactory { get; set; } = null;
 
-		public override IEnumerable<Or<string, BuildableParserRule>>? Children => null;
+		public override IEnumerable<Or<string, BuildableParserRule>>? RuleChildren => null;
 		public override IEnumerable<Or<string, BuildableTokenPattern>>? TokenChildren => Child.WrapIntoEnumerable();
 
-		public override ParserRule Build(List<int>? children, List<int>? tokenChildren)
+		protected override ParserRule BuildRule(List<int>? ruleChildren, List<int>? tokenChildren)
 		{
 			return new TokenParserRule(tokenChildren[0], ParsedValueFactory);
 		}

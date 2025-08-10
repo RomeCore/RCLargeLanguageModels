@@ -28,21 +28,16 @@ namespace RCLargeLanguageModels.Parsing.Building.TokenPatterns
 		/// <summary>
 		/// Gets the children of this token pattern.
 		/// </summary>
-		public override IEnumerable<Or<string, BuildableTokenPattern>>? Children => Child.WrapIntoEnumerable();
+		public override IEnumerable<Or<string, BuildableTokenPattern>>? TokenChildren => Child.WrapIntoEnumerable();
 
 		/// <summary>
 		/// Gets or sets the factory that creates a parsed value from the matched token.
 		/// </summary>
 		public Func<List<ParsedToken>, object?>? ParsedValueFactory { get; set; } = null;
 
-		/// <summary>
-		/// Builds the token pattern with the given children.
-		/// </summary>
-		/// <param name="children">The children IDs of this token pattern.</param>
-		/// <returns>The built token pattern.</returns>
-		public override TokenPattern Build(List<int>? children)
+		protected override TokenPattern BuildToken(List<int>? tokenChildren)
 		{
-			return new RepeatTokenPattern(children[0], MinCount, MaxCount, ParsedValueFactory);
+			return new RepeatTokenPattern(tokenChildren[0], MinCount, MaxCount, ParsedValueFactory);
 		}
 
 		public override bool Equals(object? obj)

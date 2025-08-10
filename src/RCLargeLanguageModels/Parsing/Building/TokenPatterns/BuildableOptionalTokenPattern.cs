@@ -13,16 +13,16 @@ namespace RCLargeLanguageModels.Parsing.Building.TokenPatterns
 		/// The child of this token pattern.
 		/// </summary>
 		public Or<string, BuildableTokenPattern> Child { get; set; } = string.Empty;
-		public override IEnumerable<Or<string, BuildableTokenPattern>>? Children => Child.WrapIntoEnumerable();
+		public override IEnumerable<Or<string, BuildableTokenPattern>>? TokenChildren => Child.WrapIntoEnumerable();
 
 		/// <summary>
 		/// The factory function that creates a parsed value from the matched token.
 		/// </summary>
 		public Func<ParsedToken?, object?>? ParsedValueFactory { get; set; } = null;
 
-		public override TokenPattern Build(List<int>? children)
+		protected override TokenPattern BuildToken(List<int>? tokenChildren)
 		{
-			return new OptionalTokenPattern(children[0], ParsedValueFactory);
+			return new OptionalTokenPattern(tokenChildren[0], ParsedValueFactory);
 		}
 
 		public override bool Equals(object? obj)

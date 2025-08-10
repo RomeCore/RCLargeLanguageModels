@@ -13,7 +13,7 @@ namespace RCLargeLanguageModels.Parsing.Building.ParserRules
 		/// The child of this parser rule.
 		/// </summary>
 		public Or<string, BuildableParserRule> Child { get; set; } = string.Empty;
-		public override IEnumerable<Or<string, BuildableParserRule>>? Children => Child.WrapIntoEnumerable();
+		public override IEnumerable<Or<string, BuildableParserRule>>? RuleChildren => Child.WrapIntoEnumerable();
 		public override IEnumerable<Or<string, BuildableTokenPattern>>? TokenChildren => null;
 
 		/// <summary>
@@ -21,9 +21,9 @@ namespace RCLargeLanguageModels.Parsing.Building.ParserRules
 		/// </summary>
 		public Func<ParsedRule?, object?>? ParsedValueFactory { get; set; } = null;
 
-		public override ParserRule Build(List<int>? children, List<int>? tokenChildren)
+		protected override ParserRule BuildRule(List<int>? ruleChildren, List<int>? tokenChildren)
 		{
-			return new OptionalParserRule(children[0], ParsedValueFactory);
+			return new OptionalParserRule(ruleChildren[0], ParsedValueFactory);
 		}
 
 		public override bool Equals(object? obj)

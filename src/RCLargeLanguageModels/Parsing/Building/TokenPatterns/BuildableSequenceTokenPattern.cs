@@ -15,16 +15,16 @@ namespace RCLargeLanguageModels.Parsing.Building.TokenPatterns
 		/// The elements of the sequence parser rule.
 		/// </summary>
 		public List<Or<string, BuildableTokenPattern>> Elements { get; } = new List<Or<string, BuildableTokenPattern>>();
-		public override IEnumerable<Or<string, BuildableTokenPattern>>? Children => Elements;
+		public override IEnumerable<Or<string, BuildableTokenPattern>>? TokenChildren => Elements;
 
 		/// <summary>
 		/// The factory method to create a parsed value from the matched rules.
 		/// </summary>
 		public Func<List<ParsedToken>, object?>? ParsedValueFactory { get; set; } = null;
 
-		public override TokenPattern Build(List<int>? children)
+		protected override TokenPattern BuildToken(List<int>? tokenChildren)
 		{
-			return new SequenceTokenPattern(children, ParsedValueFactory);
+			return new SequenceTokenPattern(tokenChildren, ParsedValueFactory);
 		}
 
 		public override bool Equals(object? obj)

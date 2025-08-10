@@ -13,30 +13,34 @@ namespace RCLargeLanguageModels.Parsing
 	public class Parser
 	{
 		private readonly Dictionary<string, int> _tokenPatternsAliases = new Dictionary<string, int>();
-		private readonly ImmutableArray<TokenPattern> _tokenPatterns;
-
 		private readonly Dictionary<string, int> _rulesAliases = new Dictionary<string, int>();
-		private readonly ImmutableArray<ParserRule> _rules;
 
 		/// <summary>
 		/// Gets the token patterns used by this parser.
 		/// </summary>
-		public ImmutableArray<TokenPattern> TokenPatterns => _tokenPatterns;
+		public ImmutableArray<TokenPattern> TokenPatterns { get; }
 
 		/// <summary>
 		/// Gets the rules used by this parser.
 		/// </summary>
-		public ImmutableArray<ParserRule> Rules => _rules;
+		public ImmutableArray<ParserRule> Rules { get; }
+
+		/// <summary>
+		/// Gets the global settings used by this parser.
+		/// </summary>
+		public ParserSettings Settings { get; }
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="Parser"/> class.
 		/// </summary>
-		/// <param name="tokenPatterns">The token patterns to use.</param>
+		/// <param name="tokenPatterns">The token patterns to use. </param>
 		/// <param name="rules">The rules to use.</param>
-		internal Parser(ImmutableArray<TokenPattern> tokenPatterns, ImmutableArray<ParserRule> rules)
+		/// <param name="settings">The settings to use.</param>
+		public Parser(ImmutableArray<TokenPattern> tokenPatterns, ImmutableArray<ParserRule> rules, ParserSettings settings)
 		{
-			_rules = rules;
-			_tokenPatterns = tokenPatterns;
+			Rules = rules;
+			TokenPatterns = tokenPatterns;
+			Settings = settings;
 
 			foreach (var rule in rules)
 			{
@@ -61,7 +65,7 @@ namespace RCLargeLanguageModels.Parsing
 				foreach (var alias in pattern.Aliases)
 				{
 					if (_tokenPatternsAliases.ContainsKey(alias))
-						throw new InvalidOperationException("Alias already used by another rule.");
+						throw new InvalidOperationException("Alias already used by another token pattern.");
 					_tokenPatternsAliases.Add(alias, pattern.Id);
 				}
 			}
@@ -76,7 +80,7 @@ namespace RCLargeLanguageModels.Parsing
 		public TokenPattern GetTokenPattern(string alias)
 		{
 			if (_tokenPatternsAliases.TryGetValue(alias, out var id))
-				return _tokenPatterns[id];
+				return TokenPatterns[id];
 			throw new InvalidOperationException($"Token pattern not found with alias '{alias}'.");
 		}
 
@@ -89,7 +93,7 @@ namespace RCLargeLanguageModels.Parsing
 		public ParserRule GetRule(string alias)
 		{
 			if (_rulesAliases.TryGetValue(alias, out var id))
-				return _rules[id];
+				return Rules[id];
 			throw new InvalidOperationException($"Rule not found with alias '{alias}'.");
 		}
 
@@ -111,7 +115,7 @@ namespace RCLargeLanguageModels.Parsing
 		/// <returns>A parsed rule object containing the result of the parse.</returns>
 		internal ParsedRule ParseRule(int ruleId, ParserContext context)
 		{
-			var rule = _rules[ruleId];
+			var rule = Rules[ruleId];
 
 			context.SkipWhiteSpace();
 
@@ -150,7 +154,7 @@ namespace RCLargeLanguageModels.Parsing
 		/// <returns>True if a rule was parsed successfully, false otherwise.</returns>
 		internal bool TryParseRule(int ruleId, ParserContext context, out ParsedRule parsedRule)
 		{
-			var rule = _rules[ruleId];
+			var rule = Rules[ruleId];
 
 			context.SkipWhiteSpace();
 
@@ -190,7 +194,7 @@ namespace RCLargeLanguageModels.Parsing
 		/// <returns>True if a token was matched, false otherwise.</returns>
 		internal bool TryMatchToken(int tokenPatternId, ParserContext context, out ParsedToken parsedToken)
 		{
-			var token = _tokenPatterns[tokenPatternId];
+			var token = TokenPatterns[tokenPatternId];
 
 			var position = context.position;
 			if (context.cache.TryGetToken(tokenPatternId, position, out parsedToken))

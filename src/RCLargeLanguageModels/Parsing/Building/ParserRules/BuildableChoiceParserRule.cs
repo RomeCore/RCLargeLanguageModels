@@ -15,7 +15,7 @@ namespace RCLargeLanguageModels.Parsing.Building.ParserRules
 		/// The choices of this parser rule.
 		/// </summary>
 		public List<Or<string, BuildableParserRule>> Choices { get; } = new List<Or<string, BuildableParserRule>>();
-		public override IEnumerable<Or<string, BuildableParserRule>>? Children => Choices;
+		public override IEnumerable<Or<string, BuildableParserRule>>? RuleChildren => Choices;
 		public override IEnumerable<Or<string, BuildableTokenPattern>>? TokenChildren => null;
 
 		/// <summary>
@@ -23,9 +23,9 @@ namespace RCLargeLanguageModels.Parsing.Building.ParserRules
 		/// </summary>
 		public Func<ParsedRule, object?>? ParsedValueFactory { get; set; } = null;
 
-		public override ParserRule Build(List<int>? children, List<int>? tokenChildren)
+		protected override ParserRule BuildRule(List<int>? ruleChildren, List<int>? tokenChildren)
 		{
-			return new ChoiceParserRule(children, ParsedValueFactory);
+			return new ChoiceParserRule(ruleChildren, ParsedValueFactory);
 		}
 
 		public override bool Equals(object? obj)

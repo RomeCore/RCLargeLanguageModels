@@ -22,7 +22,7 @@ namespace RCLargeLanguageModels.Parsing.Building.ParserRules
 		/// </summary>
 		public int MaxCount { get; set; } = -1;
 
-		public override IEnumerable<Or<string, BuildableParserRule>>? Children => Child.WrapIntoEnumerable();
+		public override IEnumerable<Or<string, BuildableParserRule>>? RuleChildren => Child.WrapIntoEnumerable();
 		public override IEnumerable<Or<string, BuildableTokenPattern>>? TokenChildren => null;
 
 		/// <summary>
@@ -30,9 +30,9 @@ namespace RCLargeLanguageModels.Parsing.Building.ParserRules
 		/// </summary>
 		public Func<List<ParsedRule>, object?>? ParsedValueFactory { get; set; } = null;
 
-		public override ParserRule Build(List<int>? children, List<int>? tokenChildren)
+		protected override ParserRule BuildRule(List<int>? ruleChildren, List<int>? tokenChildren)
 		{
-			return new RepeatParserRule(children[0], MinCount, MaxCount, ParsedValueFactory);
+			return new RepeatParserRule(ruleChildren[0], MinCount, MaxCount, ParsedValueFactory);
 		}
 
 		public override bool Equals(object? obj)

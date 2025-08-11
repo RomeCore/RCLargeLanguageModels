@@ -48,13 +48,13 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// </summary>
 		/// <param name="tokenPattern">The child pattern to add.</param>
 		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
-		/// <param name="configurationAction">The action to configure the local settings for this token.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
 		/// <returns>Current instance for method chaining.</returns>
 		public TokenBuilder AddToken(BuildableTokenPattern tokenPattern, Func<ParsedTokenResult, object?>? parsedValueFactory = null,
-			Action<ParserLocalSettingsBuilder>? configurationAction = null)
+			Action<ParserLocalSettingsBuilder>? config = null)
 		{
 			tokenPattern.ParsedValueFactory = parsedValueFactory;
-			configurationAction?.Invoke(tokenPattern.Settings);
+			config?.Invoke(tokenPattern.Settings);
 			return AddToken(new Or<string, BuildableTokenPattern>(tokenPattern));
 		}
 
@@ -117,15 +117,34 @@ namespace RCLargeLanguageModels.Parsing.Building
 		}
 
 		/// <summary>
+		/// Sets the intermediate value passage function for the current sequence pattern.
+		/// </summary>
+		/// <remarks>
+		/// This method should be called after adding at least two child elements to the sequence.
+		/// </remarks>
+		/// <param name="passageFunction">The function to pass the intermediate values from each pattern to the result intermediate value.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		/// <exception cref="ParserBuildingException">Thrown if the current pattern is not a sequence or has fewer than two child elements.</exception>
+		public TokenBuilder Pass(Func<List<object?>, object?>? passageFunction)
+		{
+			if (_pattern?.AsT2() is BuildableSequenceTokenPattern sequenceRule)
+				sequenceRule.PassageFunction = passageFunction;
+			else
+				throw new ParserBuildingException("Passage function can only be set on a sequence token pattern " +
+					"(must be added at least two child elements or must be converted to a sequence first).");
+			return this;
+		}
+
+		/// <summary>
 		/// Adds an optional token pattern to the current sequence.
 		/// </summary>
 		/// <param name="builderAction">The action to build the optional token pattern.</param>
 		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
-		/// <param name="configurationAction">The action to configure the local settings for this token.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
 		/// <returns>Current instance for method chaining.</returns>
 		/// <exception cref="ParserBuildingException">Thrown if builder action have not added any elements.</exception>
 		public TokenBuilder Optional(Action<TokenBuilder> builderAction, Func<ParsedTokenResult, object?>? parsedValueFactory = null,
-			Action<ParserLocalSettingsBuilder>? configurationAction = null)
+			Action<ParserLocalSettingsBuilder>? config = null)
 		{
 			var builder = new TokenBuilder();
 			builderAction(builder);
@@ -136,7 +155,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 			return AddToken(new BuildableOptionalTokenPattern
 			{
 				Child = builder.BuildingPattern.Value
-			}, parsedValueFactory, configurationAction);
+			}, parsedValueFactory, config);
 		}
 
 		/// <summary>
@@ -146,11 +165,11 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// <param name="min">The minimum number of times the token can be repeated.</param>
 		/// <param name="max">The maximum number of times the token can be repeated. -1 indicates no upper limit.</param>
 		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
-		/// <param name="configurationAction">The action to configure the local settings for this token.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
 		/// <returns>Current instance for method chaining.</returns>
 		/// <exception cref="ParserBuildingException">Thrown if builder action have not added any elements.</exception>
 		public TokenBuilder Repeat(Action<TokenBuilder> builderAction, int min, int max, Func<ParsedTokenResult, object?>? parsedValueFactory = null,
-			Action<ParserLocalSettingsBuilder>? configurationAction = null)
+			Action<ParserLocalSettingsBuilder>? config = null)
 		{
 			var builder = new TokenBuilder();
 			builderAction(builder);
@@ -163,7 +182,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 				MinCount = min,
 				MaxCount = max,
 				Child = builder.BuildingPattern.Value
-			}, parsedValueFactory, configurationAction);
+			}, parsedValueFactory, config);
 		}
 
 		/// <summary>
@@ -172,13 +191,13 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// <param name="builderAction">The token builder action to build the repeatable token.</param>
 		/// <param name="min">The minimum number of times the token can be repeated.</param>
 		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
-		/// <param name="configurationAction">The action to configure the local settings for this token.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
 		/// <returns>Current instance for method chaining.</returns>
 		/// <exception cref="ParserBuildingException">Thrown if builder action have not added any elements.</exception>
 		public TokenBuilder Repeat(Action<TokenBuilder> builderAction, int min, Func<ParsedTokenResult, object?>? parsedValueFactory = null,
-			Action<ParserLocalSettingsBuilder>? configurationAction = null)
+			Action<ParserLocalSettingsBuilder>? config = null)
 		{
-			return Repeat(builderAction, min, -1, parsedValueFactory, configurationAction);
+			return Repeat(builderAction, min, -1, parsedValueFactory, config);
 		}
 
 		/// <summary>
@@ -186,12 +205,12 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// </summary>
 		/// <param name="builderAction">The token builder action to build the repeatable token.</param>
 		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
-		/// <param name="configurationAction">The action to configure the local settings for this token.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
 		/// <exception cref="ParserBuildingException">Thrown if builder action have not added any elements.</exception>
 		public TokenBuilder ZeroOrMore(Action<TokenBuilder> builderAction, Func<ParsedTokenResult, object?>? parsedValueFactory = null,
-			Action<ParserLocalSettingsBuilder>? configurationAction = null)
+			Action<ParserLocalSettingsBuilder>? config = null)
 		{
-			return Repeat(builderAction, 0, -1, parsedValueFactory, configurationAction);
+			return Repeat(builderAction, 0, -1, parsedValueFactory, config);
 		}
 
 		/// <summary>
@@ -199,13 +218,13 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// </summary>
 		/// <param name="builderAction">The token builder action to build the repeatable token.</param>
 		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
-		/// <param name="configurationAction">The action to configure the local settings for this token.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
 		/// <returns>Current instance for method chaining.</returns>
 		/// <exception cref="ParserBuildingException">Thrown if builder action have not added any elements.</exception>
 		public TokenBuilder OneOrMore(Action<TokenBuilder> builderAction, Func<ParsedTokenResult, object?>? parsedValueFactory = null,
-			Action<ParserLocalSettingsBuilder>? configurationAction = null)
+			Action<ParserLocalSettingsBuilder>? config = null)
 		{
-			return Repeat(builderAction, 1, -1, parsedValueFactory, configurationAction);
+			return Repeat(builderAction, 1, -1, parsedValueFactory, config);
 		}
 
 		/// <summary>
@@ -213,11 +232,11 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// </summary>
 		/// <param name="choices">The choices for this token pattern.</param>
 		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
-		/// <param name="configurationAction">The action to configure the local settings for this token.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
 		/// <returns>Current instance for method chaining.</returns>
 		/// <exception cref="ParserBuildingException">Thrown if any of builder actions have not added any elements.</exception>
 		public TokenBuilder Choice(IEnumerable<Or<Action<TokenBuilder>, string>> choices, Func<ParsedTokenResult, object?>? parsedValueFactory,
-			Action<ParserLocalSettingsBuilder>? configurationAction = null)
+			Action<ParserLocalSettingsBuilder>? config = null)
 		{
 			var builtValues = choices.Select(c =>
 			{
@@ -240,7 +259,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 
 			var choice = new BuildableChoiceTokenPattern();
 			choice.Choices.AddRange(builtValues);
-			return AddToken(choice, parsedValueFactory, configurationAction);
+			return AddToken(choice, parsedValueFactory, config);
 		}
 
 		/// <summary>
@@ -248,14 +267,14 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// </summary>
 		/// <param name="choices">The choices for this token pattern.</param>
 		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
-		/// <param name="configurationAction">The action to configure the local settings for this token.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
 		/// <returns>Current instance for method chaining.</returns>
 		/// <exception cref="ParserBuildingException">Thrown if any of builder actions have not added any elements.</exception>
 		public TokenBuilder Choice(IEnumerable<Action<TokenBuilder>> choices, Func<ParsedTokenResult, object?>? parsedValueFactory,
-			Action<ParserLocalSettingsBuilder>? configurationAction = null)
+			Action<ParserLocalSettingsBuilder>? config = null)
 		{
 			return Choice(choices.Select(c => new Or<Action<TokenBuilder>, string>(c)).ToArray(),
-				parsedValueFactory, configurationAction);
+				parsedValueFactory, config);
 		}
 
 		/// <summary>

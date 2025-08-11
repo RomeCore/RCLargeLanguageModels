@@ -9,6 +9,11 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 	/// <summary>
 	/// Matches one of a set of literal strings in the input text, using a Trie for efficient lookup.
 	/// </summary>
+	/// <remarks>
+	/// Passes a matched original literal <see cref="string"/> (not captured) as an intermediate value.
+	/// For example, if pattern was choice of "HELLO" or "WORLD" with case-insensitive comparison,
+	/// then the intermediate value would be "HELLO" or "WORLD", not "hello" or "world".
+	/// </remarks>
 	public class LiteralChoiceTokenPattern : TokenPattern
 	{
 		/// <summary>
@@ -59,25 +64,21 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			var node = _root;
 			foreach (var ch in literal)
 			{
-				if (node.Children.TryGetValue(ch, out var child))
-				{
-					node = child;
-				}
-				else
+				if (!node.Children.TryGetValue(ch, out var child))
 				{
 					child = new TrieNode(CharComparer);
 					node.Children[ch] = child;
-					node = child;
 				}
+				node = child;
 			}
 			node.IsTerminal = true;
 			node.Literal = literal;
 		}
 
-		public override bool TryMatch(ParserContext context, out ParsedToken token)
-		{
-			AdvanceContext(ref context);
 
+
+		public override bool TryMatch(ParserContext context, ParserContext childContext, out ParsedToken token)
+		{
 			int pos = context.position;
 			var node = _root;
 			TrieNode? lastMatchNode = null;
@@ -107,6 +108,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 				return true;
 			}
 
+			context.RecordError($"Failed to match {this}.");
 			token = ParsedToken.Fail;
 			return false;
 		}
@@ -115,7 +117,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 		public override string ToString(int remainingDepth)
 		{
-			return $"literal choice: {{{string.Join("|", Literals)}}}";
+			return $"literal choice: '{string.Join("|", Literals)}'";
 		}
 
 		public override bool Equals(object? obj)

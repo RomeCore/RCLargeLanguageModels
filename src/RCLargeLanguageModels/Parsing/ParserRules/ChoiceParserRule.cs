@@ -26,10 +26,8 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 
 
-		public override bool TryParse(ParserContext context, out ParsedRule result)
+		public override bool TryParse(ParserContext context, ParserContext childContext, out ParsedRule result)
 		{
-			var childContext = AdvanceContext(ref context);
-
 			int i = 0;
 			foreach (var rule in Choices)
 			{
@@ -46,26 +44,6 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 			context.RecordError($"No matching choice found from {this}.");
 			result = ParsedRule.Fail;
 			return false;
-		}
-
-		public override ParsedRule Parse(ParserContext context)
-		{
-			var childContext = AdvanceContext(ref context);
-
-			int i = 0;
-			foreach (var rule in Choices)
-			{
-				if (TryParseRule(rule, childContext, out var result))
-				{
-					result.ruleId = rule;
-					result.occurency = i;
-					result.parsedValueFactory = ParsedValueFactory;
-					return result;
-				}
-				i++;
-			}
-
-			throw new ParsingException($"No matching choice found from {this}.", context.str, context.position);
 		}
 
 

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Net;
 
 namespace RCLargeLanguageModels.Parsing.TokenPatterns
 {
@@ -16,23 +17,30 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 		public ImmutableArray<int> TokenPatterns { get; }
 
 		/// <summary>
+		/// The function to pass the intermediate values from each pattern to the result intermediate value.
+		/// </summary>
+		public Func<List<object?>, object?>? PassageFunction { get; }
+
+
+
+		/// <summary>
 		/// Initializes a new instance of the <see cref="ChoiceTokenPattern"/> class.
 		/// </summary>
-		/// <param name="tokenPatternIds">The token patterns ids to try.</param>
-		public SequenceTokenPattern(IEnumerable<int> tokenPatternIds)
+		/// <param name="tokenPatternIds">The token patterns ids to match in sequence.</param>
+		/// <param name="passageFunction">The function to pass the intermediate values from each pattern to the result intermediate value.</param>
+		public SequenceTokenPattern(IEnumerable<int> tokenPatternIds, Func<List<object?>, object?>? passageFunction = null)
 		{
 			TokenPatterns = tokenPatternIds?.ToImmutableArray()
 				?? throw new ArgumentNullException(nameof(tokenPatternIds));
 			if (TokenPatterns.IsEmpty)
 				throw new ArgumentException("At least one token pattern must be provided.", nameof(tokenPatternIds));
+			PassageFunction = passageFunction;
 		}
 
 
 
-		public override bool TryMatch(ParserContext context, out ParsedToken token)
+		public override bool TryMatch(ParserContext context, ParserContext childContext, out ParsedToken token)
 		{
-			var childContext = AdvanceContext(ref context);
-
 			var initialPosition = childContext.position;
 			var tokens = new List<ParsedToken>();
 
@@ -40,6 +48,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			{
 				if (!TryMatchToken(tokenId, childContext, out var subToken))
 				{
+					context.RecordError($"Failed to match {GetTokenPattern(tokenId)}");
 					token = ParsedToken.Fail;
 					return false;
 				}
@@ -48,7 +57,19 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 				childContext.position = subToken.startIndex + subToken.length;
 			}
 
-			token = new ParsedToken(Id, initialPosition, context.position - initialPosition, ParsedValueFactory);
+			object? intermediateValue = null;
+			if (PassageFunction != null)
+			{
+				var intermediateValues = tokens.Select(t => t.intermediateValue).ToList();
+				intermediateValue = PassageFunction(intermediateValues);
+			}
+
+			token = new ParsedToken(
+				Id,
+				initialPosition,
+				childContext.position - initialPosition,
+				ParsedValueFactory,
+				intermediateValue);
 			return true;
 		}
 
@@ -67,13 +88,15 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 		{
 			return base.Equals(obj) &&
 				   obj is SequenceTokenPattern pattern &&
-				   TokenPatterns.SequenceEqual(pattern.TokenPatterns);
+				   TokenPatterns.SequenceEqual(pattern.TokenPatterns) &&
+				   Equals(PassageFunction, pattern.PassageFunction);
 		}
 
 		public override int GetHashCode()
 		{
 			int hashCode = base.GetHashCode();
 			hashCode = hashCode * -1521134295 + TokenPatterns.GetSequenceHashCode();
+			hashCode = hashCode * -1521134295 + PassageFunction?.GetHashCode() ?? 0;
 			return hashCode;
 		}
 	}

@@ -27,10 +27,8 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 
 
-		public override bool TryParse(ParserContext context, out ParsedRule result)
+		public override bool TryParse(ParserContext context, ParserContext childContext, out ParsedRule result)
 		{
-			var childContext = AdvanceContext(ref context);
-
 			if (context.parser.TryParseRule(Rule, childContext, out var parsedRule))
 			{
 				result = new ParsedRule(Id, parsedRule.startIndex, parsedRule.length, ImmutableList.Create(parsedRule), ParsedValueFactory, parsedRule.intermediateValue);
@@ -41,12 +39,6 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 				result = new ParsedRule(Id, context.position, 0, ImmutableList<ParsedRule>.Empty, ParsedValueFactory, null);
 				return true;
 			}
-		}
-
-		public override ParsedRule Parse(ParserContext context)
-		{
-			TryParse(context, out var result);
-			return result;
 		}
 
 

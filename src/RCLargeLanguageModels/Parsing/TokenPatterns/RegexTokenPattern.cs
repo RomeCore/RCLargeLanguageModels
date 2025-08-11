@@ -8,6 +8,9 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 	/// <summary>
 	/// Matches a regular expression pattern in the input text.
 	/// </summary>
+	/// <remarks>
+	/// Passes a <see cref="Match"/> object from the regex match as an intermediate value.
+	/// </remarks>
 	public class RegexTokenPattern : TokenPattern
 	{
 		/// <summary>
@@ -35,10 +38,8 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 
 
-		public override bool TryMatch(ParserContext context, out ParsedToken token)
+		public override bool TryMatch(ParserContext context, ParserContext childContext, out ParsedToken token)
 		{
-			AdvanceContext(ref context);
-
 			var match = Regex.Match(context.str.Substring(context.position));
 			if (!match.Success || match.Index != 0)
 			{

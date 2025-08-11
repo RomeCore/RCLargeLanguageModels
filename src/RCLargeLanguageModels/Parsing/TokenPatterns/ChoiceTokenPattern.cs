@@ -30,10 +30,8 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 
 
-		public override bool TryMatch(ParserContext context, out ParsedToken token)
+		public override bool TryMatch(ParserContext context, ParserContext childContext, out ParsedToken token)
 		{
-			var childContext = AdvanceContext(ref context);
-
 			foreach (var tokenId in Choices)
 			{
 				if (TryMatchToken(tokenId, childContext, out token))

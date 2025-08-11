@@ -48,10 +48,8 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 
 
-		public override bool TryMatch(ParserContext context, out ParsedToken token)
+		public override bool TryMatch(ParserContext context, ParserContext childContext, out ParsedToken token)
 		{
-			var childContext = AdvanceContext(ref context);
-
 			var tokens = new List<ParsedToken>();
 			var initialPosition = context.position;
 
@@ -59,7 +57,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			{
 				ParsedToken matchedToken = ParsedToken.Fail;
 				if (!TryMatchToken(TokenPattern, childContext, out matchedToken)
-					|| matchedToken.startIndex == childContext.position)
+					|| matchedToken.startIndex + matchedToken.length == childContext.position)
 				{
 					break;
 				}
@@ -70,6 +68,8 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 			if (tokens.Count < this.MinCount)
 			{
+				context.RecordError($"Expected at least {MinCount} occurrences" +
+					$"of {GetTokenPattern(TokenPattern)}, but found only {tokens.Count}.");
 				token = ParsedToken.Fail;
 				return false;
 			}

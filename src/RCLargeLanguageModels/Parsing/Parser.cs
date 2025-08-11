@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Data;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using Newtonsoft.Json.Linq;
 
 namespace RCLargeLanguageModels.Parsing
 {
@@ -119,6 +122,24 @@ namespace RCLargeLanguageModels.Parsing
 		}
 
 		/// <summary>
+		/// Advances the parser context to use for this and child elements.
+		/// </summary>
+		/// <remarks>
+		/// For <paramref name="context"/> it updates the settings to use as local element. <br/>
+		/// It makes a <paramref name="childContext"/> that have advanced recursion depth and settings for child elements.
+		/// </remarks>
+		private void AdvanceContext(ParserElement element, ref ParserContext context, out ParserContext childContext)
+		{
+			childContext = context;
+
+			context.settings.Resolve(element.Settings, Settings, out var forLocal, out var forChildren);
+			context.settings = forLocal;
+
+			childContext.settings = forChildren;
+			childContext.recursionDepth++;
+		}
+
+		/// <summary>
 		/// Tries to parse rule based on the caching settings.
 		/// </summary>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -126,56 +147,30 @@ namespace RCLargeLanguageModels.Parsing
 		{
 			var rule = Rules[ruleId];
 
+			AdvanceContext(rule, ref context, out var childContext);
+
 			if (context.settings.caching == ParserCachingMode.Default ||
 				context.settings.caching == ParserCachingMode.Rules)
 			{
 				if (!context.cache.TryGetRule(ruleId, context.position, out parsedRule))
 				{
-					rule.TryParse(context, out parsedRule);
+					rule.TryParse(context, childContext, out parsedRule);
 					context.cache.AddRule(ruleId, context.position, parsedRule);
 				}
 			}
 			else
 			{
-				rule.TryParse(context, out parsedRule);
+				rule.TryParse(context, childContext, out parsedRule);
 			}
 
 			if (parsedRule.success)
+			{
+				if (context.position == 54)
+					Console.WriteLine("ASS");
 				context.successPositions.Add(context.position);
+			}
 
 			return parsedRule.success;
-		}
-
-		/// <summary>
-		/// Parses rule based on the caching settings.
-		/// </summary>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private ParsedRule ParseNonValidated(int ruleId, ParserContext context)
-		{
-			var rule = Rules[ruleId];
-
-			ParsedRule parsedRule;
-
-			if (context.settings.caching == ParserCachingMode.Default ||
-				context.settings.caching == ParserCachingMode.Rules)
-			{
-				if (!context.cache.TryGetRule(ruleId, context.position, out parsedRule))
-				{
-					parsedRule = rule.Parse(context);
-					context.cache.AddRule(ruleId, context.position, parsedRule);
-				}
-			}
-			else
-			{
-				parsedRule = rule.Parse(context);
-			}
-
-			if (parsedRule.success)
-				context.successPositions.Add(context.position);
-			else
-				throw new ParsingException("Parse failed with unknown reason.", context.str, context.position);
-
-			return parsedRule;
 		}
 
 		/// <summary>
@@ -186,18 +181,20 @@ namespace RCLargeLanguageModels.Parsing
 		{
 			var token = TokenPatterns[tokenPatternId];
 
+			AdvanceContext(token, ref context, out var childContext);
+
 			if (context.settings.caching == ParserCachingMode.Default ||
 				context.settings.caching == ParserCachingMode.TokenPatterns)
 			{
 				if (!context.cache.TryGetToken(tokenPatternId, context.position, out parsedToken))
 				{
-					token.TryMatch(context, out parsedToken);
+					token.TryMatch(context, childContext, out parsedToken);
 					context.cache.AddToken(tokenPatternId, context.position, parsedToken);
 				}
 			}
 			else
 			{
-				token.TryMatch(context, out parsedToken);
+				token.TryMatch(context, childContext, out parsedToken);
 			}
 
 			if (parsedToken.success)
@@ -214,6 +211,7 @@ namespace RCLargeLanguageModels.Parsing
 		{
 			if (context.settings.skipRule != -1)
 			{
+				context.disableSuccessRecording = true;
 				TryParseNonValidated(context.settings.skipRule, context, out var parsedSkipRule);
 
 				if (parsedSkipRule.success)
@@ -222,6 +220,25 @@ namespace RCLargeLanguageModels.Parsing
 					context.skippedRules.Add(parsedSkipRule);
 				}
 			}
+		}
+
+		/// <summary>
+		/// Creates a <see cref="ParsingException"/> from the current parser context.
+		/// </summary>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private ParsingException ExceptionFromContext(ParserContext context)
+		{
+			var errors = context.GetRelevantErrors().ToArray();
+			if (errors.Length == 0)
+			{
+				var error = context.GetMostRelevantError();
+				if (!string.IsNullOrEmpty(error.message))
+					return error.ToException(context);
+
+				return new ParsingException("Unknown error.", context.str, 0);
+			}
+
+			return new ParsingException(context.str, errors);
 		}
 
 		/// <summary>
@@ -237,7 +254,10 @@ namespace RCLargeLanguageModels.Parsing
 
 			TrySkip(ref context);
 
-			return ParseNonValidated(ruleId, context);
+			if (TryParseNonValidated(ruleId, context, out var parsedRule))
+				return parsedRule;
+
+			throw ExceptionFromContext(context);
 		}
 
 		/// <summary>
@@ -262,6 +282,23 @@ namespace RCLargeLanguageModels.Parsing
 		}
 
 		/// <summary>
+		/// Matches the given input using the specified token pattern.
+		/// </summary>
+		/// <param name="tokenPatternId">The unique identifier for the token pattern to use.</param>
+		/// <param name="context">The parser context to use for parsing.</param>
+		/// <returns>The parsed token object containing the result of the match.</returns>
+		internal ParsedToken MatchToken(int tokenPatternId, ParserContext context)
+		{
+			if (CheckRecursionDepth(context))
+				throw new ParsingException("Maximum recursion depth exceeded.", context.str, context.position);
+
+			if (TryMatchNonValidated(tokenPatternId, context, out var parsedRule))
+				return parsedRule;
+
+			throw ExceptionFromContext(context);
+		}
+
+		/// <summary>
 		/// Parses the given input using the specified token pattern.
 		/// </summary>
 		/// <param name="tokenPatternId">The unique identifier for the token pattern to use.</param>
@@ -279,6 +316,8 @@ namespace RCLargeLanguageModels.Parsing
 
 			return TryMatchNonValidated(tokenPatternId, context, out parsedToken);
 		}
+
+
 
 		/// <summary>
 		/// Parses the given input using the specified rule alias and parser context.
@@ -316,6 +355,21 @@ namespace RCLargeLanguageModels.Parsing
 		/// </summary>
 		/// <param name="tokenPatternAlias">The alias for the token pattern to use.</param>
 		/// <param name="context">The parser context to use for parsing.</param>
+		/// <returns>The parsed token containing the result of the parse.</returns>
+		public ParsedTokenResult MatchToken(string tokenPatternAlias, ParserContext context)
+		{
+			if (!_tokenPatternsAliases.TryGetValue(tokenPatternAlias, out var tokenPatternId))
+				throw new ArgumentException("Invalid token pattern alias", nameof(tokenPatternAlias));
+
+			var parsedToken = MatchToken(tokenPatternId, context);
+			return new ParsedTokenResult(null, context, parsedToken);
+		}
+
+		/// <summary>
+		/// Parses the given input using the specified token pattern alias.
+		/// </summary>
+		/// <param name="tokenPatternAlias">The alias for the token pattern to use.</param>
+		/// <param name="context">The parser context to use for parsing.</param>
 		/// <param name="result">The parsed token containing the result of the parse.</param>
 		/// <returns>True if a token was matched, false otherwise.</returns>
 		public bool TryMatchToken(string tokenPatternAlias, ParserContext context, out ParsedTokenResult result)
@@ -343,6 +397,57 @@ namespace RCLargeLanguageModels.Parsing
 
 			var context = CreateContext(input);
 			return new ParsedRuleResult(null, context, ParseRule(ruleId, context));
+		}
+
+		/// <summary>
+		/// Tries to parse a rule using the specified rule alias and input text.
+		/// </summary>
+		/// <param name="ruleAlias">The alias for the parser rule to use.</param>
+		/// <param name="input">The input text to parse.</param>
+		/// <param name="result">The parsed rule containing the result of the parse.</param>
+		/// <returns>True if a rule was parsed successfully, false otherwise.</returns>
+		public bool TryParseRule(string ruleAlias, string input, out ParsedRuleResult result)
+		{
+			if (!_rulesAliases.TryGetValue(ruleAlias, out var ruleId))
+				throw new ArgumentException("Invalid rule alias", nameof(ruleAlias));
+
+			var context = CreateContext(input);
+			var res = TryParseRule(ruleId, context, out var parsedRule);
+			result = new ParsedRuleResult(null, context, parsedRule);
+			return res;
+		}
+
+		/// <summary>
+		/// Parses the given input using the specified token pattern alias and input text.
+		/// </summary>
+		/// <param name="tokenPatternAlias">The alias for the token pattern to use.</param>
+		/// <param name="input">The input text to parse.</param>
+		/// <returns>A parsed token pattern containing the result of the parse.</returns>
+		public ParsedTokenResult MatchToken(string tokenPatternAlias, string input)
+		{
+			if (!_tokenPatternsAliases.TryGetValue(tokenPatternAlias, out var tokenPatternId))
+				throw new ArgumentException("Invalid token pattern alias", nameof(tokenPatternAlias));
+
+			var context = CreateContext(input);
+			return new ParsedTokenResult(null, context, MatchToken(tokenPatternId, context));
+		}
+
+		/// <summary>
+		/// Parses the given input using the specified token pattern alias and input text.
+		/// </summary>
+		/// <param name="tokenPatternAlias">The alias for the token pattern to use.</param>
+		/// <param name="input">The input text to parse.</param>
+		/// <param name="result">The parsed token containing the result of the parse.</param>
+		/// <returns>True if a token was matched, false otherwise.</returns>
+		public bool TryMatchToken(string tokenPatternAlias, string input, out ParsedTokenResult result)
+		{
+			if (!_tokenPatternsAliases.TryGetValue(tokenPatternAlias, out var tokenPatternId))
+				throw new ArgumentException("Invalid token pattern alias", nameof(tokenPatternAlias));
+
+			var context = CreateContext(input);
+			var res = TryMatchToken(tokenPatternId, context, out var parsedToken);
+			result = new ParsedTokenResult(null, context, parsedToken);
+			return res;
 		}
 	}
 }

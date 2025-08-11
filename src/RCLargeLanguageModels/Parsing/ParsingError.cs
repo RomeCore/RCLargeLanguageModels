@@ -7,7 +7,7 @@ namespace RCLargeLanguageModels.Parsing
 	/// <summary>
 	/// Represents a parsing error encountered during the parsing of input string.
 	/// </summary>
-	public readonly struct ParsingError
+	public readonly struct ParsingError : IEquatable<ParsingError>
 	{
 		/// <summary>
 		/// Gets the position in the input string where the error occurred.
@@ -48,6 +48,29 @@ namespace RCLargeLanguageModels.Parsing
 		public ParsingException ToException(ParserContext context)
 		{
 			return new ParsingException(message, context.str, position);
+		}
+
+		public override string ToString()
+		{
+			return $"[{position}] {message}";
+		}
+
+		public override bool Equals(object obj)
+		{
+			return obj is ParsingError other && Equals(other);
+		}
+
+		public bool Equals(ParsingError other)
+		{
+			return position == other.position && message == other.message;
+		}
+
+		public override int GetHashCode()
+		{
+			int hash = 17;
+			hash = hash * 23 + position;
+			hash = hash * 23 + message.GetHashCode();
+			return hash;
 		}
 	}
 }

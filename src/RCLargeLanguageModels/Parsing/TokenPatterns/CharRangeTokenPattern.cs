@@ -36,10 +36,8 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 
 
-		public override bool TryMatch(ParserContext context, out ParsedToken token)
+		public override bool TryMatch(ParserContext context, ParserContext childContext, out ParsedToken token)
 		{
-			AdvanceContext(ref context);
-
 			if (context.position >= context.str.Length)
 			{
 				token = ParsedToken.Fail;

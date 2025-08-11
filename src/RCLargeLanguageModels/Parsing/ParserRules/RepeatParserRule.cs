@@ -48,43 +48,8 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 
 
-		public override ParsedRule Parse(ParserContext context)
+		public override bool TryParse(ParserContext context, ParserContext childContext, out ParsedRule result)
 		{
-			var childContext = AdvanceContext(ref context);
-
-			var rules = new List<ParsedRule>();
-			var initialPosition = childContext.position;
-
-			for (int i = 0; i < this.MaxCount || this.MaxCount == -1; i++)
-			{
-				ParsedRule parsedRule = ParsedRule.Fail;
-				if (!TryParseRule(Rule, childContext, out parsedRule))
-				{
-					break;
-				}
-				childContext.position = parsedRule.startIndex + parsedRule.length;
-				parsedRule.occurency = i;
-				rules.Add(parsedRule);
-			}
-
-			if (rules.Count < MinCount)
-			{
-				throw new ParsingException($"Expected at least {MinCount} repetitions of {GetRule(Rule)}\nbut found {rules.Count}.",
-					childContext.str, initialPosition);
-			}
-
-			return new ParsedRule(
-				Id,
-				initialPosition,
-				childContext.position - initialPosition,
-				rules.ToImmutableList(),
-				ParsedValueFactory);
-		}
-
-		public override bool TryParse(ParserContext context, out ParsedRule result)
-		{
-			var childContext = AdvanceContext(ref context);
-
 			var rules = new List<ParsedRule>();
 			var initialPosition = childContext.position;
 

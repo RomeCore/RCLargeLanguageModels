@@ -26,35 +26,21 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 
 
-		public override bool TryParse(ParserContext context, out ParsedRule result)
+		public override bool TryParse(ParserContext context, ParserContext childContext, out ParsedRule result)
 		{
-			var childContext = AdvanceContext(ref context);
-
 			if (!TryMatchToken(TokenPattern, childContext, out var parsedToken))
 			{
-				context.RecordError($"Failed to parse {GetTokenPattern(TokenPattern)}");
+				context.RecordError($"Failed to parse token {GetTokenPattern(TokenPattern)}");
 				result = ParsedRule.Fail;
 				return false;
 			}
 
 			result = new ParsedRule(Id, parsedToken.startIndex, parsedToken.length, parsedToken,
-				ParsedValueFactory, parsedToken.intermediateValue);
+				ParsedValueFactory ?? DefaultParsedValueFactory, parsedToken.intermediateValue);
 			return true;
 		}
 
-		public override ParsedRule Parse(ParserContext context)
-		{
-			var childContext = AdvanceContext(ref context);
-
-			if (TryMatchToken(TokenPattern, childContext, out var parsedToken))
-			{
-				return new ParsedRule(Id, parsedToken.startIndex, parsedToken.length, parsedToken,
-					ParsedValueFactory, parsedToken.intermediateValue);
-			}
-
-			throw new ParsingException($"Failed to parse '{GetTokenPattern(TokenPattern)}'",
-				context.str, context.position);
-		}
+		private static object? DefaultParsedValueFactory(ParsedRuleResult result) => result.Token.Value;
 
 
 

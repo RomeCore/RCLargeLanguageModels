@@ -53,17 +53,17 @@ namespace RCLargeLanguageModels.Parsing
 	public enum ParserErrorHandlingMode
 	{
 		/// <summary>
-		/// Records errors when trying to parse and throws errors when just parsing. The default mode.
+		/// Records errors into parsing context. The default mode.
 		/// </summary>
 		Default = 0,
 
 		/// <summary>
-		/// Ignores any errors when trying to parse and throws errors when just parsing.
+		/// Ignores any errors when parser elements trying to record them.
 		/// </summary>
 		NoRecord,
 
 		/// <summary>
-		/// Throws any errors when trying to parse or when just parsing.
+		/// Throws any errors when parser elements trying to record them.
 		/// </summary>
 		Throw
 	}

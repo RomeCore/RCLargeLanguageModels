@@ -56,6 +56,11 @@ namespace RCLargeLanguageModels.Parsing
 		/// </summary>
 		public int Length => Result.length;
 
+		/// <summary>
+		/// Gets the intermediate value associated with this token.
+		/// </summary>
+		public object? IntermediateValue => Result.intermediateValue;
+
 		private readonly Lazy<string> _textLazy;
 		/// <summary>
 		/// Gets the parsed input text that was parsed.

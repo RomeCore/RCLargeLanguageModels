@@ -47,6 +47,11 @@ namespace RCLargeLanguageModels.Parsing.Building
 
 
 
+		/// <summary>
+		/// Sets the skip rule.
+		/// </summary>
+		/// <param name="builderAction">The action to build the skip rule.</param>
+		/// <returns>This instance for method chaining.</returns>
 		public ParserSettingsBuilder Skip(Action<RuleBuilder> builderAction)
 		{
 			var builder = new RuleBuilder();
@@ -55,22 +60,130 @@ namespace RCLargeLanguageModels.Parsing.Building
 			return this;
 		}
 
+		/// <summary>
+		/// Sets the error handling mode.
+		/// </summary>
+		/// <param name="mode">The error handling mode.</param>
+		/// <returns>This instance for method chaining.</returns>
 		public ParserSettingsBuilder ErrorHandling(ParserErrorHandlingMode mode)
 		{
 			_settings.errorHandling = mode;
 			return this;
 		}
 
+		/// <summary>
+		/// Sets the default error handling mode.
+		/// </summary>
+		/// <remarks>
+		/// This will cause the parser to record errors.
+		/// </remarks>
+		/// <returns>This instance for method chaining.</returns>
+		public ParserSettingsBuilder RecordErrors()
+		{
+			return ErrorHandling(ParserErrorHandlingMode.Default);
+		}
+
+		/// <summary>
+		/// Sets the no error record handling mode.
+		/// </summary>
+		/// <remarks>
+		/// This will cause the parser to ignore any errors when trying to record them.
+		/// </remarks>
+		/// <returns>This instance for method chaining.</returns>
+		public ParserSettingsBuilder SkipErrors()
+		{
+			return ErrorHandling(ParserErrorHandlingMode.NoRecord);
+		}
+
+		/// <summary>
+		/// Sets the error throw handling mode.
+		/// </summary>
+		/// <remarks>
+		/// This will cause the parser to throw errors when trying to record them.
+		/// </remarks>
+		/// <returns>This instance for method chaining.</returns>
+		public ParserSettingsBuilder ThrowErrors()
+		{
+			return ErrorHandling(ParserErrorHandlingMode.Throw);
+		}
+
+		/// <summary>
+		/// Sets the caching mode.
+		/// </summary>
+		/// <param name="mode">The caching mode.</param>
+		/// <returns>This instance for method chaining.</returns>
 		public ParserSettingsBuilder Caching(ParserCachingMode mode)
 		{
 			_settings.caching = mode;
 			return this;
 		}
 
+		/// <summary>
+		/// Sets the default caching mode.
+		/// </summary>
+		/// <remarks>
+		/// This will cause the parser to use and write both rules and token patterns via caching.
+		/// </remarks>
+		/// <returns>This instance for method chaining.</returns>
+		public ParserSettingsBuilder CacheAll()
+		{
+			return Caching(ParserCachingMode.Default);
+		}
+
+		/// <summary>
+		/// Sets the disabled caching mode.
+		/// </summary>
+		/// <remarks>
+		/// This will cause the parser to ignore any caching.
+		/// </remarks>
+		/// <returns>This instance for method chaining.</returns>
+		public ParserSettingsBuilder NoCaching()
+		{
+			return Caching(ParserCachingMode.NoCache);
+		}
+
+		/// <summary>
+		/// Sets the only rules caching mode.
+		/// </summary>
+		/// <remarks>
+		/// This will cause the parser to use and write rules via caching.
+		/// </remarks>
+		/// <returns>This instance for method chaining.</returns>
+		public ParserSettingsBuilder CacheOnlyRules()
+		{
+			return Caching(ParserCachingMode.Rules);
+		}
+
+		/// <summary>
+		/// Sets the only tokens caching mode.
+		/// </summary>
+		/// <remarks>
+		/// This will cause the parser to use and write token patterns via caching.
+		/// </remarks>
+		/// <returns>This instance for method chaining.</returns>
+		public ParserSettingsBuilder CacheOnlyTokens()
+		{
+			return Caching(ParserCachingMode.TokenPatterns);
+		}
+
+		/// <summary>
+		/// Sets the maximum recursion depth.
+		/// </summary>
+		/// <param name="depth">The maximum recursion depth. Can be 0 for no limit.</param>
+		/// <returns>This instance for method chaining.</returns>
 		public ParserSettingsBuilder MaxRecursionDepth(int depth)
 		{
 			_settings.maxRecursionDepth = depth;
 			return this;
+		}
+
+		/// <summary>
+		/// Sets the infinite recursion depth.
+		/// </summary>
+		/// <returns>This instance for method chaining.</returns>
+		public ParserSettingsBuilder DisableRecursionLimit()
+		{
+			return MaxRecursionDepth(0);
 		}
 	}
 }

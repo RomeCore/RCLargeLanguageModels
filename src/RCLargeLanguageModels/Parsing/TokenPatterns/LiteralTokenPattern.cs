@@ -7,6 +7,9 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 	/// <summary>
 	/// Matches a literal string in the input text.
 	/// </summary>
+	/// Passes a matched original literal <see cref="string"/> (not captured) as an intermediate value.
+	/// For example, if pattern was "HELLO" with case-insensitive comparison,
+	/// then the intermediate value would be "HELLO", not "hello".
 	public class LiteralTokenPattern : TokenPattern
 	{
 		/// <summary>
@@ -34,12 +37,11 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 
 
-		public override bool TryMatch(ParserContext context, out ParsedToken token)
+		public override bool TryMatch(ParserContext context, ParserContext childContext, out ParsedToken token)
 		{
-			AdvanceContext(ref context);
-
 			if (context.position + Literal.Length > context.str.Length)
 			{
+				context.RecordError($"Failed to match {this}, input text too short.");
 				token = ParsedToken.Fail;
 				return false;
 			}
@@ -47,10 +49,11 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			var inputSlice = context.str.Substring(context.position, Literal.Length);
 			if (Comparer.Compare(inputSlice, Literal) == 0)
 			{
-				token = new ParsedToken(Id, context.position, Literal.Length, ParsedValueFactory, inputSlice);
+				token = new ParsedToken(Id, context.position, Literal.Length, ParsedValueFactory, Literal);
 				return true;
 			}
 
+			context.RecordError($"Failed to match {this}.");
 			token = ParsedToken.Fail;
 			return false;
 		}

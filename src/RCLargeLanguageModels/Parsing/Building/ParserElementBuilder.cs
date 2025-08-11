@@ -44,17 +44,17 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// </summary>
 		/// <param name="token">The child pattern to add.</param>
 		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
-		/// <param name="configurationAction">The action to configure the local settings for this token.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
 		/// <returns>Current instance for method chaining.</returns>
 		public T AddToken(TokenPattern token, Func<ParsedTokenResult, object?>? parsedValueFactory = null,
-			Action<ParserLocalSettingsBuilder>? configurationAction = null)
+			Action<ParserLocalSettingsBuilder>? config = null)
 		{
 			var leafPattern = new BuildableLeafTokenPattern
 			{
 				TokenPattern = token,
 				ParsedValueFactory = parsedValueFactory
 			};
-			configurationAction?.Invoke(leafPattern.Settings);
+			config?.Invoke(leafPattern.Settings);
 			AddToken(leafPattern);
 			return GetThis();
 		}
@@ -65,12 +65,39 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// <param name="minInclusive">Minimum inclusive character of the character range.</param>
 		/// <param name="maxInclusive">Maximum inclusive character of the character range.</param>
 		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
-		/// <param name="configurationAction">The action to configure the local settings for this token.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
 		/// <returns>Current instance for method chaining.</returns>
 		public T CharRange(char minInclusive, char maxInclusive, Func<ParsedTokenResult, object?>? parsedValueFactory = null,
-			Action<ParserLocalSettingsBuilder>? configurationAction = null)
+			Action<ParserLocalSettingsBuilder>? config = null)
 		{
-			return AddToken(new CharRangeTokenPattern(minInclusive, maxInclusive), parsedValueFactory, configurationAction);
+			return AddToken(new CharRangeTokenPattern(minInclusive, maxInclusive), parsedValueFactory, config);
+		}
+
+		/// <summary>
+		/// Adds a literal token to the current sequence.
+		/// </summary>
+		/// <param name="literal">The literal character.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T Literal(char literal, Func<ParsedTokenResult, object?>? parsedValueFactory = null,
+			Action<ParserLocalSettingsBuilder>? config = null)
+		{
+			return AddToken(new LiteralTokenPattern(literal.ToString()), parsedValueFactory, config);
+		}
+
+		/// <summary>
+		/// Adds a literal token to the current sequence.
+		/// </summary>
+		/// <param name="literal">The literal character.</param>
+		/// <param name="comparer">The string comparer to use.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T Literal(char literal, StringComparer comparer, Func<ParsedTokenResult, object?>? parsedValueFactory = null,
+			Action<ParserLocalSettingsBuilder>? config = null)
+		{
+			return AddToken(new LiteralTokenPattern(literal.ToString(), comparer), parsedValueFactory, config);
 		}
 
 		/// <summary>
@@ -78,12 +105,12 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// </summary>
 		/// <param name="literal">The literal string.</param>
 		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
-		/// <param name="configurationAction">The action to configure the local settings for this token.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
 		/// <returns>Current instance for method chaining.</returns>
 		public T Literal(string literal, Func<ParsedTokenResult, object?>? parsedValueFactory = null,
-			Action<ParserLocalSettingsBuilder>? configurationAction = null)
+			Action<ParserLocalSettingsBuilder>? config = null)
 		{
-			return AddToken(new LiteralTokenPattern(literal), parsedValueFactory, configurationAction);
+			return AddToken(new LiteralTokenPattern(literal), parsedValueFactory, config);
 		}
 
 		/// <summary>
@@ -92,12 +119,12 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// <param name="literal">The literal string.</param>
 		/// <param name="comparer">The string comparer to use.</param>
 		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
-		/// <param name="configurationAction">The action to configure the local settings for this token.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
 		/// <returns>Current instance for method chaining.</returns>
 		public T Literal(string literal, StringComparer comparer, Func<ParsedTokenResult, object?>? parsedValueFactory = null,
-			Action<ParserLocalSettingsBuilder>? configurationAction = null)
+			Action<ParserLocalSettingsBuilder>? config = null)
 		{
-			return AddToken(new LiteralTokenPattern(literal, comparer), parsedValueFactory, configurationAction);
+			return AddToken(new LiteralTokenPattern(literal, comparer), parsedValueFactory, config);
 		}
 
 		/// <summary>
@@ -115,12 +142,12 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// </summary>
 		/// <param name="literals">The literal strings set.</param>
 		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
-		/// <param name="configurationAction">The action to configure the local settings for this token.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
 		/// <returns>Current instance for method chaining.</returns>
 		public T LiteralChoice(IEnumerable<string> literals, Func<ParsedTokenResult, object?>? parsedValueFactory = null,
-			Action<ParserLocalSettingsBuilder>? configurationAction = null)
+			Action<ParserLocalSettingsBuilder>? config = null)
 		{
-			return AddToken(new LiteralChoiceTokenPattern(literals), parsedValueFactory, configurationAction);
+			return AddToken(new LiteralChoiceTokenPattern(literals), parsedValueFactory, config);
 		}
 
 		/// <summary>
@@ -129,12 +156,12 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// <param name="literals">The literal strings set.</param>
 		/// <param name="comparer">The string comparer to use.</param>
 		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
-		/// <param name="configurationAction">The action to configure the local settings for this token.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
 		/// <returns>Current instance for method chaining.</returns>
 		public T LiteralChoice(IEnumerable<string> literals, StringComparer comparer, Func<ParsedTokenResult, object?>? parsedValueFactory = null,
-			Action<ParserLocalSettingsBuilder>? configurationAction = null)
+			Action<ParserLocalSettingsBuilder>? config = null)
 		{
-			return AddToken(new LiteralChoiceTokenPattern(literals, comparer), parsedValueFactory, configurationAction);
+			return AddToken(new LiteralChoiceTokenPattern(literals, comparer), parsedValueFactory, config);
 		}
 
 		/// <summary>
@@ -143,12 +170,12 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// <param name="regex">The regular expression.</param>
 		/// <param name="options">The regular expression options. <see cref="RegexOptions.Compiled"/> by default.</param>
 		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
-		/// <param name="configurationAction">The action to configure the local settings for this token.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
 		/// <returns>Current instance for method chaining.</returns>
 		public T Regex(string regex, RegexOptions options = RegexOptions.Compiled, Func<ParsedTokenResult, object?>? parsedValueFactory = null,
-			Action<ParserLocalSettingsBuilder>? configurationAction = null)
+			Action<ParserLocalSettingsBuilder>? config = null)
 		{
-			return AddToken(new RegexTokenPattern(regex, options), parsedValueFactory, configurationAction);
+			return AddToken(new RegexTokenPattern(regex, options), parsedValueFactory, config);
 		}
 
 		/// <summary>
@@ -156,24 +183,190 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// </summary>
 		/// <param name="regex">The regular expression.</param>
 		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
-		/// <param name="configurationAction">The action to configure the local settings for this token.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
 		/// <returns>Current instance for method chaining.</returns>
 		public T Regex(string regex, Func<ParsedTokenResult, object?>? parsedValueFactory,
-			Action<ParserLocalSettingsBuilder>? configurationAction = null)
+			Action<ParserLocalSettingsBuilder>? config = null)
 		{
-			return AddToken(new RegexTokenPattern(regex), parsedValueFactory, configurationAction);
+			return AddToken(new RegexTokenPattern(regex), parsedValueFactory, config);
 		}
 
 		/// <summary>
 		/// Adds a end of file (EOF) token to the current sequence.
 		/// </summary>
 		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
-		/// <param name="configurationAction">The action to configure the local settings for this token.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
 		/// <returns>Current instance for method chaining.</returns>
 		public T EOF(Func<ParsedTokenResult, object?>? parsedValueFactory = null,
-			Action<ParserLocalSettingsBuilder>? configurationAction = null)
+			Action<ParserLocalSettingsBuilder>? config = null)
 		{
-			return AddToken(new EOFTokenPattern(), parsedValueFactory, configurationAction);
+			return AddToken(new EOFTokenPattern(), parsedValueFactory, config);
 		}
+
+		#region EscapedText
+
+		/// <summary>
+		/// Adds an escaped text token to the current sequence with custom escape mappings and forbidden sequences.
+		/// </summary>
+		/// <param name="escapeMappings">The mappings for escape sequences to their replacements.</param>
+		/// <param name="forbidden">The set of forbidden sequences that terminate the match.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T EscapedText(IEnumerable<KeyValuePair<string, string>> escapeMappings, IEnumerable<string> forbidden,
+			Func<ParsedTokenResult, object?>? parsedValueFactory = null, Action<ParserLocalSettingsBuilder>? config = null)
+		{
+			return AddToken(new EscapedTextTokenPattern(escapeMappings, forbidden), parsedValueFactory, config);
+		}
+
+		/// <summary>
+		/// Adds an escaped text token to the current sequence with custom escape mappings, forbidden sequences, and string comparer.
+		/// </summary>
+		/// <param name="escapeMappings">The mappings for escape sequences to their replacements.</param>
+		/// <param name="forbidden">The set of forbidden sequences that terminate the match.</param>
+		/// <param name="comparer">The string comparer to use.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T EscapedText(IEnumerable<KeyValuePair<string, string>> escapeMappings, IEnumerable<string> forbidden, StringComparer comparer,
+			Func<ParsedTokenResult, object?>? parsedValueFactory = null, Action<ParserLocalSettingsBuilder>? config = null)
+		{
+			return AddToken(new EscapedTextTokenPattern(escapeMappings, forbidden, comparer), parsedValueFactory, config);
+		}
+
+		/// <summary>
+		/// Adds an escaped text token to the current sequence with double character escaping strategy.
+		/// </summary>
+		/// <param name="charSource">The source string of characters to be escaped.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T EscapedTextDoubleCharacters(IEnumerable<char> charSource,
+			Func<ParsedTokenResult, object?>? parsedValueFactory = null, Action<ParserLocalSettingsBuilder>? config = null)
+		{
+			return AddToken(EscapedTextTokenPattern.CreateDoubleCharacters(charSource), parsedValueFactory, config);
+		}
+
+		/// <summary>
+		/// Adds an escaped text token to the current sequence with double character escaping strategy.
+		/// </summary>
+		/// <param name="charSource">The source string of characters to be escaped.</param>
+		/// <param name="comparer">The string comparer to use.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T EscapedTextDoubleCharacters(IEnumerable<char> charSource, StringComparer comparer,
+			Func<ParsedTokenResult, object?>? parsedValueFactory = null, Action<ParserLocalSettingsBuilder>? config = null)
+		{
+			return AddToken(EscapedTextTokenPattern.CreateDoubleCharacters(charSource, comparer), parsedValueFactory, config);
+		}
+
+		/// <summary>
+		/// Adds an escaped text token to the current sequence with double sequence escaping strategy.
+		/// </summary>
+		/// <param name="sequences">The source collection of sequences to be escaped.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T EscapedTextDoubleSequences(IEnumerable<string> sequences,
+			Func<ParsedTokenResult, object?>? parsedValueFactory = null, Action<ParserLocalSettingsBuilder>? config = null)
+		{
+			return AddToken(EscapedTextTokenPattern.CreateDoubleSequences(sequences), parsedValueFactory, config);
+		}
+
+		/// <summary>
+		/// Adds an escaped text token to the current sequence with double sequence escaping strategy.
+		/// </summary>
+		/// <param name="sequences">The source collection of sequences to be escaped.</param>
+		/// <param name="comparer">The string comparer to use.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T EscapedTextDoubleSequences(IEnumerable<string> sequences, StringComparer comparer,
+			Func<ParsedTokenResult, object?>? parsedValueFactory = null, Action<ParserLocalSettingsBuilder>? config = null)
+		{
+			return AddToken(EscapedTextTokenPattern.CreateDoubleSequences(sequences, comparer), parsedValueFactory, config);
+		}
+
+		/// <summary>
+		/// Adds an escaped text token to the current sequence with double sequence escaping strategy.
+		/// </summary>
+		/// <param name="sequences">The source collection of sequences to be escaped.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T EscapedTextDoubleSequences(params string[] sequences)
+		{
+			return AddToken(EscapedTextTokenPattern.CreateDoubleSequences(sequences), null, null);
+		}
+
+		/// <summary>
+		/// Adds an escaped text token to the current sequence with prefix escaping strategy.
+		/// </summary>
+		/// <param name="charSource">The source collection (or <see cref="string"/>) of characters to be escaped.</param>
+		/// <param name="prefix">The prefix used for escaping.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T EscapedTextPrefix(IEnumerable<char> charSource, string prefix = "\\",
+			Func<ParsedTokenResult, object?>? parsedValueFactory = null, Action<ParserLocalSettingsBuilder>? config = null)
+		{
+			return AddToken(EscapedTextTokenPattern.CreatePrefix(charSource, prefix), parsedValueFactory, config);
+		}
+
+		/// <summary>
+		/// Adds an escaped text token to the current sequence with prefix escaping strategy.
+		/// </summary>
+		/// <param name="charSource">The source collection (or <see cref="string"/>) of characters to be escaped.</param>
+		/// <param name="prefix">The prefix used for escaping.</param>
+		/// <param name="comparer">The string comparer to use.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T EscapedTextPrefix(IEnumerable<char> charSource, string prefix, StringComparer comparer,
+			Func<ParsedTokenResult, object?>? parsedValueFactory = null, Action<ParserLocalSettingsBuilder>? config = null)
+		{
+			return AddToken(EscapedTextTokenPattern.CreatePrefix(charSource, prefix, comparer), parsedValueFactory, config);
+		}
+
+		/// <summary>
+		/// Adds an escaped text token to the current sequence with prefix sequence escaping strategy.
+		/// </summary>
+		/// <param name="sequences">The source collection of sequences to be escaped.</param>
+		/// <param name="prefix">The prefix used for escaping.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T EscapedTextPrefix(IEnumerable<string> sequences, string prefix = "\\",
+			Func<ParsedTokenResult, object?>? parsedValueFactory = null, Action<ParserLocalSettingsBuilder>? config = null)
+		{
+			return AddToken(EscapedTextTokenPattern.CreatePrefix(sequences, prefix), parsedValueFactory, config);
+		}
+
+		/// <summary>
+		/// Adds an escaped text token to the current sequence with prefix sequence escaping strategy.
+		/// </summary>
+		/// <param name="sequences">The source collection of sequences to be escaped.</param>
+		/// <param name="prefix">The prefix used for escaping.</param>
+		/// <param name="comparer">The string comparer to use.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T EscapedTextPrefix(IEnumerable<string> sequences, string prefix, StringComparer comparer,
+			Func<ParsedTokenResult, object?>? parsedValueFactory = null, Action<ParserLocalSettingsBuilder>? config = null)
+		{
+			return AddToken(EscapedTextTokenPattern.CreatePrefix(sequences, prefix, comparer), parsedValueFactory, config);
+		}
+
+		/// <summary>
+		/// Adds an escaped text token to the current sequence with prefix sequence escaping strategy.
+		/// </summary>
+		/// <param name="prefix">The prefix used for escaping.</param>
+		/// <param name="sequences">The source collection of sequences to be escaped.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T EscapedTextPrefix(string prefix, params string[] sequences)
+		{
+			return AddToken(EscapedTextTokenPattern.CreatePrefix(sequences, prefix), null, null);
+		}
+
+		#endregion
 	}
 }

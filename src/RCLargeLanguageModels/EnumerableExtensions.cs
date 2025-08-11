@@ -23,9 +23,17 @@ namespace RCLargeLanguageModels
 		/// <summary>
 		/// Casts to <see cref="ReadOnlyCollection{T}"/> or creates new.
 		/// </summary>
-		public static IReadOnlyList<T> AsReadOnlyList<T>(this IEnumerable<T> collection)
+		public static IReadOnlyList<T> AsReadOnlyCollection<T>(this IEnumerable<T> collection)
 		{
 			return collection as ReadOnlyCollection<T> ?? collection.ToList().AsReadOnly();
+		}
+
+		/// <summary>
+		/// Casts to <see cref="IReadOnlyList{T}"/> or creates new <see cref="ReadOnlyCollection{T}"/>.
+		/// </summary>
+		public static IReadOnlyList<T> AsReadOnlyList<T>(this IEnumerable<T> collection)
+		{
+			return collection as IReadOnlyList<T> ?? collection.ToList().AsReadOnly();
 		}
 
 		/// <summary>

@@ -9,7 +9,7 @@ using RCLargeLanguageModels.Parsing.Building;
 
 namespace RCLargeLanguageModels.Tests.Parsing
 {
-	public class ParserBuildingTests
+	public class ParserRuleTests
 	{
 		[Fact]
 		public void SimpleBuilding()
@@ -149,7 +149,9 @@ namespace RCLargeLanguageModels.Tests.Parsing
 		{
 			var builder = new ParserBuilder();
 
-			builder.Settings().Skip(r => r.Token("whitespace"));
+			builder.Settings()
+				.Skip(r => r.Token("whitespace",
+					config: c => c.ErrorHandling(ParserErrorHandlingMode.NoRecord)));
 
 			builder.CreateToken("whitespace")
 				.Regex(@"\s+");
@@ -161,7 +163,7 @@ namespace RCLargeLanguageModels.Tests.Parsing
 				.Regex(@"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?");
 
 			builder.CreateToken("boolean")
-				.Regex(@"true|false");
+				.LiteralChoice("true", "false");
 
 			builder.CreateToken("null")
 				.Literal("null", _ => null);
@@ -178,16 +180,12 @@ namespace RCLargeLanguageModels.Tests.Parsing
 
 			builder.CreateRule("array")
 				.Literal("[")
-				.Optional(o =>
-					o.Rule("value")
-					 .ZeroOrMore(o => o.Literal(",").Rule("value")))
+				.ZeroOrMoreSeparated(v => v.Rule("value"), s => s.Literal(","), allowTrailingSeparator: true)
 				.Literal("]");
 
 			builder.CreateRule("object")
 				.Literal("{")
-				.Optional(o =>
-					o.Rule("pair")
-					 .ZeroOrMore(o => o.Literal(",").Rule("pair")))
+				.ZeroOrMoreSeparated(v => v.Rule("pair"), s => s.Literal(","), allowTrailingSeparator: true)
 				.Literal("}");
 
 			builder.CreateRule("pair")
@@ -204,20 +202,21 @@ namespace RCLargeLanguageModels.Tests.Parsing
 			var json =
 """
 {
-    "name": "Test",
-    "age": 25,
-    "tags": ["json", "parser", 123],
-    "isValid": true,
-    "metadata": {
-        "description": "This is a test JSON object",
+	"name": "Test",
+	"age": 25,
+	"tags": [ "json", "cool", "ass" ],
+	"isValid": true,
+	"metadata": {
+		"description": "This is a test JSON object",
 		"author": "John Doe",
 		"additionalData": null
 	}
 }
 """;
-			
-			var context = jsonParser.CreateContext(json);
-			var parsed = jsonParser.ParseRule("content", context);
+			var invalidJson = "{ \"name\": \"Test\", \"age\": }";
+
+			jsonParser.ParseRule("content", json.Replace("\t", "    "));
+			Assert.Throws<ParsingException>(() => jsonParser.ParseRule("content", invalidJson));
 		}
 
 		[Fact]
@@ -288,6 +287,23 @@ namespace RCLargeLanguageModels.Tests.Parsing
 			Assert.True(parser.GetTokenPattern("number").Id == parser.GetTokenPattern("integer").Id);
 			Assert.True(parser.GetTokenPattern("number").Id == parser.GetTokenPattern("int").Id);
 			Assert.True(parser.GetTokenPattern("double").Id == parser.GetTokenPattern("int").Id);
+		}
+
+		[Fact]
+		public void AliasesOrderRule()
+		{
+			var builder = new ParserBuilder();
+
+			builder.CreateToken("number")
+				.Regex(@"\d+");
+
+			builder.CreateToken("int").Token("number");
+			builder.CreateToken("integer").Token("int");
+			builder.CreateToken("double").Token("number");
+
+			var parser = builder.Build();
+
+			Assert.Equal(["number", "int", "integer", "double"], parser.GetTokenPattern("number").Aliases);
 		}
 	}
 }

@@ -18,17 +18,11 @@ namespace RCLargeLanguageModels.Parsing
 		/// <summary>
 		/// Tries to parse the input string using this rule.
 		/// </summary>
-		/// <param name="context">The parser context containing the input string and other relevant information.</param>
+		/// <param name="context">The local parser context to use for this element.</param>
+		/// <param name="childContext">The parser context for the child elements.</param>
 		/// <param name="result">The parsed rule if parsing is successful; otherwise, <see langword="null"/>.</param>
 		/// <returns><see langword="true"/> if the input string can be successfully parsed using this rule; otherwise, <see langword="false"/>.</returns>
-		public abstract bool TryParse(ParserContext context, out ParsedRule result);
-
-		/// <summary>
-		/// Parses the input string using this rule. If parsing fails, an exception is thrown.
-		/// </summary>
-		/// <param name="context">The parser context containing the input string and other relevant information.</param>
-		/// <returns>The parsed rule.</returns>
-		public abstract ParsedRule Parse(ParserContext context);
+		public abstract bool TryParse(ParserContext context, ParserContext childContext, out ParsedRule result);
 
 		public override bool Equals(object? obj)
 		{

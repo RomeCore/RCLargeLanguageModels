@@ -26,6 +26,15 @@ namespace RCLargeLanguageModels.Parsing
 		public int recursionDepth;
 
 		/// <summary>
+		/// The value indicating whether to disable recording to <see cref="successPositions"/>.
+		/// </summary>
+		/// <remarks>
+		/// Used for trying to parse lookahead tokens and rules to prevent recording success status for them. <br/>
+		/// Success status used for getting relevant errors.
+		/// </remarks>
+		public bool disableSuccessRecording;
+
+		/// <summary>
 		/// The inherited settings that control the behavior of the parser during parsing operations.
 		/// </summary>
 		public ParserSettings settings;
@@ -93,6 +102,7 @@ namespace RCLargeLanguageModels.Parsing
 			this.str = str ?? throw new ArgumentNullException(nameof(str));
 			position = 0;
 			recursionDepth = 0;
+			disableSuccessRecording = false;
 			settings = default;
 
 			this.parser = parser ?? throw new ArgumentNullException(nameof(parser));
@@ -110,18 +120,20 @@ namespace RCLargeLanguageModels.Parsing
 		/// <param name="str">The input string to be parsed.</param>
 		/// <param name="initialPosition">The initial position in the input string.</param>
 		/// <param name="initialRecursionDepth">The initial recursion depth.</param>
+		/// <param name="ignoreSuccessRecording">The value indicating whether to disable recording to <see cref="successPositions"/></param>
 		/// <param name="settings">The settings that control the behavior of the parser during parsing operations.</param>
 		/// <param name="parser">The parser object that is performing the parsing.</param>
 		/// <param name="cache">A cache to store parsed results for reuse.</param>
 		/// <param name="successPositions">A set of positions that have successfully parsed rules and tokens.</param>
 		/// <param name="errors">A list to store any parsing errors encountered during the process.</param>
 		/// <param name="skippedRules">A list to store any rules that were skipped during the parsing process.</param>
-		public ParserContext(string str, int initialPosition, int initialRecursionDepth, ParserSettings settings,
+		public ParserContext(string str, int initialPosition, int initialRecursionDepth, bool ignoreSuccessRecording, ParserSettings settings,
 			Parser parser, ParserCache cache, HashSet<int> successPositions, List<ParsingError> errors, List<ParsedRule> skippedRules)
 		{
 			this.str = str ?? throw new ArgumentNullException(nameof(str));
 			this.position = initialPosition;
 			this.recursionDepth = initialRecursionDepth;
+			this.disableSuccessRecording = ignoreSuccessRecording;
 			this.settings = settings;
 
 			this.parser = parser ?? throw new ArgumentNullException(nameof(parser));
@@ -172,12 +184,33 @@ namespace RCLargeLanguageModels.Parsing
 		}
 
 		/// <summary>
+		/// Records, ignores or throws an error based on the current settings and using provided position.
+		/// </summary>
+		/// <param name="errorMessage">The parsing error message to record.</param>
+		/// <param name="position">Position in the input string.</param>
+		public void RecordError(string errorMessage, int position)
+		{
+			switch (settings.errorHandling)
+			{
+				case ParserErrorHandlingMode.Default:
+					errors.Add(new ParsingError(position, errorMessage));
+					break;
+
+				case ParserErrorHandlingMode.NoRecord:
+					break;
+
+				case ParserErrorHandlingMode.Throw:
+					throw new ParsingException(errorMessage, str, position);
+			}
+		}
+
+		/// <summary>
 		/// Returns a summary of all parsing errors encountered during the process, limited to a specified number of errors.
 		/// </summary>
 		/// <param name="maxErrors">The maximum number of errors to include in the summary.</param>
 		/// <returns>A summary of the parsing errors.</returns>
 		/// <exception cref="ArgumentOutOfRangeException">Thrown if the specified number of errors is negative.</exception>
-		public string GetErrorSummary(int maxErrors)
+		public readonly string GetErrorSummary(int maxErrors)
 		{
 			if (maxErrors < 0)
 				throw new ArgumentOutOfRangeException(nameof(maxErrors));
@@ -187,7 +220,7 @@ namespace RCLargeLanguageModels.Parsing
 			ParserContext t = this;
 
 			return $"Errors ({errors.Count} total):\n" +
-				$"{string.Join("\n\n", errors.Take(maxErrors).Select(e => e.ToString(t)))}" +
+				$"{string.Join("\n\n", GetRelevantErrors().Take(maxErrors).Select(e => e.ToString(t)))}" +
 				$"{(errors.Count > maxErrors ? $"\n\nand {errors.Count - maxErrors} more..." : "")}";
 		}
 
@@ -195,13 +228,25 @@ namespace RCLargeLanguageModels.Parsing
 		/// Returns the most relevant parsing error encountered during the process.
 		/// </summary>
 		/// <remarks>
-		/// Returns the last error with position that haven't parsed successfully.
+		/// Returns the last error with furthest position.
 		/// </remarks>
 		/// <returns>The most relevant parsing error or <see langword="default"/>.</returns>
-		public ParsingError GetMostRelevantError()
+		public readonly ParsingError GetMostRelevantError()
+		{
+			return errors.OrderByDescending(e => e.position).FirstOrDefault();
+		}
+
+		/// <summary>
+		/// Returns the most relevant parsing error encountered during the process.
+		/// </summary>
+		/// <remarks>
+		/// Returns the errors with positions that haven't parsed successfully.
+		/// </remarks>
+		/// <returns>The relevant parsing errors.</returns>
+		public readonly IEnumerable<ParsingError> GetRelevantErrors()
 		{
 			var successPos = successPositions;
-			return errors.LastOrDefault(err => !successPos.Contains(err.position));
+			return errors.Where(e => !successPos.Contains(e.position));
 		}
 	}
 }

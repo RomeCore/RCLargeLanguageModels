@@ -39,45 +39,6 @@ namespace RCLargeLanguageModels.Parsing
 		public abstract string ToString(int remainingDepth);
 
 		/// <summary>
-		/// Gets the settings for this parser element based on the local and global settings for the parser context.
-		/// </summary>
-		/// <param name="context">The parser context to extract inherited settings from.</param>
-		/// <param name="forLocal">The settings to use for this element.</param>
-		/// <param name="forChildren">The settings to use for child elements.</param>
-		protected void ResolveSettings(ParserContext context, out ParserSettings forLocal, out ParserSettings forChildren)
-		{
-			context.settings.Resolve(Settings, Parser.Settings, out forLocal, out forChildren);
-		}
-
-		/// <summary>
-		/// Advances the parser context to use for this and child elements.
-		/// </summary>
-		/// <remarks>
-		/// This method should be called at start of parsing a rule or token pattern. <br/>
-		/// For <paramref name="context"/> it updates the settings to use as local element. <br/>
-		/// It returns a parser context that have advanced recursion depth and settings for child elements.
-		/// </remarks>
-		/// <param name="context">
-		/// The parser context to advance. After advancing,
-		/// context will be updated with settings to use for this element.
-		/// </param>
-		/// <returns>
-		/// The context to use for child elements.
-		/// </returns>
-		protected ParserContext AdvanceContext(ref ParserContext context)
-		{
-			var childContext = context;
-
-			context.settings.Resolve(Settings, Parser.Settings, out var forLocal, out var forChildren);
-			context.settings = forLocal;
-
-			childContext.settings = forChildren;
-			childContext.recursionDepth++;
-
-			return childContext;
-		}
-
-		/// <summary>
 		/// Gets the rule by index within the current parser.
 		/// </summary>
 		/// <param name="index">The index of the rule to retrieve.</param>
@@ -134,6 +95,8 @@ namespace RCLargeLanguageModels.Parsing
 
 		public override string ToString()
 		{
+			if (Aliases.Count > 0)
+				return $"\"{Aliases[0]}\"";
 			return ToString(2); // Default depth is 2.
 		}
 

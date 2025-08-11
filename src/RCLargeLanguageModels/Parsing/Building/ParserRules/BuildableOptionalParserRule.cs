@@ -16,28 +16,22 @@ namespace RCLargeLanguageModels.Parsing.Building.ParserRules
 		public override IEnumerable<Or<string, BuildableParserRule>>? RuleChildren => Child.WrapIntoEnumerable();
 		public override IEnumerable<Or<string, BuildableTokenPattern>>? TokenChildren => null;
 
-		/// <summary>
-		/// The factory function that creates a parsed value from the matched rule.
-		/// </summary>
-		public Func<ParsedRule?, object?>? ParsedValueFactory { get; set; } = null;
-
 		protected override ParserRule BuildRule(List<int>? ruleChildren, List<int>? tokenChildren)
 		{
-			return new OptionalParserRule(ruleChildren[0], ParsedValueFactory);
+			return new OptionalParserRule(ruleChildren[0]);
 		}
 
 		public override bool Equals(object? obj)
 		{
-			return obj is BuildableOptionalParserRule other &&
-				   Child == other.Child &&
-				   Equals(ParsedValueFactory, other.ParsedValueFactory);
+			return base.Equals(obj) &&
+				   obj is BuildableOptionalParserRule other &&
+				   Child == other.Child;
 		}
 
 		public override int GetHashCode()
 		{
-			int hashCode = 17;
+			int hashCode = base.GetHashCode();
 			hashCode ^= Child.GetHashCode() * 23;
-			hashCode ^= (ParsedValueFactory?.GetHashCode() ?? 0) * 47;
 			return hashCode;
 		}
 	}

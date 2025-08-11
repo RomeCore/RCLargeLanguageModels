@@ -41,6 +41,14 @@ namespace RCLargeLanguageModels.Parsing
 		public readonly ParserCache cache;
 
 		/// <summary>
+		/// A set of positions that have successfully parsed rules and tokens.
+		/// </summary>
+		/// <remarks>
+		/// Used to retrive relevant errors that can be used for debugging purposes.
+		/// </remarks>
+		public readonly HashSet<int> successPositions;
+
+		/// <summary>
 		/// A list to store any parsing errors encountered during the process.
 		/// </summary>
 		public readonly List<ParsingError> errors;
@@ -88,7 +96,10 @@ namespace RCLargeLanguageModels.Parsing
 			settings = default;
 
 			this.parser = parser ?? throw new ArgumentNullException(nameof(parser));
+			settings = parser.Settings;
+
 			this.cache = new ParserCache();
+			this.successPositions = new HashSet<int>();
 			this.errors = new List<ParsingError>();
 			this.skippedRules = new List<ParsedRule>();
 		}
@@ -102,9 +113,11 @@ namespace RCLargeLanguageModels.Parsing
 		/// <param name="settings">The settings that control the behavior of the parser during parsing operations.</param>
 		/// <param name="parser">The parser object that is performing the parsing.</param>
 		/// <param name="cache">A cache to store parsed results for reuse.</param>
+		/// <param name="successPositions">A set of positions that have successfully parsed rules and tokens.</param>
 		/// <param name="errors">A list to store any parsing errors encountered during the process.</param>
 		/// <param name="skippedRules">A list to store any rules that were skipped during the parsing process.</param>
-		public ParserContext(string str, int initialPosition, int initialRecursionDepth, ParserSettings settings, Parser parser, ParserCache cache, List<ParsingError> errors, List<ParsedRule> skippedRules)
+		public ParserContext(string str, int initialPosition, int initialRecursionDepth, ParserSettings settings,
+			Parser parser, ParserCache cache, HashSet<int> successPositions, List<ParsingError> errors, List<ParsedRule> skippedRules)
 		{
 			this.str = str ?? throw new ArgumentNullException(nameof(str));
 			this.position = initialPosition;
@@ -113,27 +126,49 @@ namespace RCLargeLanguageModels.Parsing
 
 			this.parser = parser ?? throw new ArgumentNullException(nameof(parser));
 			this.cache = cache ?? throw new ArgumentNullException(nameof(cache));
+			this.successPositions = successPositions ?? throw new ArgumentNullException(nameof(successPositions));
 			this.errors = errors ?? throw new ArgumentNullException(nameof(errors));
 			this.skippedRules = skippedRules ?? throw new ArgumentNullException(nameof(skippedRules));
 		}
 
 		/// <summary>
-		/// Skips characters in the input string that match the specified predicate.
+		/// Records, ignores or throws an error based on the current settings.
 		/// </summary>
-		/// <param name="predicate">The predicate to match against.</param>
-		public void Skip(Func<char, bool> predicate)
+		/// <param name="error">The parsing error to record.</param>
+		public void RecordError(ParsingError error)
 		{
-			while (position < str.Length && predicate(str[position]))
-				position++;
+			switch (settings.errorHandling)
+			{
+				case ParserErrorHandlingMode.Default:
+					errors.Add(error);
+					break;
+
+				case ParserErrorHandlingMode.NoRecord:
+					break;
+
+				case ParserErrorHandlingMode.Throw:
+					throw error.ToException(this);
+			}
 		}
 
 		/// <summary>
-		/// Skips whitespace characters in the input string.
+		/// Records, ignores or throws an error based on the current settings and using current position.
 		/// </summary>
-		public void SkipWhiteSpace()
+		/// <param name="errorMessage">The parsing error message to record.</param>
+		public void RecordError(string errorMessage)
 		{
-			while (position < str.Length && char.IsWhiteSpace(str[position]))
-				position++;
+			switch (settings.errorHandling)
+			{
+				case ParserErrorHandlingMode.Default:
+					errors.Add(new ParsingError(position, errorMessage));
+					break;
+
+				case ParserErrorHandlingMode.NoRecord:
+					break;
+
+				case ParserErrorHandlingMode.Throw:
+					throw new ParsingException(errorMessage, str, position);
+			}
 		}
 
 		/// <summary>
@@ -154,6 +189,19 @@ namespace RCLargeLanguageModels.Parsing
 			return $"Errors ({errors.Count} total):\n" +
 				$"{string.Join("\n\n", errors.Take(maxErrors).Select(e => e.ToString(t)))}" +
 				$"{(errors.Count > maxErrors ? $"\n\nand {errors.Count - maxErrors} more..." : "")}";
+		}
+
+		/// <summary>
+		/// Returns the most relevant parsing error encountered during the process.
+		/// </summary>
+		/// <remarks>
+		/// Returns the last error with position that haven't parsed successfully.
+		/// </remarks>
+		/// <returns>The most relevant parsing error or <see langword="default"/>.</returns>
+		public ParsingError GetMostRelevantError()
+		{
+			var successPos = successPositions;
+			return errors.LastOrDefault(err => !successPos.Contains(err.position));
 		}
 	}
 }

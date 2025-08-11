@@ -37,13 +37,82 @@ namespace RCLargeLanguageModels
 		}
 
 		/// <summary>
-		/// Gets the combined hash code for <see cref="IEnumerable"/>.
+		/// Gets the combined hash code for <see cref="IEnumerable"/> depending on the order of items.
 		/// </summary>
-		public static int GetSequenceHashCode(this IEnumerable collection)
+		public static int GetSequenceHashCode(this IEnumerable collection, IEqualityComparer? comparer = null)
 		{
-			int result = 0;
-			foreach (var item in collection)
-				result ^= (item?.GetHashCode() ?? 0) * 397;
+			int result = 17;
+
+			unchecked
+			{
+				if (comparer == null)
+					foreach (var item in collection)
+						result *= (item?.GetHashCode() ?? 0) * 397;
+				else
+					foreach (var item in collection)
+						result *= (item != null ? comparer.GetHashCode(item) : 0) * 397 + 1597851631;
+			}
+
+			return result;
+		}
+
+		/// <summary>
+		/// Gets the combined hash code for <see cref="IEnumerable"/> regardless of order.
+		/// </summary>
+		public static int GetSetHashCode(this IEnumerable collection, IEqualityComparer? comparer = null)
+		{
+			int result = 17;
+
+			unchecked
+			{
+				if (comparer == null)
+					foreach (var item in collection)
+						result ^= (item?.GetHashCode() ?? 0) * 397;
+				else
+					foreach (var item in collection)
+						result ^= (item != null ? comparer.GetHashCode(item) : 0) * 397 + 1597851631;
+			}
+
+			return result;
+		}
+
+		/// <summary>
+		/// Gets the combined hash code for <see cref="IEnumerable"/> depending on the order of items.
+		/// </summary>
+		public static int GetSequenceHashCode<T>(this IEnumerable<T> collection, IEqualityComparer<T>? comparer = null)
+		{
+			int result = 17;
+
+			unchecked
+			{
+				if (comparer == null)
+					foreach (var item in collection)
+						result *= (item?.GetHashCode() ?? 0) * 397;
+				else
+					foreach (var item in collection)
+						result *= (item != null ? comparer.GetHashCode(item) : 0) * 397 + 1597851631;
+			}
+
+			return result;
+		}
+
+		/// <summary>
+		/// Gets the combined hash code for <see cref="IEnumerable"/> regardless of order.
+		/// </summary>
+		public static int GetSetHashCode<T>(this IEnumerable<T> collection, IEqualityComparer<T>? comparer = null)
+		{
+			int result = 17;
+
+			unchecked
+			{
+				if (comparer == null)
+					foreach (var item in collection)
+						result ^= (item?.GetHashCode() ?? 0) * 397;
+				else
+					foreach (var item in collection)
+						result ^= (item != null ? comparer.GetHashCode(item) : 0) * 397 + 1597851631;
+			}
+
 			return result;
 		}
 

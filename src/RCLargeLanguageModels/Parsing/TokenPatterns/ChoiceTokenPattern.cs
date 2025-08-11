@@ -17,33 +17,29 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 		public ImmutableArray<int> Choices { get; }
 
 		/// <summary>
-		/// Gets the factory function that creates a parsed value from the matched token.
-		/// </summary>
-		public Func<ParsedToken, object?> ParsedValueFactory { get; }
-
-		/// <summary>
 		/// Initializes a new instance of the <see cref="ChoiceTokenPattern"/> class.
 		/// </summary>
 		/// <param name="tokenPatternIds">The token patterns ids to try.</param>
-		/// <param name="parsedValueFactory">The factory function that creates a parsed value from the matched token.</param>
-		public ChoiceTokenPattern(IEnumerable<int> tokenPatternIds, Func<ParsedToken, object?> parsedValueFactory = null)
+		public ChoiceTokenPattern(IEnumerable<int> tokenPatternIds)
 		{
 			Choices = tokenPatternIds?.ToImmutableArray()
 				?? throw new ArgumentNullException(nameof(tokenPatternIds));
 			if (Choices.IsEmpty)
 				throw new ArgumentException("At least one token pattern must be provided.", nameof(tokenPatternIds));
-			ParsedValueFactory = parsedValueFactory ?? DefaultParsedValueFactory;
 		}
 
-		private static object? DefaultParsedValueFactory(ParsedToken r) => r.parsedValue;
+
 
 		public override bool TryMatch(ParserContext context, out ParsedToken token)
 		{
+			var childContext = AdvanceContext(ref context);
+
 			foreach (var tokenId in Choices)
 			{
-				if (context.parser.TryMatchToken(tokenId, context, out token))
+				if (TryMatchToken(tokenId, childContext, out token))
 				{
-					token = new ParsedToken(Id, token.startIndex, token.length, token.parsedValue);
+					token = new ParsedToken(Id, token.startIndex, token.length,
+						ParsedValueFactory, token.intermediateValue);
 					return true;
 				}
 			}
@@ -51,6 +47,8 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			token = ParsedToken.Fail;
 			return false;
 		}
+
+
 
 		public override string ToString(int remainingDepth)
 		{
@@ -63,16 +61,15 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 		public override bool Equals(object? obj)
 		{
-			return obj is ChoiceTokenPattern other &&
-				   Choices.SequenceEqual(other.Choices) &&
-				   ParsedValueFactory == other.ParsedValueFactory;
+			return base.Equals(obj) &&
+				   obj is ChoiceTokenPattern other &&
+				   Choices.SequenceEqual(other.Choices);
 		}
 
 		public override int GetHashCode()
 		{
-			int hashCode = 1613406236;
+			int hashCode = base.GetHashCode();
 			hashCode = hashCode * -1521134295 + Choices.GetSequenceHashCode();
-			hashCode = hashCode * -1521134295 + ParsedValueFactory.GetHashCode();
 			return hashCode;
 		}
 	}

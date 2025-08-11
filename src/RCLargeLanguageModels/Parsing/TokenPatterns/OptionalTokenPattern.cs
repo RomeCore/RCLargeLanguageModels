@@ -16,36 +16,34 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 		public int TokenPattern { get; }
 
 		/// <summary>
-		/// The factory function that creates a parsed value for the matched token.
-		/// </summary>
-		public Func<ParsedToken?, object?> ParsedValueFactory { get; }
-
-		/// <summary>
 		/// Initializes a new instance of the <see cref="OptionalTokenPattern"/> class.
 		/// </summary>
 		/// <param name="tokenPatternId">The token pattern ID that this optional pattern wraps.</param>
-		/// <param name="parsedValueFactory">The factory function that creates a parsed value for the matched token.</param>
-		public OptionalTokenPattern(int tokenPatternId, Func<ParsedToken?, object?>? parsedValueFactory = null)
+		public OptionalTokenPattern(int tokenPatternId)
 		{
 			TokenPattern = tokenPatternId;
-			ParsedValueFactory = parsedValueFactory ?? DefaultParsedValueFactory;
 		}
 
-		private static object? DefaultParsedValueFactory(ParsedToken? c) => c.GetValueOrDefault();
+
 
 		public override bool TryMatch(ParserContext context, out ParsedToken token)
 		{
-			if (context.parser.TryMatchToken(TokenPattern, context, out var matchedToken))
+			var childContext = AdvanceContext(ref context);
+
+			if (TryMatchToken(TokenPattern, childContext, out var matchedToken))
 			{
-				token = new ParsedToken(Id, matchedToken.startIndex, matchedToken.length, ParsedValueFactory(matchedToken));
+				token = new ParsedToken(Id, matchedToken.startIndex, matchedToken.length,
+					ParsedValueFactory, matchedToken.intermediateValue);
 				return true;
 			}
 			else
 			{
-				token = new ParsedToken(Id, context.position, 0, ParsedValueFactory(null));
+				token = new ParsedToken(Id, context.position, 0, ParsedValueFactory, null);
 				return true;
 			}
 		}
+
+
 
 		public override string ToString(int remainingDepth = 2)
 		{
@@ -56,16 +54,15 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 		public override bool Equals(object? obj)
 		{
-			return obj is OptionalTokenPattern pattern &&
-				   TokenPattern == pattern.TokenPattern &&
-				   ParsedValueFactory == pattern.ParsedValueFactory;
+			return base.Equals(obj) &&
+				   obj is OptionalTokenPattern pattern &&
+				   TokenPattern == pattern.TokenPattern;
 		}
 
 		public override int GetHashCode()
 		{
-			int hashCode = 813679753;
+			int hashCode = base.GetHashCode();
 			hashCode = hashCode * -1521134295 + TokenPattern.GetHashCode();
-			hashCode = hashCode * -1521134295 + ParsedValueFactory.GetHashCode();
 			return hashCode;
 		}
 	}

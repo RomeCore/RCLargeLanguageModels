@@ -30,9 +30,24 @@ namespace RCLargeLanguageModels.Parsing
 			this.message = message;
 		}
 
+		/// <summary>
+		/// Returns a string that represents the parsing error with pretty formatted target line with line and column number informations.
+		/// </summary>
+		/// <param name="context">The parser context used for formatting.</param>
+		/// <returns>A string that represents the parsing error.</returns>
 		public string ToString(ParserContext context)
 		{
 			return $"{message}\n{PositionalFormatter.Format(context.str, position)}";
+		}
+
+		/// <summary>
+		/// Converts the parsing error to a <see cref="ParsingException"/> with additional information from the provided <see cref="ParserContext"/>.
+		/// </summary>
+		/// <param name="context">The parser context to use for additional information.</param>
+		/// <returns>An instance of <see cref="ParsingException"/> containing message, position and formatted input text.</returns>
+		public ParsingException ToException(ParserContext context)
+		{
+			return new ParsingException(message, context.str, position);
 		}
 	}
 }

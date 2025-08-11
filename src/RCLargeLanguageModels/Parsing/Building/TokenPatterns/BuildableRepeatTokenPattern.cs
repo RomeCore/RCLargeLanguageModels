@@ -30,32 +30,26 @@ namespace RCLargeLanguageModels.Parsing.Building.TokenPatterns
 		/// </summary>
 		public override IEnumerable<Or<string, BuildableTokenPattern>>? TokenChildren => Child.WrapIntoEnumerable();
 
-		/// <summary>
-		/// Gets or sets the factory that creates a parsed value from the matched token.
-		/// </summary>
-		public Func<List<ParsedToken>, object?>? ParsedValueFactory { get; set; } = null;
-
 		protected override TokenPattern BuildToken(List<int>? tokenChildren)
 		{
-			return new RepeatTokenPattern(tokenChildren[0], MinCount, MaxCount, ParsedValueFactory);
+			return new RepeatTokenPattern(tokenChildren[0], MinCount, MaxCount);
 		}
 
 		public override bool Equals(object? obj)
 		{
-			return obj is BuildableRepeatTokenPattern other &&
+			return base.Equals(obj) &&
+				   obj is BuildableRepeatTokenPattern other &&
 				   Child == other.Child &&
 				   MinCount == other.MinCount &&
-				   MaxCount == other.MaxCount &&
-				   Equals(ParsedValueFactory, other.ParsedValueFactory);
+				   MaxCount == other.MaxCount;
 		}
 
 		public override int GetHashCode()
 		{
-			int hashCode = 17;
+			int hashCode = base.GetHashCode();
 			hashCode ^= Child.GetHashCode() * 23;
 			hashCode ^= MinCount.GetHashCode() * 29;
 			hashCode ^= MaxCount.GetHashCode() * 31;
-			hashCode ^= (ParsedValueFactory?.GetHashCode() ?? 0) * 47;
 			return hashCode;
 		}
 	}

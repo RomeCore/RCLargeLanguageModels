@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
@@ -10,7 +11,7 @@ namespace RCLargeLanguageModels.Parsing
 	/// <summary>
 	/// Represents the result of a parsed rule.
 	/// </summary>
-	public class ParsedRuleResult
+	public class ParsedRuleResult : IEnumerable<ParsedRuleResult>
 	{
 		/// <summary>
 		/// Gets the parent result of this rule, if any.
@@ -67,15 +68,23 @@ namespace RCLargeLanguageModels.Parsing
 		/// </summary>
 		public int Length => Result.length;
 
+		private readonly Lazy<string> _textLazy;
 		/// <summary>
 		/// Gets the parsed input text that was parsed.
 		/// </summary>
-		public string Text => Result.GetText(Context);
+		public string Text => _textLazy.Value;
 
+		private readonly Lazy<object?> _valueLazy;
 		/// <summary>
-		/// Gets the parsed value associated with this rule. If no value is set, returns <see langword="null"/>.
+		/// Gets the parsed value associated with this rule.
 		/// </summary>
-		public object? Value => Result.parsedValue;
+		public object? Value => _valueLazy.Value;
+
+		private readonly Lazy<ImmutableList<ParsedRuleResult>> _childrenLazy;
+		/// <summary>
+		/// Gets the children results of this rule. Valid for parallel and sequence rules.
+		/// </summary>
+		public ImmutableList<ParsedRuleResult> Children => _childrenLazy.Value;
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="ParsedRuleResult"/> class.
@@ -89,15 +98,11 @@ namespace RCLargeLanguageModels.Parsing
 			Context = context;
 			Result = result;
 			Token = result.isToken ? new ParsedTokenResult(this, context, result.token) : null;
-		}
 
-		/// <summary>
-		/// Gets child parsed rules for this rule.
-		/// </summary>
-		/// <returns>A collection of child parsed rules. Returns an empty collection if no children are present.</returns>
-		public IEnumerable<ParsedRuleResult> GetChildren()
-		{
-			return Result.rules.Select(r => new ParsedRuleResult(this, Context, r));
+			_textLazy = new Lazy<string>(() => context.str.Substring(result.startIndex, result.length));
+			_valueLazy = new Lazy<object?>(() => result.parsedValueFactory?.Invoke(this) ?? null);
+			_childrenLazy = new Lazy<ImmutableList<ParsedRuleResult>>(() =>
+				Result.rules.Select(r => new ParsedRuleResult(this, context, r)).ToImmutableList());
 		}
 
 		/// <summary>
@@ -110,7 +115,17 @@ namespace RCLargeLanguageModels.Parsing
 			if (maxDepth <= 0 || Result.rules.Count == 0)
 				return this.WrapIntoEnumerable();
 
-			return Result.rules.SelectMany(r => new ParsedRuleResult(this, Context, r).GetJoinedChildren(maxDepth - 1));
+			return Children.SelectMany(r => r.GetJoinedChildren(maxDepth - 1));
+		}
+
+		public IEnumerator<ParsedRuleResult> GetEnumerator()
+		{
+			return ((IEnumerable<ParsedRuleResult>)Children).GetEnumerator();
+		}
+
+		IEnumerator IEnumerable.GetEnumerator()
+		{
+			return ((IEnumerable)Children).GetEnumerator();
 		}
 	}
 }

@@ -97,7 +97,7 @@ namespace RCLargeLanguageModels.Parsing
 	/// <summary>
 	/// Defines settings for a parser. These can be used to control how the parser behaves and what it does when encountering errors or other situations.
 	/// </summary>
-	public struct ParserSettings
+	public struct ParserSettings : IEquatable<ParserSettings>
 	{
 		/// <summary>
 		/// The rule ID to skip when parsing a specific rule. If set to -1, no rules are skipped.
@@ -107,7 +107,7 @@ namespace RCLargeLanguageModels.Parsing
 		/// <summary>
 		/// The error handling mode to use when parsing.
 		/// If set to <see cref="ParserErrorHandlingMode.NoRecord"/> any errors are ignored when trying to parse but thrown when just parsing.
-		/// If set to <see cref="ParserErrorHandlingMode.Throw"/>, any errors are thrown regardless of whether they are being parsed or not, no errors are recorded.
+		/// If set to <see cref="ParserErrorHandlingMode.Throw"/>, any errors are thrown regardless of whether they are being parsed or just trying, no errors are recorded.
 		/// </summary>
 		public ParserErrorHandlingMode errorHandling;
 
@@ -117,7 +117,7 @@ namespace RCLargeLanguageModels.Parsing
 		public ParserCachingMode caching;
 
 		/// <summary>
-		/// The maximum recursion depth allowed when parsing. If set to 0, no limit is applied.
+		/// The maximum recursion depth allowed when parsing. If set to 0, no limit is applied. Use negative values to instantly throw an error. The default is 0.
 		/// </summary>
 		public int maxRecursionDepth;
 
@@ -210,11 +210,16 @@ namespace RCLargeLanguageModels.Parsing
 
 		public override readonly bool Equals(object? obj)
 		{
-			return obj is ParserLocalSettings settings &&
-				   skipRule == settings.skipRule &&
-				   errorHandling == settings.errorHandling &&
-				   caching == settings.caching &&
-				   maxRecursionDepth == settings.maxRecursionDepth;
+			return obj is ParserSettings other &&
+				   Equals(other);
+		}
+
+		public readonly bool Equals(ParserSettings other)
+		{
+			return skipRule == other.skipRule &&
+				   errorHandling == other.errorHandling &&
+				   caching == other.caching &&
+				   maxRecursionDepth == other.maxRecursionDepth;
 		}
 
 		public override readonly int GetHashCode()
@@ -229,19 +234,19 @@ namespace RCLargeLanguageModels.Parsing
 
 		public static bool operator ==(ParserSettings left, ParserSettings right)
 		{
-			return Equals(left, right);
+			return left.Equals(right);
 		}
 
 		public static bool operator !=(ParserSettings left, ParserSettings right)
 		{
-			return !Equals(left, right);
+			return !left.Equals(right);
 		}
 	}
 
 	/// <summary>
 	/// Defines local settings for a parser. These can be used to control how the parser behaves and what it does when encountering errors or other situations.
 	/// </summary>
-	public struct ParserLocalSettings
+	public struct ParserLocalSettings : IEquatable<ParserLocalSettings>
 	{
 		/// <summary>
 		/// Defines an override mode for <see cref="skipRule"/> setting.
@@ -283,17 +288,23 @@ namespace RCLargeLanguageModels.Parsing
 
 
 
+
 		public override readonly bool Equals(object? obj)
 		{
-			return obj is ParserLocalSettings settings &&
-				   skipRuleUseMode == settings.skipRuleUseMode &&
-				   skipRule == settings.skipRule &&
-				   errorHandlingUseMode == settings.errorHandlingUseMode &&
-				   errorHandling == settings.errorHandling &&
-				   cachingUseMode == settings.cachingUseMode &&
-				   caching == settings.caching &&
-				   maxRecursionDepthUseMode == settings.maxRecursionDepthUseMode &&
-				   maxRecursionDepth == settings.maxRecursionDepth;
+			return obj is ParserLocalSettings other &&
+				   Equals(other);
+		}
+
+		public readonly bool Equals(ParserLocalSettings other)
+		{
+			return skipRuleUseMode == other.skipRuleUseMode &&
+				   skipRule == other.skipRule &&
+				   errorHandlingUseMode == other.errorHandlingUseMode &&
+				   errorHandling == other.errorHandling &&
+				   cachingUseMode == other.cachingUseMode &&
+				   caching == other.caching &&
+				   maxRecursionDepthUseMode == other.maxRecursionDepthUseMode &&
+				   maxRecursionDepth == other.maxRecursionDepth;
 		}
 
 		public override readonly int GetHashCode()
@@ -312,12 +323,12 @@ namespace RCLargeLanguageModels.Parsing
 
 		public static bool operator ==(ParserLocalSettings left, ParserLocalSettings right)
 		{
-			return Equals(left, right);
+			return left.Equals(right);
 		}
 
 		public static bool operator !=(ParserLocalSettings left, ParserLocalSettings right)
 		{
-			return !Equals(left, right);
+			return !left.Equals(right);
 		}
 	}
 }

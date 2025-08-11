@@ -16,47 +16,47 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 		public int TokenPattern { get; }
 
 		/// <summary>
-		/// The factory method to create a parsed value from the matched token.
-		/// </summary>
-		public Func<ParsedToken, object?> ParsedValueFactory { get; }
-
-		/// <summary>
 		/// Initializes a new instance of the <see cref="TokenParserRule"/> class.
 		/// </summary>
 		/// <param name="tokenPattern">The token pattern ID to match for this rule.</param>
-		/// <param name="parsedValueFactory">The factory method to create a parsed value from the matched token.</param>
-		public TokenParserRule(int tokenPattern, Func<ParsedToken, object?>? parsedValueFactory = null)
+		public TokenParserRule(int tokenPattern)
 		{
 			TokenPattern = tokenPattern;
-			ParsedValueFactory = parsedValueFactory ?? DefaultParsedValueFactory;
 		}
 
-		private static object? DefaultParsedValueFactory(ParsedToken token) => token.parsedValue;
+
 
 		public override bool TryParse(ParserContext context, out ParsedRule result)
 		{
-			ParsedToken parsedToken = ParsedToken.Fail;
+			var childContext = AdvanceContext(ref context);
 
-			if (!context.parser.TryMatchToken(TokenPattern, context, out parsedToken))
+			if (!TryMatchToken(TokenPattern, childContext, out var parsedToken))
 			{
-				context.errors.Add(new ParsingError(context.position, $"Failed to parse {GetTokenPattern(TokenPattern)}"));
+				context.RecordError($"Failed to parse {GetTokenPattern(TokenPattern)}");
 				result = ParsedRule.Fail;
 				return false;
 			}
 
-			result = new ParsedRule(Id, context.position, parsedToken.length, parsedToken, ParsedValueFactory(parsedToken));
+			result = new ParsedRule(Id, parsedToken.startIndex, parsedToken.length, parsedToken,
+				ParsedValueFactory, parsedToken.intermediateValue);
 			return true;
 		}
 
 		public override ParsedRule Parse(ParserContext context)
 		{
-			if (context.parser.TryMatchToken(TokenPattern, context, out var parsedToken))
+			var childContext = AdvanceContext(ref context);
+
+			if (TryMatchToken(TokenPattern, childContext, out var parsedToken))
 			{
-				return new ParsedRule(Id, context.position, parsedToken.length, parsedToken, ParsedValueFactory(parsedToken));
+				return new ParsedRule(Id, parsedToken.startIndex, parsedToken.length, parsedToken,
+					ParsedValueFactory, parsedToken.intermediateValue);
 			}
 
-			throw new ParsingException($"Failed to parse '{context.parser.TokenPatterns[TokenPattern]}'", context.str, context.position);
+			throw new ParsingException($"Failed to parse '{GetTokenPattern(TokenPattern)}'",
+				context.str, context.position);
 		}
+
+
 
 		public override string ToString(int remainingDepth)
 		{
@@ -65,16 +65,15 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 		public override bool Equals(object? obj)
 		{
-			return obj is TokenParserRule rule &&
-				   TokenPattern == rule.TokenPattern &&
-				   ParsedValueFactory == rule.ParsedValueFactory;
+			return base.Equals(obj) &&
+				   obj is TokenParserRule rule &&
+				   TokenPattern == rule.TokenPattern;
 		}
 
 		public override int GetHashCode()
 		{
-			int hashCode = 813679753;
+			int hashCode = base.GetHashCode();
 			hashCode = hashCode * -1521134295 + TokenPattern.GetHashCode();
-			hashCode = hashCode * -1521134295 + ParsedValueFactory.GetHashCode();
 			return hashCode;
 		}
 	}

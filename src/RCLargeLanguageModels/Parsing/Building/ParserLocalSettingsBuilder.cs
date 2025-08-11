@@ -9,7 +9,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 	/// </summary>
 	public class ParserLocalSettingsBuilder
 	{
-		private ParserLocalSettings _settings = new ParserLocalSettings();
+		private ParserLocalSettings _settings = default;
 		private Or<string, BuildableParserRule>? _skipRule = null;
 
 		/// <summary>
@@ -25,22 +25,23 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// <returns>The built settings for parser.</returns>
 		public ParserLocalSettings Build(List<int> ruleChildren)
 		{
-			_settings.skipRule = ruleChildren[0];
-			return _settings;
+			var result = _settings;
+			result.skipRule = ruleChildren[0];
+			return result;
 		}
 
 		public override bool Equals(object? obj)
 		{
 			return obj is ParserLocalSettingsBuilder other &&
-				   _settings == other._settings &&
-				   _skipRule == other._skipRule;
+				   _settings.Equals(other._settings) && 
+				   _skipRule.Equals(other._skipRule);
 		}
 
 		public override int GetHashCode()
 		{
 			int hashCode = 17;
 			hashCode ^= _settings.GetHashCode() * 23;
-			hashCode ^= (_skipRule?.GetHashCode() ?? 0) * 47;
+			hashCode ^= (_skipRule?.GetHashCode() ?? 0) * 27;
 			return hashCode;
 		}
 

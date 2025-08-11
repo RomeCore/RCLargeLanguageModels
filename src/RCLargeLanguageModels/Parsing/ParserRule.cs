@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace RCLargeLanguageModels.Parsing
@@ -9,6 +10,11 @@ namespace RCLargeLanguageModels.Parsing
 	/// </summary>
 	public abstract class ParserRule : ParserElement
 	{
+		/// <summary>
+		/// Gets the parsed value factory associated with this rule.
+		/// </summary>
+		public Func<ParsedRuleResult, object?>? ParsedValueFactory { get; internal set; } = null;
+
 		/// <summary>
 		/// Tries to parse the input string using this rule.
 		/// </summary>
@@ -23,5 +29,19 @@ namespace RCLargeLanguageModels.Parsing
 		/// <param name="context">The parser context containing the input string and other relevant information.</param>
 		/// <returns>The parsed rule.</returns>
 		public abstract ParsedRule Parse(ParserContext context);
+
+		public override bool Equals(object? obj)
+		{
+			return base.Equals(obj) &&
+				   obj is ParserRule other &&
+				   Equals(ParsedValueFactory, other.ParsedValueFactory);
+		}
+
+		public override int GetHashCode()
+		{
+			int hashCode = base.GetHashCode();
+			hashCode ^= (ParsedValueFactory?.GetHashCode() ?? 0) * 23;
+			return hashCode;
+		}
 	}
 }

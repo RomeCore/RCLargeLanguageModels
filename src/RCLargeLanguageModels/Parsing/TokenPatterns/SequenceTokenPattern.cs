@@ -16,47 +16,43 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 		public ImmutableArray<int> TokenPatterns { get; }
 
 		/// <summary>
-		/// The factory method to create the parsed value from the matched tokens.
-		/// </summary>
-		public Func<List<ParsedToken>, object?> ParsedValueFactory { get; }
-
-		/// <summary>
 		/// Initializes a new instance of the <see cref="ChoiceTokenPattern"/> class.
 		/// </summary>
 		/// <param name="tokenPatternIds">The token patterns ids to try.</param>
-		/// <param name="parsedValueFactory">The factory method to create the parsed value from the matched tokens.</param>
-		public SequenceTokenPattern(IEnumerable<int> tokenPatternIds, Func<List<ParsedToken>, object?>? parsedValueFactory = null)
+		public SequenceTokenPattern(IEnumerable<int> tokenPatternIds)
 		{
 			TokenPatterns = tokenPatternIds?.ToImmutableArray()
 				?? throw new ArgumentNullException(nameof(tokenPatternIds));
 			if (TokenPatterns.IsEmpty)
 				throw new ArgumentException("At least one token pattern must be provided.", nameof(tokenPatternIds));
-			ParsedValueFactory = parsedValueFactory ?? DefaultParsedValueFactory;
 		}
 
-		private static object? DefaultParsedValueFactory(List<ParsedToken> tokens) => tokens.Select(t => t.parsedValue).ToList();
+
 
 		public override bool TryMatch(ParserContext context, out ParsedToken token)
 		{
-			var totalLength = 0;
+			var childContext = AdvanceContext(ref context);
+
+			var initialPosition = childContext.position;
 			var tokens = new List<ParsedToken>();
 
 			foreach (var tokenId in TokenPatterns)
 			{
-				if (!context.parser.TryMatchToken(tokenId, context, out var subToken))
+				if (!TryMatchToken(tokenId, childContext, out var subToken))
 				{
 					token = ParsedToken.Fail;
 					return false;
 				}
 
-				totalLength += subToken.length;
 				tokens.Add(subToken);
-				context.position = subToken.startIndex + subToken.length;
+				childContext.position = subToken.startIndex + subToken.length;
 			}
 
-			token = new ParsedToken(Id, context.position, totalLength, ParsedValueFactory.Invoke(tokens));
+			token = new ParsedToken(Id, initialPosition, context.position - initialPosition, ParsedValueFactory);
 			return true;
 		}
+
+
 
 		public override string ToString(int remainingDepth)
 		{
@@ -69,16 +65,15 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 		public override bool Equals(object? obj)
 		{
-			return obj is SequenceTokenPattern pattern &&
-				   TokenPatterns.SequenceEqual(pattern.TokenPatterns) &&
-				   ParsedValueFactory == pattern.ParsedValueFactory;
+			return base.Equals(obj) &&
+				   obj is SequenceTokenPattern pattern &&
+				   TokenPatterns.SequenceEqual(pattern.TokenPatterns);
 		}
 
 		public override int GetHashCode()
 		{
-			int hashCode = 736527562;
+			int hashCode = base.GetHashCode();
 			hashCode = hashCode * -1521134295 + TokenPatterns.GetSequenceHashCode();
-			hashCode = hashCode * -1521134295 + ParsedValueFactory.GetHashCode();
 			return hashCode;
 		}
 	}

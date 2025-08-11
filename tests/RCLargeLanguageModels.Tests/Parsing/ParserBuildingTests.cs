@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using RCLargeLanguageModels.Parsing;
 using RCLargeLanguageModels.Parsing.Building;
@@ -11,9 +12,28 @@ namespace RCLargeLanguageModels.Tests.Parsing
 	public class ParserBuildingTests
 	{
 		[Fact]
+		public void SimpleBuilding()
+		{
+			var builder = new ParserBuilder();
+
+			builder.CreateToken("identifier")
+				.Regex("[a-zA-Z_][a-zA-Z0-9_]*");
+
+			builder.CreateRule("expression")
+				.Token("identifier");
+
+			var parser = builder.Build();
+		}
+		
+		[Fact]
 		public void SimpleExpressionParsing()
 		{
 			var builder = new ParserBuilder();
+
+			builder.Settings().Skip(r => r.Token("whitespace"));
+
+			builder.CreateToken("whitespace")
+				.Regex(@"\s+");
 
 			builder.CreateToken("identifier")
 				.Regex("[a-zA-Z_][a-zA-Z0-9_]*");
@@ -31,11 +51,11 @@ namespace RCLargeLanguageModels.Tests.Parsing
 			var context = parser.CreateContext(testString);
 			var parsed = parser.ParseRule("expression", context);
 
-			var a = parsed.Result.rules[0].GetText(context);
+			var a = parsed.Children[0].Text;
 			Assert.Equal("a", a);
-			var op = parsed.Result.rules[1].GetText(context);
+			var op = parsed.Children[1].Text;
 			Assert.Equal("+", op);
-			var b = parsed.Result.rules[2].GetText(context);
+			var b = parsed.Children[2].Text;
 			Assert.Equal("b", b);
 		}
 
@@ -43,6 +63,11 @@ namespace RCLargeLanguageModels.Tests.Parsing
 		public void CommaSeparatedIdentifiers()
 		{
 			var builder = new ParserBuilder();
+
+			builder.Settings().Skip(r => r.Token("whitespace"));
+
+			builder.CreateToken("whitespace")
+				.Regex(@"\s+");
 
 			builder.CreateToken("identifier")
 				.Regex(@"[a-zA-Z_][a-zA-Z0-9_]*");
@@ -55,9 +80,9 @@ namespace RCLargeLanguageModels.Tests.Parsing
 			var input = "x, y, z";
 			var result = parser.ParseRule("id_list", parser.CreateContext(input));
 
-			Assert.Equal("x", result.Result.rules[0].GetText(input));
-			Assert.Equal("y", result.Result.rules[1].rules[0].rules[1].GetText(input));
-			Assert.Equal("z", result.Result.rules[1].rules[1].rules[1].GetText(input));
+			Assert.Equal("x", result.Children[0].Text);
+			Assert.Equal("y", result.Children[1].Children[0].Children[1].Text);
+			Assert.Equal("z", result.Children[1].Children[1].Children[1].Text);
 		}
 
 		[Fact]
@@ -65,9 +90,14 @@ namespace RCLargeLanguageModels.Tests.Parsing
 		{
 			var builder = new ParserBuilder();
 
+			builder.Settings().Skip(r => r.Token("whitespace"));
+
+			builder.CreateToken("whitespace")
+				.Regex(@"\s+");
+
 			builder.CreateToken("string")
 				.Regex(@"""(?:\\""|[^""])*""", match =>
-					match.Value[1..^1].Replace("\\\"", "\""));
+					(match.Result.intermediateValue as Match)!.Value[1..^1].Replace("\\\"", "\""));
 
 			builder.CreateRule("string_list")
 				.Token("string")
@@ -77,9 +107,9 @@ namespace RCLargeLanguageModels.Tests.Parsing
 			var input = @"""hello"", ""world\n"", ""\""escaped\""""";
 			var result = parser.ParseRule("string_list", parser.CreateContext(input));
 
-			Assert.Equal("hello", result.Result.rules[0].parsedValue);
-			Assert.Equal("world\\n", result.Result.rules[1].rules[0].rules[1].parsedValue);
-			Assert.Equal("\"escaped\"", result.Result.rules[1].rules[1].rules[1].parsedValue);
+			Assert.Equal("hello", result.Children[0].Token!.Value);
+			Assert.Equal("world\\n", result.Children[1].Children[0].Children[1].Token!.Value);
+			Assert.Equal("\"escaped\"", result.Children[1].Children[1].Children[1].Token!.Value);
 		}
 
 		[Fact]
@@ -87,8 +117,13 @@ namespace RCLargeLanguageModels.Tests.Parsing
 		{
 			var builder = new ParserBuilder();
 
+			builder.Settings().Skip(r => r.Token("whitespace"));
+
+			builder.CreateToken("whitespace")
+				.Regex(@"\s+");
+
 			builder.CreateToken("number")
-				.Regex(@"\d+", match => int.Parse(match.Value));
+				.Regex(@"\d+", match => int.Parse(match.Text));
 
 			builder.CreateRule("expression")
 				.Token("number")
@@ -106,7 +141,7 @@ namespace RCLargeLanguageModels.Tests.Parsing
 
 			Assert.Equal(5, joined.Count);
 			Assert.Equal("+", joined[1].Text);
-			Assert.Equal(20, joined[2].Value);
+			Assert.Equal("20", joined[2].Text);
 		}
 
 		[Fact]
@@ -114,17 +149,19 @@ namespace RCLargeLanguageModels.Tests.Parsing
 		{
 			var builder = new ParserBuilder();
 
+			builder.Settings().Skip(r => r.Token("whitespace"));
+
+			builder.CreateToken("whitespace")
+				.Regex(@"\s+");
+
 			builder.CreateToken("string")
-				.Regex(@"""(?:\\""|[^""])*""", match =>
-					match.Value[1..^1].Replace("\\\"", "\""));
+				.Regex(@"""(?:\\""|[^""])*""");
 
 			builder.CreateToken("number")
-				.Regex(@"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?", match =>
-					double.Parse(match.Value));
+				.Regex(@"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?");
 
 			builder.CreateToken("boolean")
-				.Regex(@"true|false", match =>
-					bool.Parse(match.Value));
+				.Regex(@"true|false");
 
 			builder.CreateToken("null")
 				.Literal("null", _ => null);
@@ -158,6 +195,10 @@ namespace RCLargeLanguageModels.Tests.Parsing
 				.Literal(":")
 				.Rule("value");
 
+			builder.CreateRule("content")
+				.Rule("value")
+				.EOF();
+
 			var jsonParser = builder.Build();
 
 			var json =
@@ -176,11 +217,7 @@ namespace RCLargeLanguageModels.Tests.Parsing
 """;
 			
 			var context = jsonParser.CreateContext(json);
-			var parsed = jsonParser.ParseRule("value", context);
-
-			var rule = jsonParser.GetRule("value");
-			var ruleString = rule.ToString(4);
-
+			var parsed = jsonParser.ParseRule("content", context);
 		}
 
 		[Fact]
@@ -239,7 +276,7 @@ namespace RCLargeLanguageModels.Tests.Parsing
 			var builder = new ParserBuilder();
 
 			builder.CreateToken("number")
-				.Regex(@"\d+", match => int.Parse(match.Value));
+				.Regex(@"\d+");
 
 			builder.CreateToken("int").Token("number");
 			builder.CreateToken("integer").Token("int");

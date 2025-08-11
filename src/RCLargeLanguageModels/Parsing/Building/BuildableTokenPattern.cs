@@ -15,6 +15,11 @@ namespace RCLargeLanguageModels.Parsing.Building
 		public sealed override IEnumerable<Or<string, BuildableParserRule>>? RuleChildren => null;
 
 		/// <summary>
+		/// Gets the parsed value factory associated with this token.
+		/// </summary>
+		public Func<ParsedTokenResult, object?>? ParsedValueFactory { get; set; } = null;
+
+		/// <summary>
 		/// Builds the token pattern with the given children.
 		/// </summary>
 		/// <param name="tokenChildren">The token children IDs to build the parser element with.</param>
@@ -23,7 +28,23 @@ namespace RCLargeLanguageModels.Parsing.Building
 
 		public override ParserElement Build(List<int>? ruleChildren, List<int>? tokenChildren)
 		{
-			return BuildToken(tokenChildren);
+			var token = BuildToken(tokenChildren);
+			token.ParsedValueFactory = ParsedValueFactory;
+			return token;
+		}
+
+		public override bool Equals(object? obj)
+		{
+			return base.Equals(obj) &&
+				   obj is BuildableTokenPattern other &&
+				   Equals(ParsedValueFactory, other.ParsedValueFactory);
+		}
+
+		public override int GetHashCode()
+		{
+			int hashCode = base.GetHashCode();
+			hashCode ^= ParsedValueFactory?.GetHashCode() * 23 ?? 0;
+			return hashCode;
 		}
 	}
 }

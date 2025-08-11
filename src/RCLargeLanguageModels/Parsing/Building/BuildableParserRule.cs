@@ -13,6 +13,11 @@ namespace RCLargeLanguageModels.Parsing.Building
 	public abstract class BuildableParserRule : BuildableParserElement
 	{
 		/// <summary>
+		/// Gets the parsed value factory associated with this rule.
+		/// </summary>
+		public Func<ParsedRuleResult, object?>? ParsedValueFactory { get; set; } = null;
+
+		/// <summary>
 		/// Builds the parser rule with the given children.
 		/// </summary>
 		/// <param name="ruleChildren">The rule children IDs to build the parser rule with.</param>
@@ -22,7 +27,23 @@ namespace RCLargeLanguageModels.Parsing.Building
 
 		public sealed override ParserElement Build(List<int>? ruleChildren, List<int>? tokenChildren)
 		{
-			return BuildRule(ruleChildren, tokenChildren);
+			var rule = BuildRule(ruleChildren, tokenChildren);
+			rule.ParsedValueFactory = ParsedValueFactory;
+			return rule;
+		}
+
+		public override bool Equals(object? obj)
+		{
+			return base.Equals(obj) &&
+				   obj is BuildableParserRule other &&
+				   Equals(ParsedValueFactory, other.ParsedValueFactory);
+		}
+
+		public override int GetHashCode()
+		{
+			int hashCode = base.GetHashCode();
+			hashCode ^= ParsedValueFactory?.GetHashCode() * 23 ?? 0;
+			return hashCode;
 		}
 	}
 }

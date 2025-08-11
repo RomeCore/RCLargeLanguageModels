@@ -22,14 +22,15 @@ namespace RCLargeLanguageModels.Parsing.Building.TokenPatterns
 
 		public override bool Equals(object? obj)
 		{
-			return obj is BuildableLeafTokenPattern pattern &&
-				   Equals(TokenPattern, pattern.TokenPattern);
+			return base.Equals(obj) &&
+				   obj is BuildableLeafTokenPattern other &&
+				   Equals(TokenPattern, other.TokenPattern);
 		}
 
 		public override int GetHashCode()
 		{
-			int hashCode = 17;
-			hashCode ^= (TokenPattern?.GetHashCode() ?? 0) * 23;
+			int hashCode = base.GetHashCode();
+			hashCode ^= 23 * TokenPattern.GetHashCode();
 			return hashCode;
 		}
 	}

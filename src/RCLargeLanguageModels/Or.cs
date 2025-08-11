@@ -253,14 +253,6 @@ namespace RCLargeLanguageModels
 		{
 			return new Or<T1, T2>(value);
 		}
-		public static implicit operator T1(Or<T1, T2> or)
-		{
-			return or.AsT1();
-		}
-		public static implicit operator T2(Or<T1, T2> or)
-		{
-			return or.AsT2();
-		}
 
 		public static bool operator == (Or<T1, T2> left, Or<T1, T2> right)
 		{

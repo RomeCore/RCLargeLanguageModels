@@ -21,12 +21,13 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// <summary>
 		/// Builds the settings for parser.
 		/// </summary>
-		/// <param name="children">The list of child elements.</param>
+		/// <param name="ruleChildren">The list of child elements.</param>
 		/// <returns>The built settings for parser.</returns>
-		public ParserSettings Build(List<int> children)
+		public ParserSettings Build(List<int> ruleChildren)
 		{
-			_settings.skipRule = children[0];
-			return _settings;
+			var result = _settings;
+			result.skipRule = ruleChildren[0];
+			return result;
 		}
 
 		public override bool Equals(object? obj)

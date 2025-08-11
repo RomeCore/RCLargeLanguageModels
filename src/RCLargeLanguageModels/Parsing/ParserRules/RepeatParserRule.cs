@@ -28,18 +28,12 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 		public int MaxCount { get; }
 
 		/// <summary>
-		/// Gets the factory function that creates a parsed value from the matched rules.
-		/// </summary>
-		public Func<List<ParsedRule>, object?> ParsedValueFactory { get; }
-
-		/// <summary>
 		/// Initializes a new instance of the <see cref="RepeatParserRule"/> class.
 		/// </summary>
 		/// <param name="ruleId">The token pattern ID to repeat.</param>
 		/// <param name="minCount">The minimum number of times the token pattern must repeat.</param>
 		/// <param name="maxCount">The maximum number of times the token pattern can repeat.</param>
-		/// <param name="parsedValueFactory">The factory function that creates a parsed value from the matched tokens.</param>
-		public RepeatParserRule(int ruleId, int minCount, int maxCount, Func<List<ParsedRule>, object?>? parsedValueFactory = null)
+		public RepeatParserRule(int ruleId, int minCount, int maxCount)
 		{
 			if (minCount < 0)
 				throw new ArgumentOutOfRangeException(nameof(minCount), "minCount must be greater than or equal to 0");
@@ -50,61 +44,65 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 			Rule = ruleId;
 			MinCount = minCount;
 			MaxCount = Math.Max(maxCount, -1);
-			ParsedValueFactory = parsedValueFactory ?? DefaultParsedValueFactory;
 		}
 
-		private static object? DefaultParsedValueFactory(List<ParsedRule> rules) => rules.Select(t => t.parsedValue).ToList();
+
 
 		public override ParsedRule Parse(ParserContext context)
 		{
+			var childContext = AdvanceContext(ref context);
+
 			var rules = new List<ParsedRule>();
-			var initialPosition = context.position;
+			var initialPosition = childContext.position;
 
 			for (int i = 0; i < this.MaxCount || this.MaxCount == -1; i++)
 			{
 				ParsedRule parsedRule = ParsedRule.Fail;
-				if (!context.parser.TryParseRule(Rule, context, out parsedRule))
+				if (!TryParseRule(Rule, childContext, out parsedRule))
 				{
 					break;
 				}
-				context.position = parsedRule.startIndex + parsedRule.length;
-				rules.Add(parsedRule.WithOccurency(i));
+				childContext.position = parsedRule.startIndex + parsedRule.length;
+				parsedRule.occurency = i;
+				rules.Add(parsedRule);
 			}
 
 			if (rules.Count < MinCount)
 			{
 				throw new ParsingException($"Expected at least {MinCount} repetitions of {GetRule(Rule)}\nbut found {rules.Count}.",
-					context.str, initialPosition);
+					childContext.str, initialPosition);
 			}
 
 			return new ParsedRule(
 				Id,
 				initialPosition,
-				context.position - initialPosition,
+				childContext.position - initialPosition,
 				rules.ToImmutableList(),
-				ParsedValueFactory(rules));
-
+				ParsedValueFactory);
 		}
 
 		public override bool TryParse(ParserContext context, out ParsedRule result)
 		{
+			var childContext = AdvanceContext(ref context);
+
 			var rules = new List<ParsedRule>();
-			var initialPosition = context.position;
+			var initialPosition = childContext.position;
 
 			for (int i = 0; i < this.MaxCount || this.MaxCount == -1; i++)
 			{
 				ParsedRule parsedRule = ParsedRule.Fail;
-				if (!context.parser.TryParseRule(Rule, context, out parsedRule))
+				if (!TryParseRule(Rule, childContext, out parsedRule))
 				{
 					break;
 				}
-				context.position = parsedRule.startIndex + parsedRule.length;
-				rules.Add(parsedRule.WithOccurency(i));
+				childContext.position = parsedRule.startIndex + parsedRule.length;
+				parsedRule.occurency = i;
+				rules.Add(parsedRule);
 			}
 
 			if (rules.Count < MinCount)
 			{
-				context.errors.Add(new ParsingError(context.position,
+				childContext.errors.Add(new ParsingError(childContext.position,
 					$"Expected at least {MinCount} repetitions of {GetRule(Rule)}\nbut found {rules.Count}."));
 				result = ParsedRule.Fail;
 				return false;
@@ -113,12 +111,14 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 			result = new ParsedRule(
 				Id,
 				initialPosition,
-				context.position - initialPosition,
+				childContext.position - initialPosition,
 				rules.ToImmutableList(),
-				ParsedValueFactory(rules));
+				ParsedValueFactory);
 
 			return true;
 		}
+
+
 
 		public override string ToString(int remainingDepth)
 		{
@@ -130,20 +130,19 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 		public override bool Equals(object? obj)
 		{
-			return obj is RepeatParserRule rule &&
+			return base.Equals(obj) &&
+				   obj is RepeatParserRule rule &&
 				   Rule == rule.Rule &&
 				   MinCount == rule.MinCount &&
-				   MaxCount == rule.MaxCount &&
-				   ParsedValueFactory == rule.ParsedValueFactory;
+				   MaxCount == rule.MaxCount;
 		}
 
 		public override int GetHashCode()
 		{
-			int hashCode = -1997225606;
+			int hashCode = base.GetHashCode();
 			hashCode = hashCode * -1521134295 + Rule.GetHashCode();
 			hashCode = hashCode * -1521134295 + MinCount.GetHashCode();
 			hashCode = hashCode * -1521134295 + MaxCount.GetHashCode();
-			hashCode = hashCode * -1521134295 + ParsedValueFactory.GetHashCode();
 			return hashCode;
 		}
 	}

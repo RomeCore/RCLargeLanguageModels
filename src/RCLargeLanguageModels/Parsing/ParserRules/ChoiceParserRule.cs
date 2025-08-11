@@ -13,62 +13,62 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 		public ImmutableArray<int> Choices { get; }
 
 		/// <summary>
-		/// Gets the factory function that creates a parsed value from the matched rule.
-		/// </summary>
-		public Func<ParsedRule, object?> ParsedValueFactory { get; }
-
-		/// <summary>
 		/// Initializes a new instance of the <see cref="ChoiceParserRule"/> class.
 		/// </summary>
 		/// <param name="parserRuleIds">The parser rules ids to choose from.</param>
-		/// <param name="parsedValueFactory">The factory function that creates a parsed value from the selected rule.</param>
-		public ChoiceParserRule(IEnumerable<int> parserRuleIds, Func<ParsedRule, object?> parsedValueFactory = null)
+		public ChoiceParserRule(IEnumerable<int> parserRuleIds)
 		{
 			Choices = parserRuleIds?.ToImmutableArray()
 				?? throw new ArgumentNullException(nameof(parserRuleIds));
 			if (Choices.IsEmpty)
 				throw new ArgumentException("At least one parser rule must be provided.", nameof(parserRuleIds));
-			ParsedValueFactory = parsedValueFactory ?? DefaultParsedValueFactory;
 		}
 
-		private static object? DefaultParsedValueFactory(ParsedRule r) => r.parsedValue;
+
 
 		public override bool TryParse(ParserContext context, out ParsedRule result)
 		{
+			var childContext = AdvanceContext(ref context);
+
 			int i = 0;
 			foreach (var rule in Choices)
 			{
-				if (context.parser.TryParseRule(rule, context, out result))
+				if (TryParseRule(rule, childContext, out result))
 				{
-					result = result.WithRuleId(Id).WithOccurency(i).WithParsedValue(ParsedValueFactory.Invoke(result));
+					result.ruleId = rule;
+					result.occurency = i;
+					result.parsedValueFactory = ParsedValueFactory;
 					return true;
 				}
 				i++;
 			}
 
-			context.errors.Add(new ParsingError(context.position, $"No matching choice found from {this}."));
+			context.RecordError($"No matching choice found from {this}.");
 			result = ParsedRule.Fail;
 			return false;
 		}
 
 		public override ParsedRule Parse(ParserContext context)
 		{
-			List<ParsingException> exceptions = new List<ParsingException>();
+			var childContext = AdvanceContext(ref context);
 
+			int i = 0;
 			foreach (var rule in Choices)
 			{
-				try
+				if (TryParseRule(rule, childContext, out var result))
 				{
-					return context.parser.ParseRule(rule, context);
+					result.ruleId = rule;
+					result.occurency = i;
+					result.parsedValueFactory = ParsedValueFactory;
+					return result;
 				}
-				catch (ParsingException ex)
-				{
-					exceptions.Add(ex);
-				}
+				i++;
 			}
 
-			throw exceptions[0];
+			throw new ParsingException($"No matching choice found from {this}.", context.str, context.position);
 		}
+
+
 
 		public override string ToString(int remainingDepth)
 		{
@@ -81,16 +81,15 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 		public override bool Equals(object? obj)
 		{
-			return obj is ChoiceParserRule rule &&
-				   Choices.SequenceEqual(rule.Choices) &&
-				   ParsedValueFactory == rule.ParsedValueFactory;
+			return base.Equals(obj) &&
+				   obj is ChoiceParserRule rule &&
+				   Choices.SequenceEqual(rule.Choices);
 		}
 
 		public override int GetHashCode()
 		{
-			int hashCode = 1613406236;
+			int hashCode = base.GetHashCode();
 			hashCode = hashCode * -1521134295 + Choices.GetSequenceHashCode();
-			hashCode = hashCode * -1521134295 + ParsedValueFactory.GetHashCode();
 			return hashCode;
 		}
 	}

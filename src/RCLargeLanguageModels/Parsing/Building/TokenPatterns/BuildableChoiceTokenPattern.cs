@@ -17,28 +17,22 @@ namespace RCLargeLanguageModels.Parsing.Building.TokenPatterns
 		public List<Or<string, BuildableTokenPattern>> Choices { get; } = new List<Or<string, BuildableTokenPattern>>();
 		public override IEnumerable<Or<string, BuildableTokenPattern>>? TokenChildren => Choices;
 
-		/// <summary>
-		/// The factory function that creates a parsed value from the matched token.
-		/// </summary>
-		public Func<ParsedToken, object?>? ParsedValueFactory { get; set; } = null;
-
 		protected override TokenPattern BuildToken(List<int>? tokenChildren)
 		{
-			return new ChoiceTokenPattern(tokenChildren, ParsedValueFactory);
+			return new ChoiceTokenPattern(tokenChildren);
 		}
 
 		public override bool Equals(object? obj)
 		{
-			return obj is BuildableChoiceTokenPattern other &&
-				   Choices.SequenceEqual(other.Choices) &&
-				   Equals(ParsedValueFactory, other.ParsedValueFactory);
+			return base.Equals(obj) &&
+				   obj is BuildableChoiceTokenPattern other &&
+				   Choices.SequenceEqual(other.Choices);
 		}
 
 		public override int GetHashCode()
 		{
-			int hashCode = 17;
+			int hashCode = base.GetHashCode();
 			hashCode ^= Choices.GetSequenceHashCode() * 23;
-			hashCode ^= (ParsedValueFactory?.GetHashCode() ?? 0) * 47;
 			return hashCode;
 		}
 	}

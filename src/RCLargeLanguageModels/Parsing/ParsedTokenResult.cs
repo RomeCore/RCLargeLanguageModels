@@ -56,15 +56,17 @@ namespace RCLargeLanguageModels.Parsing
 		/// </summary>
 		public int Length => Result.length;
 
+		private readonly Lazy<string> _textLazy;
 		/// <summary>
 		/// Gets the parsed input text that was parsed.
 		/// </summary>
-		public string Text => Result.GetText(Context);
+		public string Text => _textLazy.Value;
 
+		private readonly Lazy<object?> _valueLazy;
 		/// <summary>
-		/// Gets the parsed value associated with this token. If no value is set, returns <see langword="null"/>.
+		/// Gets the parsed value associated with this token.
 		/// </summary>
-		public object? Value => Result.parsedValue;
+		public object? Value => _valueLazy.Value;
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="ParsedTokenResult"/> class.
@@ -77,6 +79,9 @@ namespace RCLargeLanguageModels.Parsing
 			Parent = parent;
 			Context = context;
 			Result = result;
+
+			_textLazy = new Lazy<string>(() => context.str.Substring(result.startIndex, result.length));
+			_valueLazy = new Lazy<object?>(() => result.parsedValueFactory?.Invoke(this) ?? null);
 		}
 	}
 }

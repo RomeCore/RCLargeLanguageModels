@@ -705,5 +705,18 @@ namespace RCLargeLanguageModels
 
 			return default;
 		}
+
+		public static MultiValueDictionary<TKey, TValue> Flip<TKey, TValue>(this IEnumerable<KeyValuePair<TValue, TKey>> source)
+		{
+			if (source == null)
+				throw new ArgumentNullException(nameof(source));
+
+			var multiDict = new MultiValueDictionary<TKey, TValue>();
+			foreach (var kvp in source)
+			{
+				multiDict.Add(kvp.Value, kvp.Key);
+			}
+			return multiDict;
+		}
 	}
 }

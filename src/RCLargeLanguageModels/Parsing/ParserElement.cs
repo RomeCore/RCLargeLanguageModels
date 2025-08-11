@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Text;
 
 namespace RCLargeLanguageModels.Parsing
@@ -13,7 +14,7 @@ namespace RCLargeLanguageModels.Parsing
 		/// <summary>
 		/// Gets the unique identifier for this parser element.
 		/// </summary>
-		public int Id { get; internal set; }
+		public int Id { get; internal set; } = -1;
 
 		/// <summary>
 		/// Gets the aliases for this parser element.
@@ -26,7 +27,7 @@ namespace RCLargeLanguageModels.Parsing
 		public Parser Parser { get; internal set; } = null!;
 
 		/// <summary>
-		/// Gets the local settings for this parser element with each setting configurable override modes.
+		/// Gets the local settings for this parser element with each setting configurable by override modes.
 		/// </summary>
 		public ParserLocalSettings Settings { get; internal set; } = default;
 
@@ -46,6 +47,34 @@ namespace RCLargeLanguageModels.Parsing
 		protected void ResolveSettings(ParserContext context, out ParserSettings forLocal, out ParserSettings forChildren)
 		{
 			context.settings.Resolve(Settings, Parser.Settings, out forLocal, out forChildren);
+		}
+
+		/// <summary>
+		/// Advances the parser context to use for this and child elements.
+		/// </summary>
+		/// <remarks>
+		/// This method should be called at start of parsing a rule or token pattern. <br/>
+		/// For <paramref name="context"/> it updates the settings to use as local element. <br/>
+		/// It returns a parser context that have advanced recursion depth and settings for child elements.
+		/// </remarks>
+		/// <param name="context">
+		/// The parser context to advance. After advancing,
+		/// context will be updated with settings to use for this element.
+		/// </param>
+		/// <returns>
+		/// The context to use for child elements.
+		/// </returns>
+		protected ParserContext AdvanceContext(ref ParserContext context)
+		{
+			var childContext = context;
+
+			context.settings.Resolve(Settings, Parser.Settings, out var forLocal, out var forChildren);
+			context.settings = forLocal;
+
+			childContext.settings = forChildren;
+			childContext.recursionDepth++;
+
+			return childContext;
 		}
 
 		/// <summary>
@@ -106,6 +135,25 @@ namespace RCLargeLanguageModels.Parsing
 		public override string ToString()
 		{
 			return ToString(2); // Default depth is 2.
+		}
+
+		public override bool Equals(object? obj)
+		{
+			return obj is ParserElement other &&
+				Id == other.Id &&
+				ReferenceEquals(Parser, other.Parser) &&
+				Aliases.SequenceEqual(other.Aliases) &&
+				Settings == other.Settings;
+		}
+
+		public override int GetHashCode()
+		{
+			int hashCode = 17;
+			hashCode ^= Id.GetHashCode() * 23;
+			hashCode ^= (Parser?.GetHashCode() ?? 0) * 27;
+			hashCode ^= Aliases.GetSequenceHashCode() * 29;
+			hashCode ^= Settings.GetHashCode() * 31;
+			return hashCode;
 		}
 	}
 }

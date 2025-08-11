@@ -1,13 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Text;
+using System.Text.RegularExpressions;
+using RCLargeLanguageModels.Parsing.TokenPatterns;
 
 namespace RCLargeLanguageModels.Parsing
 {
 	/// <summary>
 	/// Represents a parsed token in the input text.
 	/// </summary>
-	public readonly struct ParsedToken
+	public struct ParsedToken
 	{
 		/// <summary>
 		/// The value indicates whether the parsing was successful.
@@ -17,22 +20,37 @@ namespace RCLargeLanguageModels.Parsing
 		/// <summary>
 		/// The ID of the token that was parsed.
 		/// </summary>
-		public readonly int tokenId;
+		public int tokenId;
 
 		/// <summary>
 		/// The starting index of the token in the input text.
 		/// </summary>
-		public readonly int startIndex;
+		public int startIndex;
 
 		/// <summary>
 		/// The length of the token in the input text.
 		/// </summary>
-		public readonly int length;
+		public int length;
 
 		/// <summary>
-		/// Gets the parsed value associated with this token.
+		/// Gets the parsed value factory associated with this token.
 		/// </summary>
-		public readonly object? parsedValue;
+		public Func<ParsedTokenResult, object?>? parsedValueFactory;
+
+		/// <summary>
+		/// Gets the intermediate value associated with this token.
+		/// </summary>
+		/// <remarks>
+		/// For <see cref="SequenceTokenPattern"/> or <see cref="RepeatTokenPattern"/> it will be <see langword="null"/>. <br/>
+		/// For <see cref="ChoiceTokenPattern"/> it will be the selected inner value. <br/>
+		/// For <see cref="OptionalTokenPattern"/> it will be the inner value if present, otherwise null.
+		/// <para/>
+		/// For leaf token implementations this may be, for example,
+		/// <see cref="Match"/> for <see cref="RegexTokenPattern"/>,
+		/// or <see cref="char"/> for <see cref="CharRangeTokenPattern"/>. <br/>
+		/// See remarks for specific implementations.
+		/// </remarks>
+		public object? intermediateValue;
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="ParsedToken"/> struct.
@@ -40,14 +58,16 @@ namespace RCLargeLanguageModels.Parsing
 		/// <param name="tokenId">The ID of the token that was parsed.</param>
 		/// <param name="startIndex">The starting index of the token in the input text.</param>
 		/// <param name="length">The length of the token.</param>
-		/// <param name="parsedValue">The parsed value associated with this token.</param>
-		public ParsedToken(int tokenId, int startIndex, int length, object? parsedValue = null)
+		/// <param name="parsedValueFactory">The parsed value factory associated with this token.</param>
+		/// <param name="intermediateValue">The intermediate value associated with this token.</param>
+		public ParsedToken(int tokenId, int startIndex, int length, Func<ParsedTokenResult, object?>? parsedValueFactory = null, object? intermediateValue = null)
 		{
 			this.success = true;
 			this.tokenId = tokenId;
 			this.startIndex = startIndex;
 			this.length = length;
-			this.parsedValue = parsedValue;
+			this.parsedValueFactory = parsedValueFactory;
+			this.intermediateValue = intermediateValue;
 		}
 
 		/// <summary>
@@ -57,133 +77,21 @@ namespace RCLargeLanguageModels.Parsing
 		/// <param name="tokenId">The ID of the token that was parsed.</param>
 		/// <param name="startIndex">The starting index of the token in the input text.</param>
 		/// <param name="length">The length of the token.</param>
-		/// <param name="parsedValue">The parsed value associated with this token.</param>
-		private ParsedToken(bool success, int tokenId, int startIndex, int length, object? parsedValue = null)
+		/// <param name="parsedValueFactory">The parsed value factory associated with this token.</param>
+		/// <param name="intermediateValue">The intermediate value associated with this token.</param>
+		private ParsedToken(bool success, int tokenId, int startIndex, int length, Func<ParsedTokenResult, object?>? parsedValueFactory = null, object? intermediateValue = null)
 		{
 			this.success = success;
 			this.tokenId = tokenId;
 			this.startIndex = startIndex;
 			this.length = length;
-			this.parsedValue = parsedValue;
-		}
-
-		/// <summary>
-		/// Creates a copy of the current instance with specified token ID.
-		/// </summary>
-		/// <param name="tokenId">The new token ID to use.</param>
-		/// <returns>A copy of this parsed token with the specified token ID.</returns>
-		public ParsedToken WithRuleId(int tokenId)
-		{
-			return new ParsedToken(this.success, tokenId, this.startIndex, this.length, this.parsedValue);
-		}
-
-		/// <summary>
-		/// Creates a copy of this parsed token with the specified parsed value.
-		/// </summary>
-		/// <param name="parsedValue">The parsed value associated with this token.</param>
-		/// <returns>A copy of this parsed token with the specified parsed value.</returns>
-		public ParsedToken WithParsedValue(object? parsedValue)
-		{
-			return new ParsedToken(this.success, this.tokenId, this.startIndex, this.length, parsedValue);
+			this.parsedValueFactory = parsedValueFactory;
+			this.intermediateValue = intermediateValue;
 		}
 
 		/// <summary>
 		/// Gets a parsed token that represents failure.
 		/// </summary>
-		public static ParsedToken Fail { get; } = new ParsedToken(false, -1, -1, 0, null);
-
-		/// <summary>
-		/// Gets a text contents of the parsed token.
-		/// </summary>
-		/// <param name="input">The input text.</param>
-		/// <returns>The text representation of the parsed token.</returns>
-		public string GetText(string input)
-		{
-			if (string.IsNullOrEmpty(input))
-				throw new ArgumentException("Input text cannot be null or empty.", nameof(input));
-			if (!success)
-				throw new InvalidOperationException("Cannot get text for a failed token.");
-
-			return input.Substring(startIndex, length);
-		}
-
-		/// <summary>
-		/// Gets a text contents of the parsed token.
-		/// </summary>
-		/// <param name="context">The parser context that contains the input text.</param>
-		/// <returns>The text representation of the parsed token.</returns>
-		public string GetText(ParserContext context)
-		{
-			if (string.IsNullOrEmpty(context.str))
-				throw new ArgumentException("Input text cannot be null or empty.", nameof(context));
-			if (!success)
-				throw new InvalidOperationException("Cannot get text for a failed token.");
-
-			return context.str.Substring(startIndex, length);
-		}
-
-		/// <summary>
-		/// Gets the value of the parsed token.
-		/// </summary>
-		/// <returns>The value of the parsed token.</returns>
-		/// <remarks>
-		/// Throws an exception if this result has no value or is a failure.
-		/// </remarks>
-		public object GetValue()
-		{
-			if (!success)
-				throw new InvalidOperationException("Cannot get value for a failed rule.");
-			if (parsedValue == null)
-				throw new InvalidOperationException("Parsed value is not set.");
-			return parsedValue;
-		}
-
-		/// <summary>
-		/// Gets the value of the parsed token of the specified type.
-		/// </summary>
-		/// <returns>The value of the parsed token.</returns>
-		/// <remarks>
-		/// Throws an exception if this result has no value of type <typeparamref name="T"/> or is a failure.
-		/// </remarks>
-		public T GetValue<T>()
-		{
-			if (!success)
-				throw new InvalidOperationException("Cannot get value for a failed rule.");
-			if (parsedValue == null)
-				throw new InvalidOperationException("Parsed value is not set.");
-			if (parsedValue is T result)
-				return result;
-			throw new InvalidCastException($"The parsed value cannot be cast to {typeof(T)}, it is of type {parsedValue.GetType()}.");
-		}
-
-		/// <summary>
-		/// Tries to get the value of the parsed token.
-		/// </summary>
-		/// <returns>The value of the parsed token or <see langword="null"/> if no value is set.</returns>
-		/// <remarks>
-		/// Throws an exception if this result is a failure.
-		/// </remarks>
-		public object? TryGetValue()
-		{
-			if (!success)
-				throw new InvalidOperationException("Cannot get value for a failed rule.");
-			return parsedValue;
-		}
-
-		/// <summary>
-		/// Tries to get the value of the parsed token of the specified type.
-		/// </summary>
-		/// <returns>The value of the parsed token of the specified type or <see langword="default"/> if no value is set.</returns>
-		/// <remarks>
-		/// Throws an exception if this result is a failure.
-		/// </remarks>
-		public T? TryGetValue<T>()
-		{
-			if (!success)
-				throw new InvalidOperationException("Cannot get value for a failed rule.");
-			if (parsedValue is T result)
-				return result;
-			return default;
-		}
+		public static ParsedToken Fail { get; } = new ParsedToken(false, -1, -1, 0, null, null);
 	}
 }

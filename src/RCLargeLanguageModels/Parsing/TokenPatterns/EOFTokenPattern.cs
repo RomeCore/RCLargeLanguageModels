@@ -16,25 +16,33 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 		{
 		}
 
+
+
 		public override bool TryMatch(ParserContext context, out ParsedToken token)
 		{
+			AdvanceContext(ref context);
+
 			if (context.position >= context.str.Length)
 			{
-				token = new ParsedToken(Id, context.position, 0);
+				token = new ParsedToken(Id, context.str.Length, 0, ParsedValueFactory, null);
 				return true;
 			}
+
 			token = ParsedToken.Fail;
 			return false;
 		}
 
+
+
 		public override bool Equals(object obj)
 		{
-			return obj is EOFTokenPattern;
+			return base.Equals(obj) &&
+				   obj is EOFTokenPattern;
 		}
 
 		public override int GetHashCode()
 		{
-			return 0;
+			return base.GetHashCode();
 		}
 
 		public override string ToString(int remainingDepth)

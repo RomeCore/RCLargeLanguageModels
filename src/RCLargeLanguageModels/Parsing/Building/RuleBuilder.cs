@@ -12,7 +12,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 	/// <summary>
 	/// Represents a builder for constructing rules that are used in parsing processes.
 	/// </summary>
-	public class RuleBuilder
+	public class RuleBuilder : ParserElementBuilder<RuleBuilder>
 	{
 		private Or<string, BuildableParserRule>? _rule;
 
@@ -21,12 +21,40 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// </summary>
 		public Or<string, BuildableParserRule>? BuildingRule => _rule;
 
-		/// <summary>
-		/// Gets the value indicating whether this builder has a valid rule that can be built.
-		/// </summary>
-		public bool CanBeBuilt => _rule.HasValue;
+		public override bool CanBeBuilt => _rule.HasValue;
+		protected override RuleBuilder GetThis() => this;
+		public override RuleBuilder AddToken(Or<string, BuildableTokenPattern> childToken)
+		{
+			return AddRule(new BuildableTokenParserRule
+			{
+				Child = childToken
+			});
+		}
 
-		public RuleBuilder Add(Or<string, BuildableParserRule> childRule)
+		/// <summary>
+		/// Adds a token (name or child pattern) to the current sequence with the parsed value factory.
+		/// </summary>
+		/// <param name="childToken">The token to add. Can be a name or a child pattern.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="configurationAction">The action to configure the local settings for this token.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public RuleBuilder AddToken(Or<string, BuildableTokenPattern> childToken,
+			Func<ParsedRuleResult, object?>? parsedValueFactory = null,
+			Action<ParserLocalSettingsBuilder>? configurationAction = null)
+		{
+			return AddRule(new BuildableTokenParserRule
+			{
+				Child = childToken,
+				ParsedValueFactory = parsedValueFactory
+			});
+		}
+
+		/// <summary>
+		/// Adds a rule to the current sequence.
+		/// </summary>
+		/// <param name="childRule">The rule to add. Can be a name or a child pattern.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public RuleBuilder AddRule(Or<string, BuildableParserRule> childRule)
 		{
 			if (!_rule.HasValue)
 			{
@@ -47,33 +75,77 @@ namespace RCLargeLanguageModels.Parsing.Building
 			return this;
 		}
 
+		/// <summary>
+		/// Adds a rule to the current sequence.
+		/// </summary>
+		/// <param name="childRule">The rule to add. Can be a name or a child pattern.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="configurationAction">The action to configure the local settings for this rule.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public RuleBuilder AddRule(BuildableParserRule childRule,
+			Func<ParsedRuleResult, object?>? parsedValueFactory = null,
+			Action<ParserLocalSettingsBuilder>? configurationAction = null)
+		{
+			childRule.ParsedValueFactory = parsedValueFactory;
+			configurationAction?.Invoke(childRule.Settings);
+			return AddRule(new Or<string, BuildableParserRule>(childRule));
+		}
+
+		/// <summary>
+		/// Adds a rule to the current sequence.
+		/// </summary>
+		/// <param name="ruleName">The name of the rule to add.</param>
+		/// <returns>Current instance for method chaining.</returns>
 		public RuleBuilder Rule(string ruleName)
 		{
-			return Add(ruleName);
+			return AddRule(ruleName);
 		}
 
-		public RuleBuilder Token(string tokenName, Func<ParsedToken, object?>? parsedValueFactory = null)
+		/// <summary>
+		/// Adds a token to the current sequence.
+		/// </summary>
+		/// <param name="tokenName">The name of the token to add.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="configurationAction">The action to configure the local settings for this rule.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public RuleBuilder Token(string tokenName, Func<ParsedRuleResult, object?>? parsedValueFactory = null,
+			Action<ParserLocalSettingsBuilder>? configurationAction = null)
 		{
-			return Add(new BuildableTokenParserRule
+			return AddRule(new BuildableTokenParserRule
 			{
-				Child = tokenName,
-				ParsedValueFactory = parsedValueFactory
-			});
+				Child = tokenName
+			}, parsedValueFactory, configurationAction);
 		}
 
-		public RuleBuilder Token(TokenPattern token, Func<ParsedToken, object?>? parsedValueFactory = null)
+		/// <summary>
+		/// Adds a token to the current sequence.
+		/// </summary>
+		/// <param name="token">The token pattern to add.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="configurationAction">The action to configure the local settings for this rule.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public RuleBuilder Token(TokenPattern token, Func<ParsedRuleResult, object?>? parsedValueFactory = null,
+			Action<ParserLocalSettingsBuilder>? configurationAction = null)
 		{
-			return Add(new BuildableTokenParserRule
+			return AddRule(new BuildableTokenParserRule
 			{
 				Child = new BuildableLeafTokenPattern
 				{
 					TokenPattern = token
-				},
-				ParsedValueFactory = parsedValueFactory
-			});
+				}
+			}, parsedValueFactory, configurationAction);
 		}
 
-		public RuleBuilder Token(Action<TokenBuilder> builderAction, Func<ParsedToken, object?>? parsedValueFactory = null)
+		/// <summary>
+		/// Adds a token to the current sequence.
+		/// </summary>
+		/// <param name="builderAction">The token pattern builder.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="configurationAction">The action to configure the local settings for this rule.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		/// <exception cref="ParserBuildingException">Thrown if builder action have not added any elements.</exception>
+		public RuleBuilder Token(Action<TokenBuilder> builderAction, Func<ParsedRuleResult, object?>? parsedValueFactory = null,
+			Action<ParserLocalSettingsBuilder>? configurationAction = null)
 		{
 			var builder = new TokenBuilder();
 			builderAction(builder);
@@ -81,23 +153,80 @@ namespace RCLargeLanguageModels.Parsing.Building
 			if (!builder.CanBeBuilt)
 				throw new ParserBuildingException("Builder action did not add any tokens.");
 
-			return Add(new BuildableTokenParserRule
+			return AddRule(new BuildableTokenParserRule
 			{
-				Child = builder.BuildingPattern.Value,
-				ParsedValueFactory = parsedValueFactory
-			});
+				Child = builder.BuildingPattern.Value
+			}, parsedValueFactory, configurationAction);
 		}
 
-		public RuleBuilder SetParsedValueFactory(Func<List<ParsedRule>, object?>? parsedValueFactory)
+		/// <summary>
+		/// Converts the pattern into a sequence if it is not already one.
+		/// </summary>
+		/// <returns>Current instance for method chaining.</returns>
+		public RuleBuilder ToSequence()
+		{
+			if (!_rule.HasValue)
+			{
+				throw new ParserBuildingException("Cannot convert empty rule to sequence.");
+			}
+			else if (_rule.Value.VariantIndex != 1 ||
+					_rule.Value.AsT2() is not BuildableSequenceParserRule)
+			{
+				var newSequence = new BuildableSequenceParserRule();
+				newSequence.Elements.Add(_rule.Value);
+				_rule = newSequence;
+			}
+			return this;
+		}
+
+		/// <summary>
+		/// Sets the transformation function to the current sequence rule.
+		/// </summary>
+		/// <remarks>
+		/// This method should be called after adding at least two child elements to the sequence.
+		/// </remarks>
+		/// <param name="parsedValueFactory">The transformation function (parsed value factory) to set.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		/// <exception cref="ParserBuildingException">Thrown if the current rule is not a sequence or has fewer than two child elements.</exception>
+		public RuleBuilder Transform(Func<ParsedRuleResult, object?>? parsedValueFactory)
 		{
 			if (_rule?.AsT2() is BuildableSequenceParserRule sequenceRule)
 				sequenceRule.ParsedValueFactory = parsedValueFactory;
 			else
-				throw new ParserBuildingException("Parsed value factory can only be set on a sequence rule (must be added at least two child elements first).");
+				throw new ParserBuildingException("Parsed value factory can only be set on a sequence rule " +
+					"(must be added at least two child elements or must be converted to a sequence first).");
 			return this;
 		}
 
-		public RuleBuilder Optional(Action<RuleBuilder> builderAction, Func<ParsedRule?, object?>? parsedValueFactory = null)
+		/// <summary>
+		/// Configures the local settings for the current sequence rule.
+		/// </summary>
+		/// <remarks>
+		/// This method should be called after adding at least two child elements to the sequence.
+		/// </remarks>
+		/// <param name="configAction">The configuration action.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		/// <exception cref="ParserBuildingException">Thrown if the current rule is not a sequence or has fewer than two child elements.</exception>
+		public RuleBuilder Configure(Action<ParserLocalSettingsBuilder> configAction)
+		{
+			if (_rule?.AsT2() is BuildableSequenceParserRule sequenceRule)
+				configAction(sequenceRule.Settings);
+			else
+				throw new ParserBuildingException("Only a sequence rule can be configured " +
+					"(must be added at least two child elements or must be converted to a sequence first).");
+			return this;
+		}
+
+		/// <summary>
+		/// Adds an optional rule to the current sequence.
+		/// </summary>
+		/// <param name="builderAction">The rule builder action to build the child rule.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="configurationAction">The action to configure the local settings for this rule.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		/// <exception cref="ParserBuildingException">Thrown if the builder action did not add any elements.</exception>
+		public RuleBuilder Optional(Action<RuleBuilder> builderAction, Func<ParsedRuleResult, object?>? parsedValueFactory = null,
+			Action<ParserLocalSettingsBuilder>? configurationAction = null)
 		{
 			var builder = new RuleBuilder();
 			builderAction(builder);
@@ -105,14 +234,24 @@ namespace RCLargeLanguageModels.Parsing.Building
 			if (!builder.CanBeBuilt)
 				throw new ParserBuildingException("Optional child rule cannot be empty.");
 
-			return Add(new BuildableOptionalParserRule
+			return AddRule(new BuildableOptionalParserRule
 			{
-				Child = builder.BuildingRule.Value,
-				ParsedValueFactory = parsedValueFactory
-			});
+				Child = builder.BuildingRule.Value
+			}, parsedValueFactory, configurationAction);
 		}
 
-		public RuleBuilder Repeat(int min, int max, Action<RuleBuilder> builderAction, Func<List<ParsedRule>, object?>? parsedValueFactory = null)
+		/// <summary>
+		/// Adds a repeatable rule to the current sequence with specified minimum and maximum occurrences.
+		/// </summary>
+		/// <param name="builderAction">The rule builder action to build the repeatable rule.</param>
+		/// <param name="min">The minimum number of times the rule can be repeated.</param>
+		/// <param name="max">The maximum number of times the rule can be repeated. -1 indicates no upper limit.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="configurationAction">The action to configure the local settings for this rule.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		/// <exception cref="ParserBuildingException">Thrown if the builder action did not add any elements.</exception>
+		public RuleBuilder Repeat(Action<RuleBuilder> builderAction, int min, int max, Func<ParsedRuleResult, object?>? parsedValueFactory = null,
+			Action<ParserLocalSettingsBuilder>? configurationAction = null)
 		{
 			var builder = new RuleBuilder();
 			builderAction(builder);
@@ -120,41 +259,67 @@ namespace RCLargeLanguageModels.Parsing.Building
 			if (!builder.CanBeBuilt)
 				throw new ParserBuildingException("Repeated child rule cannot be empty.");
 
-			return Add(new BuildableRepeatParserRule
+			return AddRule(new BuildableRepeatParserRule
 			{
 				MinCount = min,
 				MaxCount = max,
-				Child = builder.BuildingRule.Value,
-				ParsedValueFactory = parsedValueFactory
-			});
+				Child = builder.BuildingRule.Value
+			}, parsedValueFactory, configurationAction);
 		}
 
-		public RuleBuilder Repeat(int min, Action<RuleBuilder> builderAction, Func<List<ParsedRule>, object?>? parsedValueFactory = null)
+		/// <summary>
+		/// Adds a repeatable rule to the current sequence with specified minimum occurrences.
+		/// </summary>
+		/// <param name="builderAction">The rule builder action to build the repeatable rule.</param>
+		/// <param name="min">The minimum number of times the rule can be repeated.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="configurationAction">The action to configure the local settings for this rule.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		/// <exception cref="ParserBuildingException">Thrown if the builder action did not add any elements.</exception>
+		public RuleBuilder Repeat(Action<RuleBuilder> builderAction, int min, Func<ParsedRuleResult, object?>? parsedValueFactory = null,
+			Action<ParserLocalSettingsBuilder>? configurationAction = null)
 		{
-			return Repeat(min, -1, builderAction, parsedValueFactory);
+			return Repeat(builderAction, min, -1, parsedValueFactory, configurationAction);
 		}
 
-		public RuleBuilder ZeroOrMore(Action<RuleBuilder> builderAction, Func<List<ParsedRule>, object?>? parsedValueFactory = null)
+		/// <summary>
+		/// Adds a repeatable rule to the current sequence that matches zero or more occurrences of the child rule.
+		/// </summary>
+		/// <param name="builderAction">The rule builder action to build the repeatable rule.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="configurationAction">The action to configure the local settings for this rule.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		/// <exception cref="ParserBuildingException">Thrown if the builder action did not add any elements.</exception>
+		public RuleBuilder ZeroOrMore(Action<RuleBuilder> builderAction, Func<ParsedRuleResult, object?>? parsedValueFactory = null,
+			Action<ParserLocalSettingsBuilder>? configurationAction = null)
 		{
-			return Repeat(0, -1, builderAction, parsedValueFactory);
+			return Repeat(builderAction, 0, -1, parsedValueFactory, configurationAction);
 		}
 
-		public RuleBuilder OneOrMore(Action<RuleBuilder> builderAction, Func<List<ParsedRule>, object?>? parsedValueFactory = null)
+		/// <summary>
+		/// Adds a repeatable rule to the current sequence that matches one or more occurrences of the child rule.
+		/// </summary>
+		/// <param name="builderAction">The rule builder action to build the repeatable rule.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="configurationAction">The action to configure the local settings for this rule.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		/// <exception cref="ParserBuildingException">Thrown if the builder action did not add any elements.</exception>
+		public RuleBuilder OneOrMore(Action<RuleBuilder> builderAction, Func<ParsedRuleResult, object?>? parsedValueFactory = null,
+			Action<ParserLocalSettingsBuilder>? configurationAction = null)
 		{
-			return Repeat(1, -1, builderAction, parsedValueFactory);
+			return Repeat(builderAction, 1, -1, parsedValueFactory, configurationAction);
 		}
 
-		public RuleBuilder Choice(params Or<Action<RuleBuilder>, string>[] choices)
-		{
-			return Choice(null, choices);
-		}
-
-		public RuleBuilder Choice(params Action<RuleBuilder>[] choices)
-		{
-			return Choice(null, choices);
-		}
-
-		public RuleBuilder Choice(Func<ParsedRule, object?>? parsedValueFactory, params Or<Action<RuleBuilder>, string>[] choices)
+		/// <summary>
+		/// Adds a choice rule to the current sequence.
+		/// </summary>
+		/// <param name="choices">The choices for this rule.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="configurationAction">The action to configure the local settings for this rule.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		/// <exception cref="ParserBuildingException">Thrown if any of builder actions have not added any elements.</exception>
+		public RuleBuilder Choice(IEnumerable<Or<Action<RuleBuilder>, string>> choices, Func<ParsedRuleResult, object?>? parsedValueFactory = null,
+			Action<ParserLocalSettingsBuilder>? configurationAction = null)
 		{
 			var builtValues = choices.Select(c =>
 			{
@@ -175,39 +340,124 @@ namespace RCLargeLanguageModels.Parsing.Building
 
 			var choice = new BuildableChoiceParserRule();
 			choice.Choices.AddRange(builtValues);
-			choice.ParsedValueFactory = parsedValueFactory;
-
-			return Add(choice);
+			return AddRule(choice, parsedValueFactory, configurationAction);
 		}
 
-		public RuleBuilder Choice(Func<ParsedRule, object?>? parsedValueFactory, params Action<RuleBuilder>[] choices)
+		/// <summary>
+		/// Adds a choice rule to the current sequence.
+		/// </summary>
+		/// <param name="choices">The choices for this rule.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="configurationAction">The action to configure the local settings for this rule.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		/// <exception cref="ParserBuildingException">Thrown if any of builder actions have not added any elements.</exception>
+		public RuleBuilder Choice(IEnumerable<Action<RuleBuilder>> choices, Func<ParsedRuleResult, object?>? parsedValueFactory = null,
+			Action<ParserLocalSettingsBuilder>? configurationAction = null)
 		{
-			return Choice(parsedValueFactory, choices.Select(c => new Or<Action<RuleBuilder>, string>(c)).ToArray());
+			return Choice(choices.Select(c => new Or<Action<RuleBuilder>, string>(c)).ToArray(),
+				parsedValueFactory, configurationAction);
 		}
 
-		public RuleBuilder Literal(string literal, Func<string, object?>? parsedValueFactory = null)
+		/// <summary>
+		/// Adds a choice rule to the current sequence.
+		/// </summary>
+		/// <param name="choices">The choices for this rule.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		/// <exception cref="ParserBuildingException">Thrown if any of builder actions have not added any elements.</exception>
+		public RuleBuilder Choice(params Action<RuleBuilder>[] choices)
 		{
-			return Token(new LiteralTokenPattern(literal, parsedValueFactory));
+			return Choice(choices, null, null);
 		}
 
-		public RuleBuilder Literal(string literal, StringComparer comparer, Func<string, object?>? parsedValueFactory = null)
+		/// <summary>
+		/// Adds a separated repeatable rule to the current sequence with specified minimum and maximum occurrences.
+		/// </summary>
+		/// <param name="builderAction">The rule builder action to build the repeatable rule.</param>
+		/// <param name="separatorBuilderAction">The rule builder action to build the separator rule.</param>
+		/// <param name="min">The minimum number of times the rule can be repeated.</param>
+		/// <param name="max">The maximum number of times the rule can be repeated. -1 indicates no upper limit.</param>
+		/// <param name="allowTrailingSeparator">Whether to allow a trailing separator.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="configurationAction">The action to configure the local settings for this rule.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		/// <exception cref="ParserBuildingException">Thrown if any of the builder actions did not add any elements.</exception>
+		public RuleBuilder SeparatedRepeat(Action<RuleBuilder> builderAction, Action<RuleBuilder> separatorBuilderAction,
+			int min, int max, bool allowTrailingSeparator = false, Func<ParsedRuleResult, object?>? parsedValueFactory = null,
+			Action<ParserLocalSettingsBuilder>? configurationAction = null)
 		{
-			return Token(new LiteralTokenPattern(literal, comparer, parsedValueFactory));
+			RuleBuilder builder = new(), separatorBuilder = new();
+			builderAction(builder);
+			separatorBuilderAction(separatorBuilder);
+
+			if (!builder.CanBeBuilt)
+				throw new ParserBuildingException("Repeated child rule cannot be empty.");
+
+			if (!separatorBuilder.CanBeBuilt)
+				throw new ParserBuildingException("Separator child rule cannot be empty.");
+
+			return AddRule(new BuildableSeparatedRepeatParserRule
+			{
+				MinCount = min,
+				MaxCount = max,
+				Child = builder.BuildingRule.Value,
+				Separator = separatorBuilder.BuildingRule.Value,
+				AllowTrailingSeparator = allowTrailingSeparator
+			}, parsedValueFactory, configurationAction);
 		}
 
-		public RuleBuilder Regex(string regex, RegexOptions options = RegexOptions.Compiled, Func<Match, object?>? parsedValueFactory = null)
+		/// <summary>
+		/// Adds a separated repeatable rule to the current sequence with specified minimum occurrences.
+		/// </summary>
+		/// <param name="builderAction">The rule builder action to build the repeatable rule.</param>
+		/// <param name="separatorBuilderAction">The rule builder action to build the separator rule.</param>
+		/// <param name="min">The minimum number of times the rule can be repeated.</param>
+		/// <param name="allowTrailingSeparator">Whether to allow a trailing separator.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="configurationAction">The action to configure the local settings for this rule.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		/// <exception cref="ParserBuildingException">Thrown if any of the builder actions did not add any elements.</exception>
+		public RuleBuilder SeparatedRepeat(Action<RuleBuilder> builderAction, Action<RuleBuilder> separatorBuilderAction,
+			int min, bool allowTrailingSeparator = false, Func<ParsedRuleResult, object?>? parsedValueFactory = null,
+			Action<ParserLocalSettingsBuilder>? configurationAction = null)
 		{
-			return Token(new RegexTokenPattern(regex, parsedValueFactory, options));
+			return SeparatedRepeat(builderAction, separatorBuilderAction, min, -1, allowTrailingSeparator,
+				parsedValueFactory, configurationAction);
 		}
 
-		public RuleBuilder Regex(string regex, Func<Match, object?>? parsedValueFactory)
+		/// <summary>
+		/// Adds a separated repeatable rule to the current sequence that matches zero or more occurrences of the child rule.
+		/// </summary>
+		/// <param name="builderAction">The rule builder action to build the repeatable rule.</param>
+		/// <param name="separatorBuilderAction">The rule builder action to build the separator rule.</param>
+		/// <param name="allowTrailingSeparator">Whether to allow a trailing separator.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="configurationAction">The action to configure the local settings for this rule.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		/// <exception cref="ParserBuildingException">Thrown if any of the builder actions did not add any elements.</exception>
+		public RuleBuilder ZeroOrMoreSeparated(Action<RuleBuilder> builderAction, Action<RuleBuilder> separatorBuilderAction,
+			bool allowTrailingSeparator = false, Func<ParsedRuleResult, object?>? parsedValueFactory = null,
+			Action<ParserLocalSettingsBuilder>? configurationAction = null)
 		{
-			return Token(new RegexTokenPattern(regex, parsedValueFactory));
+			return SeparatedRepeat(builderAction, separatorBuilderAction, 0, -1, allowTrailingSeparator,
+				parsedValueFactory, configurationAction);
 		}
 
-		public RuleBuilder EOF()
+		/// <summary>
+		/// Adds a separated repeatable rule to the current sequence that matches one or more occurrences of the child rule.
+		/// </summary>
+		/// <param name="builderAction">The rule builder action to build the repeatable rule.</param>
+		/// <param name="separatorBuilderAction">The rule builder action to build the separator rule.</param>
+		/// <param name="allowTrailingSeparator">Whether to allow a trailing separator.</param>
+		/// <param name="parsedValueFactory">The factory function to create a parsed value.</param>
+		/// <param name="configurationAction">The action to configure the local settings for this rule.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		/// <exception cref="ParserBuildingException">Thrown if any of the builder actions did not add any elements.</exception>
+		public RuleBuilder OneOrMoreSeparated(Action<RuleBuilder> builderAction, Action<RuleBuilder> separatorBuilderAction,
+			bool allowTrailingSeparator = false, Func<ParsedRuleResult, object?>? parsedValueFactory = null,
+			Action<ParserLocalSettingsBuilder>? configurationAction = null)
 		{
-			return Token(new EOFTokenPattern());
+			return SeparatedRepeat(builderAction, separatorBuilderAction, 1, -1, allowTrailingSeparator,
+				parsedValueFactory, configurationAction);
 		}
 	}
 }

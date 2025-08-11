@@ -21,29 +21,24 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 		public Regex Regex { get; }
 
 		/// <summary>
-		/// Gets the factory function for creating parsed values from matches.
-		/// </summary>
-		public Func<Match, object?> ParsedValueFactory { get; }
-
-		/// <summary>
 		/// Initializes a new instance of the <see cref="RegexTokenPattern"/> class.
 		/// </summary>
 		/// <param name="pattern">The regular expression pattern.</param>
-		/// <param name="parsedValueFactory">The factory function for creating parsed values from matches.</param>
 		/// <param name="options">The regex options (default is None).</param>
-		public RegexTokenPattern(string pattern, Func<Match, object?>? parsedValueFactory = null, RegexOptions options = RegexOptions.Compiled)
+		public RegexTokenPattern(string pattern, RegexOptions options = RegexOptions.Compiled)
 		{
 			if (string.IsNullOrEmpty(pattern))
 				throw new ArgumentException("Pattern cannot be null or empty.", nameof(pattern));
 			RegexPattern = pattern.TrimStart('^');
 			Regex = new Regex($"^{RegexPattern}", options);
-			ParsedValueFactory = parsedValueFactory ?? DefaultParsedValueFactory;
 		}
 
-		private static object? DefaultParsedValueFactory(Match m) => m.Value;
+
 
 		public override bool TryMatch(ParserContext context, out ParsedToken token)
 		{
+			AdvanceContext(ref context);
+
 			var match = Regex.Match(context.str.Substring(context.position));
 			if (!match.Success || match.Index != 0)
 			{
@@ -51,9 +46,11 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 				return false;
 			}
 
-			token = new ParsedToken(Id, context.position, match.Length, ParsedValueFactory.Invoke(match));
+			token = new ParsedToken(Id, context.position, match.Length, ParsedValueFactory, match);
 			return true;
 		}
+
+
 
 		public override string ToString(int remainingDepth)
 		{
@@ -62,16 +59,15 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 		public override bool Equals(object? obj)
 		{
-			return obj is RegexTokenPattern pattern &&
-				   RegexPattern == pattern.RegexPattern &&
-				   ParsedValueFactory == pattern.ParsedValueFactory;
+			return base.Equals(obj) &&
+				   obj is RegexTokenPattern pattern &&
+				   RegexPattern == pattern.RegexPattern;
 		}
 
 		public override int GetHashCode()
 		{
-			int hashCode = 1824601363;
+			int hashCode = base.GetHashCode();
 			hashCode = hashCode * -1521134295 + RegexPattern.GetHashCode();
-			hashCode = hashCode * -1521134295 + ParsedValueFactory.GetHashCode();
 			return hashCode;
 		}
 	}

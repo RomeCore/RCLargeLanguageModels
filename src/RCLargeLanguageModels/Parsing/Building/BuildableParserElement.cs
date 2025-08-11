@@ -34,5 +34,18 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// <param name="tokenChildren">The token children IDs to build the parser element with.</param>
 		/// <returns>The built parser element.</returns>
 		public abstract ParserElement Build(List<int>? ruleChildren, List<int>? tokenChildren);
+
+		public override bool Equals(object? obj)
+		{
+			return obj is BuildableParserElement other &&
+				   Equals(Settings, other.Settings);
+		}
+
+		public override int GetHashCode()
+		{
+			int hashCode = 17;
+			hashCode ^= Settings.GetHashCode() * 23;
+			return hashCode;
+		}
 	}
 }

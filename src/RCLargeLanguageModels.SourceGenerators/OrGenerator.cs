@@ -226,11 +226,6 @@ namespace RCLargeLanguageModels.SourceGenerators
 				.Select(i => $@"		public static implicit operator Or<{typeParams}>(T{i} value)
 		{{
 			return new Or<{typeParams}>(value);
-		}}
-
-		public static implicit operator T{i}(Or<{typeParams}> or)
-		{{
-			return or.AsT{i}();
 		}}"));
 
 			// Generate equality operators

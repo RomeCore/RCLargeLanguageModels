@@ -306,15 +306,14 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 		private bool TryMatchSequence(TrieNode root, string input, int startPos, out int consumed)
 		{
-			string? dummyReplacement;
-			return TryMatchSequence(root, input, startPos, out consumed, out dummyReplacement);
+			return TryMatchSequence(root, input, startPos, out consumed, out string? _);
 		}
 
 
 
 		public override string ToString(int remainingDepth)
 		{
-			return $"escaped text with escapes: {string.Join(", ", EscapeMappings.Keys)} forbidden: {string.Join(", ", ForbiddenSequences)}";
+			return $"escaped text: {string.Join(" ", EscapeMappings.Keys.Select(e => $"'{e}'"))} forbidden: {string.Join(" ", ForbiddenSequences.Select(e => $"'{e}'"))}";
 		}
 
 		public override bool Equals(object? obj)

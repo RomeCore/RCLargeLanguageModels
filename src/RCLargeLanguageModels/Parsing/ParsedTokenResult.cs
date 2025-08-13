@@ -43,6 +43,11 @@ namespace RCLargeLanguageModels.Parsing
 		public TokenPattern Token => Context.parser.TokenPatterns[Result.tokenId];
 
 		/// <summary>
+		/// Gets the alias for the token pattern that was parsed. May be null if no alias is defined.
+		/// </summary>
+		public string TokenAlias => Token.Aliases.Count > 0 ? Token.Aliases[0] : null;
+
+		/// <summary>
 		/// Gets the aliases for the token pattern that was parsed.
 		/// </summary>
 		public ImmutableList<string> TokenAliases => Token.Aliases;

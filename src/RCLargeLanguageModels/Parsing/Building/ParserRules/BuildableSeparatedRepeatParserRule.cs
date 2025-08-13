@@ -33,6 +33,11 @@ namespace RCLargeLanguageModels.Parsing.Building.ParserRules
 		/// </summary>
 		public bool AllowTrailingSeparator { get; set; } = false;
 
+		/// <summary>
+		/// Gets or sets a value indicating whether separators should be included in the result children rules.
+		/// </summary>
+		public bool IncludeSeparatorsInResult { get; set; } = false;
+
 		public override IEnumerable<Or<string, BuildableParserRule>>? RuleChildren
 			=> Child.WrapIntoEnumerable().Concat(Separator.WrapIntoEnumerable());
 
@@ -45,7 +50,8 @@ namespace RCLargeLanguageModels.Parsing.Building.ParserRules
 				ruleChildren[1],
 				MinCount,
 				MaxCount,
-				AllowTrailingSeparator);
+				AllowTrailingSeparator,
+				IncludeSeparatorsInResult);
 		}
 
 		public override bool Equals(object? obj)
@@ -56,7 +62,8 @@ namespace RCLargeLanguageModels.Parsing.Building.ParserRules
 				   Separator == other.Separator &&
 				   MinCount == other.MinCount &&
 				   MaxCount == other.MaxCount &&
-				   AllowTrailingSeparator == other.AllowTrailingSeparator;
+				   AllowTrailingSeparator == other.AllowTrailingSeparator &&
+				   IncludeSeparatorsInResult == other.IncludeSeparatorsInResult;
 		}
 
 		public override int GetHashCode()
@@ -67,6 +74,7 @@ namespace RCLargeLanguageModels.Parsing.Building.ParserRules
 			hashCode ^= MinCount.GetHashCode() * 31;
 			hashCode ^= MaxCount.GetHashCode() * 37;
 			hashCode ^= AllowTrailingSeparator.GetHashCode() * 41;
+			hashCode ^= IncludeSeparatorsInResult.GetHashCode() * 50;
 			return hashCode;
 		}
 	}

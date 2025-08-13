@@ -54,6 +54,11 @@ namespace RCLargeLanguageModels.Parsing
 		public ParserRule Rule => Context.parser.Rules[Result.ruleId];
 
 		/// <summary>
+		/// Gets the alias for the parser rule that was parsed. May be null if no alias is defined.
+		/// </summary>
+		public string RuleAlias => Rule.Aliases.Count > 0 ? Rule.Aliases[0] : null;
+
+		/// <summary>
 		/// Gets the aliases for the parser rule that was parsed.
 		/// </summary>
 		public ImmutableList<string> RuleAliases => Rule.Aliases;

@@ -37,6 +37,11 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 		public bool AllowTrailingSeparator { get; }
 
 		/// <summary>
+		/// Gets whether separators should be included in the result children rules.
+		/// </summary>
+		public bool IncludeSeparatorsInResult { get; }
+
+		/// <summary>
 		/// Creates a new instance of the <see cref="SeparatedRepeatParserRule"/> class.
 		/// </summary>
 		/// <param name="rule">The ID of the rule to repeat.</param>
@@ -44,13 +49,15 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 		/// <param name="minCount">The minimum number of elements.</param>
 		/// <param name="maxCount">The maximum number of elements, or -1 for no limit.</param>
 		/// <param name="allowTrailingSeparator">Whether a trailing separator without a following element is allowed.</param>
+		/// <param name="includeSeparatorsInResult">Whether separators should be included in the result children rules.</param>
 		/// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="minCount"/> is less than 0 or less than <paramref name="maxCount"/> if specified.</exception>
 		public SeparatedRepeatParserRule(
 			int rule,
 			int separatorRule,
 			int minCount,
 			int maxCount,
-			bool allowTrailingSeparator = false)
+			bool allowTrailingSeparator = false,
+			bool includeSeparatorsInResult = false)
 		{
 			if (minCount < 0)
 				throw new ArgumentOutOfRangeException(nameof(minCount), "minCount must be >= 0");
@@ -63,6 +70,7 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 			MinCount = minCount;
 			MaxCount = Math.Max(maxCount, -1);
 			AllowTrailingSeparator = allowTrailingSeparator;
+			IncludeSeparatorsInResult = includeSeparatorsInResult;
 		}
 
 
@@ -131,6 +139,10 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 					result = ParsedRule.Fail;
 					return false;
 				}
+
+				// Include separator in result if requested
+				if (IncludeSeparatorsInResult)
+					elements.Add(parsedSep);
 
 				// Separator successfully parsed — position already updated inside TryParseRule, but update again for safety:
 				childContext.position = parsedSep.startIndex + parsedSep.length;
@@ -207,7 +219,8 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 				   Separator == rule.Separator &&
 				   MinCount == rule.MinCount &&
 				   MaxCount == rule.MaxCount &&
-				   AllowTrailingSeparator == rule.AllowTrailingSeparator;
+				   AllowTrailingSeparator == rule.AllowTrailingSeparator &&
+				   IncludeSeparatorsInResult == rule.IncludeSeparatorsInResult;
 		}
 
 		public override int GetHashCode()
@@ -218,6 +231,7 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 			hashCode = hashCode * -1521134295 + MinCount.GetHashCode();
 			hashCode = hashCode * -1521134295 + MaxCount.GetHashCode();
 			hashCode = hashCode * -1521134295 + AllowTrailingSeparator.GetHashCode();
+			hashCode = hashCode * -1521134295 + IncludeSeparatorsInResult.GetHashCode();
 			return hashCode;
 		}
 	}

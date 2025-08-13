@@ -31,17 +31,20 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 			int i = 0;
 			foreach (var rule in Choices)
 			{
-				if (TryParseRule(rule, childContext, out result))
+				if (TryParseRule(rule, childContext, out var choiceResult))
 				{
-					result.ruleId = rule;
-					result.occurency = i;
-					result.parsedValueFactory = ParsedValueFactory;
+					choiceResult.occurency = i;
+					result = new ParsedRule(Id,
+						choiceResult.startIndex,
+						choiceResult.length,
+						new List<ParsedRule> { choiceResult },
+						choiceResult.intermediateValue);
 					return true;
 				}
 				i++;
 			}
 
-			context.RecordError($"No matching choice found from {this}.");
+			RecordError(childContext, $"Found no matching choice.");
 			result = ParsedRule.Fail;
 			return false;
 		}

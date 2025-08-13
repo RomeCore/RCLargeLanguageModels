@@ -16,6 +16,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 	/// </remarks>
 	public class EscapedTextTokenPattern : TokenPattern
 	{
+		private readonly bool _comparerWasSet;
 		private readonly TrieNode _escapeRoot;
 		private readonly TrieNode _forbiddenRoot;
 
@@ -57,8 +58,10 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			CharComparer = new CharComparer(Comparer);
 			EscapeMappings = ImmutableDictionary.CreateRange(Comparer, escapeMappings);
 			ForbiddenSequences = ImmutableHashSet.CreateRange(Comparer, forbidden);
-			_escapeRoot = new TrieNode(CharComparer);
-			_forbiddenRoot = new TrieNode(CharComparer);
+
+			_comparerWasSet = comparer != null;
+			_escapeRoot = new TrieNode(comparer != null ? CharComparer : null);
+			_forbiddenRoot = new TrieNode(comparer != null ? CharComparer : null);
 
 			foreach (var kvp in escapeMappings)
 			{
@@ -82,7 +85,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			{
 				if (!node.Children.TryGetValue(ch, out var child))
 				{
-					child = new TrieNode(CharComparer);
+					child = new TrieNode(_comparerWasSet ? CharComparer : null);
 					node.Children[ch] = child;
 				}
 				node = child;
@@ -214,7 +217,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 					if (pos + (input.Length - pos) >= input.Length) // redundant but explicit: we are at end-of-input suffix
 					{
 						// Record error at the failure location
-						context.RecordError("Invalid escape sequence.", pos);
+						RecordError(childContext, pos, $"Invalid escape sequence.");
 						token = ParsedToken.Fail;
 						return false;
 					}
@@ -229,7 +232,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 			// produce token; note: we allow zero-length result if you intentionally permit it.
 			int length = pos - start;
-			token = new ParsedToken(Id, start, length, ParsedValueFactory, sb.ToString());
+			token = new ParsedToken(Id, start, length, sb.ToString());
 			return true;
 		}
 
@@ -320,7 +323,8 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 				   obj is EscapedTextTokenPattern other &&
 				   EscapeMappings.SequenceEqual(other.EscapeMappings) &&
 				   ForbiddenSequences.SetEquals(other.ForbiddenSequences) &&
-				   Equals(Comparer, other.Comparer);
+				   Equals(Comparer, other.Comparer) &&
+				   _comparerWasSet == other._comparerWasSet;
 		}
 
 		public override int GetHashCode()
@@ -329,6 +333,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			hashCode = hashCode * -1521134295 + EscapeMappings.GetSetHashCode(Comparer);
 			hashCode = hashCode * -1521134295 + ForbiddenSequences.GetSetHashCode();
 			hashCode = hashCode * -1521134295 + Comparer.GetHashCode();
+			hashCode = hashCode * -1521134295 + _comparerWasSet.GetHashCode();
 			return hashCode;
 		}
 
@@ -338,9 +343,12 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			public bool IsTerminal { get; set; }
 			public string? Replacement { get; set; }
 
-			public TrieNode(CharComparer comparer)
+			public TrieNode(CharComparer? comparer)
 			{
-				Children = new Dictionary<char, TrieNode>(comparer);
+				if (comparer == null)
+					Children = new Dictionary<char, TrieNode>();
+				else
+					Children = new Dictionary<char, TrieNode>(comparer);
 			}
 		}
 	}

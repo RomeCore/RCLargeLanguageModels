@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
 using System.Text;
+using Newtonsoft.Json.Linq;
 
 namespace RCLargeLanguageModels.Parsing
 {
@@ -85,8 +86,36 @@ namespace RCLargeLanguageModels.Parsing
 			Context = context;
 			Result = result;
 
-			_textLazy = new Lazy<string>(() => context.str.Substring(result.startIndex, result.length));
-			_valueLazy = new Lazy<object?>(() => result.parsedValueFactory?.Invoke(this) ?? null);
+			_textLazy = new Lazy<string>(() => Context.str.Substring(Result.startIndex, Result.length));
+			_valueLazy = new Lazy<object?>(() => Token.ParsedValueFactory?.Invoke(this) ?? null);
+		}
+
+		/// <summary>
+		/// Dumps the parsed token result to a string representation.
+		/// </summary>
+		/// <returns>A string representation of the parsed token result.</returns>
+		public string Dump()
+		{
+			StringBuilder sb = new StringBuilder();
+
+			string valueStr = string.Empty;
+
+			try
+			{
+				valueStr = Value?.ToString() ?? "null";
+			}
+			catch (Exception ex)
+			{
+				valueStr = $"Error {ex.GetType().Name}: {ex.Message}";
+			}
+
+			string intermediateValueStr = IntermediateValue?.ToString() ?? "null";
+
+			sb.AppendLine($"Token: {Token}, Captured Text: \"{Text}\"");
+			sb.AppendLine($"Value: {valueStr}");
+			sb.AppendLine($"Intermediate Value: {intermediateValueStr}");
+
+			return sb.ToString();
 		}
 	}
 }

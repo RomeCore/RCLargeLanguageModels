@@ -31,12 +31,12 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			if (TryMatchToken(TokenPattern, childContext, out var matchedToken))
 			{
 				token = new ParsedToken(Id, matchedToken.startIndex, matchedToken.length,
-					ParsedValueFactory, matchedToken.intermediateValue);
+					matchedToken.intermediateValue);
 				return true;
 			}
 			else
 			{
-				token = new ParsedToken(Id, context.position, 0, ParsedValueFactory, null);
+				token = new ParsedToken(Id, context.position, 0);
 				return true;
 			}
 		}

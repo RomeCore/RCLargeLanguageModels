@@ -47,7 +47,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 				return false;
 			}
 
-			token = new ParsedToken(Id, context.position, match.Length, ParsedValueFactory, match);
+			token = new ParsedToken(Id, context.position, match.Length, match);
 			return true;
 		}
 

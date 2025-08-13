@@ -30,17 +30,15 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 		{
 			if (!TryMatchToken(TokenPattern, childContext, out var parsedToken))
 			{
-				context.RecordError($"Failed to parse token {GetTokenPattern(TokenPattern)}");
+				RecordError(childContext, $"Failed to parse token.");
 				result = ParsedRule.Fail;
 				return false;
 			}
 
-			result = new ParsedRule(Id, parsedToken.startIndex, parsedToken.length, parsedToken,
-				ParsedValueFactory ?? DefaultParsedValueFactory, parsedToken.intermediateValue);
+			result = new ParsedRule(Id, parsedToken.startIndex, parsedToken.length,
+				parsedToken, parsedToken.intermediateValue);
 			return true;
 		}
-
-		private static object? DefaultParsedValueFactory(ParsedRuleResult result) => result.Token.Value;
 
 
 

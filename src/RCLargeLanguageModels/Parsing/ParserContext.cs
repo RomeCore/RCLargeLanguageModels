@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace RCLargeLanguageModels.Parsing
@@ -26,15 +28,6 @@ namespace RCLargeLanguageModels.Parsing
 		public int recursionDepth;
 
 		/// <summary>
-		/// The value indicating whether to disable recording to <see cref="successPositions"/>.
-		/// </summary>
-		/// <remarks>
-		/// Used for trying to parse lookahead tokens and rules to prevent recording success status for them. <br/>
-		/// Success status used for getting relevant errors.
-		/// </remarks>
-		public bool disableSuccessRecording;
-
-		/// <summary>
 		/// The inherited settings that control the behavior of the parser during parsing operations.
 		/// </summary>
 		public ParserSettings settings;
@@ -55,12 +48,17 @@ namespace RCLargeLanguageModels.Parsing
 		/// <remarks>
 		/// Used to retrive relevant errors that can be used for debugging purposes.
 		/// </remarks>
-		public readonly HashSet<int> successPositions;
+		public readonly BitArray successPositions;
 
 		/// <summary>
 		/// A list to store any parsing errors encountered during the process.
 		/// </summary>
 		public readonly List<ParsingError> errors;
+
+		/// <summary>
+		/// A set of positions that were skipped.
+		/// </summary>
+		public readonly BitArray skippedPositions;
 
 		/// <summary>
 		/// A list to store any rules that were skipped during the parsing process.
@@ -102,45 +100,16 @@ namespace RCLargeLanguageModels.Parsing
 			this.str = str ?? throw new ArgumentNullException(nameof(str));
 			position = 0;
 			recursionDepth = 0;
-			disableSuccessRecording = false;
 			settings = default;
 
 			this.parser = parser ?? throw new ArgumentNullException(nameof(parser));
 			settings = parser.Settings;
 
 			this.cache = new ParserCache();
-			this.successPositions = new HashSet<int>();
+			this.successPositions = new BitArray(str.Length);
 			this.errors = new List<ParsingError>();
+			this.skippedPositions = new BitArray(str.Length);
 			this.skippedRules = new List<ParsedRule>();
-		}
-
-		/// <summary>
-		/// Creates a new instance of the <see cref="ParserContext"/> class.
-		/// </summary>
-		/// <param name="str">The input string to be parsed.</param>
-		/// <param name="initialPosition">The initial position in the input string.</param>
-		/// <param name="initialRecursionDepth">The initial recursion depth.</param>
-		/// <param name="ignoreSuccessRecording">The value indicating whether to disable recording to <see cref="successPositions"/></param>
-		/// <param name="settings">The settings that control the behavior of the parser during parsing operations.</param>
-		/// <param name="parser">The parser object that is performing the parsing.</param>
-		/// <param name="cache">A cache to store parsed results for reuse.</param>
-		/// <param name="successPositions">A set of positions that have successfully parsed rules and tokens.</param>
-		/// <param name="errors">A list to store any parsing errors encountered during the process.</param>
-		/// <param name="skippedRules">A list to store any rules that were skipped during the parsing process.</param>
-		public ParserContext(string str, int initialPosition, int initialRecursionDepth, bool ignoreSuccessRecording, ParserSettings settings,
-			Parser parser, ParserCache cache, HashSet<int> successPositions, List<ParsingError> errors, List<ParsedRule> skippedRules)
-		{
-			this.str = str ?? throw new ArgumentNullException(nameof(str));
-			this.position = initialPosition;
-			this.recursionDepth = initialRecursionDepth;
-			this.disableSuccessRecording = ignoreSuccessRecording;
-			this.settings = settings;
-
-			this.parser = parser ?? throw new ArgumentNullException(nameof(parser));
-			this.cache = cache ?? throw new ArgumentNullException(nameof(cache));
-			this.successPositions = successPositions ?? throw new ArgumentNullException(nameof(successPositions));
-			this.errors = errors ?? throw new ArgumentNullException(nameof(errors));
-			this.skippedRules = skippedRules ?? throw new ArgumentNullException(nameof(skippedRules));
 		}
 
 		/// <summary>
@@ -164,44 +133,28 @@ namespace RCLargeLanguageModels.Parsing
 		}
 
 		/// <summary>
-		/// Records, ignores or throws an error based on the current settings and using current position.
+		/// Records, ignores or throws an error based on the current settings.
 		/// </summary>
-		/// <param name="errorMessage">The parsing error message to record.</param>
-		public void RecordError(string errorMessage)
+		/// <param name="message">The error message to record.</param>
+		/// <param name="elementId">The ID of the element (rule or token) that caused the error or been expected at this position.</param>
+		/// <param name="isToken">A value indicating whether the element that caused the error is a token.</param>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public void RecordError(string? message = null, int elementId = -1, bool isToken = false)
 		{
-			switch (settings.errorHandling)
-			{
-				case ParserErrorHandlingMode.Default:
-					errors.Add(new ParsingError(position, errorMessage));
-					break;
-
-				case ParserErrorHandlingMode.NoRecord:
-					break;
-
-				case ParserErrorHandlingMode.Throw:
-					throw new ParsingException(errorMessage, str, position);
-			}
+			RecordError(new ParsingError(position, recursionDepth, message, elementId, isToken));
 		}
 
 		/// <summary>
-		/// Records, ignores or throws an error based on the current settings and using provided position.
+		/// Records, ignores or throws an error based on the current settings.
 		/// </summary>
-		/// <param name="errorMessage">The parsing error message to record.</param>
-		/// <param name="position">Position in the input string.</param>
-		public void RecordError(string errorMessage, int position)
+		/// <param name="position">The position in the input string where the error occurred.</param>
+		/// <param name="message">The error message to record.</param>
+		/// <param name="elementId">The ID of the element (rule or token) that caused the error or been expected at this position.</param>
+		/// <param name="isToken">A value indicating whether the element that caused the error is a token.</param>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public void RecordError(int position, string? message = null, int elementId = -1, bool isToken = false)
 		{
-			switch (settings.errorHandling)
-			{
-				case ParserErrorHandlingMode.Default:
-					errors.Add(new ParsingError(position, errorMessage));
-					break;
-
-				case ParserErrorHandlingMode.NoRecord:
-					break;
-
-				case ParserErrorHandlingMode.Throw:
-					throw new ParsingException(errorMessage, str, position);
-			}
+			RecordError(new ParsingError(position, recursionDepth, message, elementId, isToken));
 		}
 
 		/// <summary>
@@ -246,7 +199,7 @@ namespace RCLargeLanguageModels.Parsing
 		public readonly IEnumerable<ParsingError> GetRelevantErrors()
 		{
 			var successPos = successPositions;
-			return errors.Where(e => !successPos.Contains(e.position));
+			return errors;
 		}
 	}
 }

@@ -18,12 +18,12 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 		public int Rule { get; }
 
 		/// <summary>
-		/// Gets the minimum number of times the rule must repeat.
+		/// Gets the minimum inclusive number of times the rule must repeat.
 		/// </summary>
 		public int MinCount { get; }
 
 		/// <summary>
-		/// Gets the maximum number of times the rule can repeat. -1 indicates no upper limit.
+		/// Gets the maximum inclusive number of times the rule can repeat. -1 indicates no upper limit.
 		/// </summary>
 		public int MaxCount { get; }
 
@@ -32,18 +32,18 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 		/// </summary>
 		/// <param name="ruleId">The token pattern ID to repeat.</param>
 		/// <param name="minCount">The minimum number of times the token pattern must repeat.</param>
-		/// <param name="maxCount">The maximum number of times the token pattern can repeat.</param>
+		/// <param name="maxCount">The maximum number of times the token pattern can repeat. -1 indicates no upper limit.</param>
 		public RepeatParserRule(int ruleId, int minCount, int maxCount)
 		{
 			if (minCount < 0)
 				throw new ArgumentOutOfRangeException(nameof(minCount), "minCount must be greater than or equal to 0");
 
-			if (maxCount < minCount && maxCount >= 0)
-				throw new ArgumentOutOfRangeException(nameof(maxCount), "maxCount must be greater than or equal to minCount or be negative if no maximum is specified.");
+			if (maxCount < minCount && maxCount != -1)
+				throw new ArgumentOutOfRangeException(nameof(maxCount), "maxCount must be greater than or equal to minCount or be -1 if no maximum is specified.");
 
 			Rule = ruleId;
 			MinCount = minCount;
-			MaxCount = Math.Max(maxCount, -1);
+			MaxCount = maxCount;
 		}
 
 
@@ -55,8 +55,7 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 			for (int i = 0; i < this.MaxCount || this.MaxCount == -1; i++)
 			{
-				ParsedRule parsedRule = ParsedRule.Fail;
-				if (!TryParseRule(Rule, childContext, out parsedRule))
+				if (!TryParseRule(Rule, childContext, out var parsedRule))
 				{
 					break;
 				}
@@ -67,8 +66,7 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 			if (rules.Count < MinCount)
 			{
-				childContext.errors.Add(new ParsingError(childContext.position,
-					$"Expected at least {MinCount} repetitions of {GetRule(Rule)}\nbut found {rules.Count}."));
+				RecordError(childContext, $"Expected at least {MinCount} repetitions of child rule, but found {rules.Count}.");
 				result = ParsedRule.Fail;
 				return false;
 			}
@@ -77,8 +75,7 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 				Id,
 				initialPosition,
 				childContext.position - initialPosition,
-				rules.ToImmutableList(),
-				ParsedValueFactory);
+				rules);
 
 			return true;
 		}

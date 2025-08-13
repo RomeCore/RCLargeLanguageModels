@@ -32,18 +32,18 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 		/// </summary>
 		/// <param name="tokenPatternId">The token pattern ID to repeat.</param>
 		/// <param name="minCount">The minimum number of times the token pattern must repeat.</param>
-		/// <param name="maxCount">The maximum number of times the token pattern can repeat.</param>
+		/// <param name="maxCount">The maximum number of times the token pattern can repeat. -1 indicates no upper limit.</param>
 		public RepeatTokenPattern(int tokenPatternId, int minCount, int maxCount)
 		{
 			if (minCount < 0)
 				throw new ArgumentOutOfRangeException(nameof(minCount), "minCount must be greater than or equal to 0");
 
-			if (maxCount < minCount && maxCount >= 0)
-				throw new ArgumentOutOfRangeException(nameof(maxCount), "maxCount must be greater than or equal to minCount or be negative if no maximum is specified.");
+			if (maxCount < minCount && maxCount != -1)
+				throw new ArgumentOutOfRangeException(nameof(maxCount), "maxCount must be greater than or equal to minCount or be -1 if no maximum is specified.");
 
 			TokenPattern = tokenPatternId;
 			MinCount = minCount;
-			MaxCount = Math.Max(maxCount, -1);
+			MaxCount = maxCount;
 		}
 
 
@@ -68,8 +68,6 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 			if (tokens.Count < this.MinCount)
 			{
-				context.RecordError($"Expected at least {MinCount} occurrences" +
-					$"of {GetTokenPattern(TokenPattern)}, but found only {tokens.Count}.");
 				token = ParsedToken.Fail;
 				return false;
 			}
@@ -77,8 +75,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			token = new ParsedToken(
 				Id,
 				initialPosition,
-				childContext.position - initialPosition,
-				ParsedValueFactory);
+				childContext.position - initialPosition);
 
 			return true;
 		}

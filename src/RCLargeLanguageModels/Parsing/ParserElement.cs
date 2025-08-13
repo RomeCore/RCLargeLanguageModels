@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace RCLargeLanguageModels.Parsing
@@ -56,6 +57,72 @@ namespace RCLargeLanguageModels.Parsing
 		protected TokenPattern GetTokenPattern(int index)
 		{
 			return Parser.TokenPatterns[index];
+		}
+
+		/// <summary>
+		/// Advances the parser context to use for this and child elements.
+		/// </summary>
+		/// <remarks>
+		/// For <paramref name="context"/> it updates the settings to use as local element. <br/>
+		/// It makes a <paramref name="childContext"/> that have advanced recursion depth and settings for child elements.
+		/// </remarks>
+		public void AdvanceContext(ref ParserContext context, out ParserContext childContext)
+		{
+			childContext = context;
+
+			if (Settings.isDefault)
+			{
+				childContext.settings = context.settings;
+			}
+			else
+			{
+				context.settings.Resolve(Settings, Parser.Settings, out var forLocal, out var forChildren);
+				context.settings = forLocal;
+
+				childContext.settings = forChildren;
+			}
+
+			childContext.recursionDepth++;
+		}
+
+		/// <summary>
+		/// Records an error associated with this element in the provided parser context.
+		/// </summary>
+		/// <param name="context">The parser context to record the error in.</param>
+		protected void RecordError(ParserContext context)
+		{
+			context.RecordError(null, Id, this is TokenPattern);
+		}
+
+		/// <summary>
+		/// Records an error associated with this element and the specific message in the provided parser context.
+		/// </summary>
+		/// <param name="context">The parser context to record the error in.</param>
+		/// <param name="position">The position in the input string where the error occurred.</param>
+		protected void RecordError(ParserContext context, int position)
+		{
+			context.RecordError(position, null, Id, this is TokenPattern);
+		}
+
+		/// <summary>
+		/// Records an error associated with this element and the specific message in the provided parser context.
+		/// </summary>
+		/// <param name="context">The parser context to record the error in.</param>
+		/// <param name="message">The error message to record.</param>
+		protected void RecordError(ParserContext context, string? message)
+		{
+			context.RecordError(message, Id, this is TokenPattern);
+		}
+
+		/// <summary>
+		/// Records an error associated with this element and the specific message in the provided parser context.
+		/// </summary>
+		/// <param name="context">The parser context to record the error in.</param>
+		/// <param name="position">The position in the input string where the error occurred.</param>
+		/// <param name="message">The error message to record.</param>
+		protected void RecordError(ParserContext context, int position, string? message)
+		{
+			context.RecordError(position, message, Id, this is TokenPattern);
 		}
 
 		/// <summary>

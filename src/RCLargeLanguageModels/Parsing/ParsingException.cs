@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
+using Newtonsoft.Json.Linq;
 
 namespace RCLargeLanguageModels.Parsing
 {
@@ -12,9 +13,14 @@ namespace RCLargeLanguageModels.Parsing
 	public class ParsingException : Exception
 	{
 		/// <summary>
-		/// Gets the input where parsing failed.
+		/// Gets the parser context that was used during parsing.
 		/// </summary>
-		public string Input { get; }
+		public ParserContext Context { get; }
+
+		/// <summary>
+		/// Gets a list of errors that occurred during parsing.
+		/// </summary>
+		public ImmutableList<ParsingError> Errors { get; }
 
 		/// <summary>
 		/// Gets the last error message during parsing.
@@ -39,65 +45,97 @@ namespace RCLargeLanguageModels.Parsing
 		/// <summary>
 		/// Initializes a new instance of the <see cref="ParsingException"/> class.
 		/// </summary>
-		/// <param name="message">The error message that explains the reason for the exception.</param>
-		/// <param name="input">The input where parsing failed.</param>
-		/// <param name="position">The position in the input where the error occurred.</param>
-		public ParsingException(string message, string input, int position) : base(FormatMessage(message, input, position))
+		/// <param name="context">The parser context that was used during parsing.</param>
+		/// <param name="message">The error message.</param>
+		public ParsingException(ParserContext context, string message) :
+			base(FormatMessage(context, ErrorFromContextAndMessage(context, message)))
 		{
-			Input = input ?? throw new ArgumentNullException(nameof(input));
-			ErrorMessage = message ?? throw new ArgumentNullException(nameof(message));
+			Context = context;
 			ErrorMessages = ImmutableList.Create(message);
-			Position = position;
-			Positions = ImmutableList.Create(position);
+			ErrorMessage = message;
+			Positions = ImmutableList.Create(context.position);
+			Position = context.position;
 		}
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="ParsingException"/> class.
 		/// </summary>
-		/// <param name="input">The input where parsing failed.</param>
+		/// <param name="context">The parser context that was used during parsing.</param>
 		/// <param name="errors">The list of parsing errors that occurred.</param>
-		public ParsingException(string input, params ParsingError[] errors) : base(FormatMessage(input, errors))
+		public ParsingException(ParserContext context, params ParsingError[] errors) :
+			base(FormatMessage(context, errors))
 		{
 			if (errors == null)
 				throw new ArgumentNullException(nameof(errors));
 			if (!errors.Any())
 				throw new ArgumentException("At least one error must be provided.", nameof(errors));
 
-			Input = input;
+			Context = context;
 			ErrorMessages = errors.Select(e => e.message).ToImmutableList();
 			ErrorMessage = ErrorMessages[ErrorMessages.Count - 1];
 			Positions = errors.Select(e => e.position).ToImmutableList();
 			Position = Positions[Positions.Count - 1];
 		}
 
-		private static string FormatMessage(string message, string input, int position)
+		private static ParsingError ErrorFromContextAndMessage(ParserContext context, string message)
 		{
-			return $"{message}\n{PositionalFormatter.Format(input, position)}";
+			return new ParsingError(context.position, context.recursionDepth, message);
 		}
 
-		private static string FormatMessage(string input, params ParsingError[] errors)
+		private static string FormatMessage(ParserContext context, ParsingError error)
+		{
+			return error.ToString(context);
+		}
+
+		private static string FormatMessage(ParserContext context, params ParsingError[] errors)
 		{
 			if (errors.Length == 1)
-				return FormatMessage(errors[0].message, input, errors[0].position);
+				return FormatMessage(context, errors[0]);
 
 			StringBuilder sb = new StringBuilder();
 			const int max = 3;
 
-			sb.AppendLine("Multiple errors occurred during parsing:");
+			sb.AppendLine("Multiple errors occurred during parsing:").AppendLine();
 
 			var groupedErrors = errors
 				.GroupBy(e => e.position)
-				.OrderByDescending(e => e.Key)
+				.OrderByDescending(g => g.Key)
 				.ToList();
+
 			int last = Math.Min(groupedErrors.Count, max);
 
 			for (int i = 0; i < last; i++)
 			{
 				var groupedError = groupedErrors[i];
 
-				foreach (var error in groupedError.Distinct())
-					sb.AppendLine(error.message);
-				sb.Append(PositionalFormatter.Format(input, groupedError.Key));
+				var expected = groupedError
+					.Where(e => e.elementId >= 0)
+					.Select(e => e.isToken
+						? context.parser.TokenPatterns[e.elementId].ToString()
+						: context.parser.Rules[e.elementId].ToString())
+					.Distinct()
+					.ToList();
+
+				var msg = groupedError
+					.Select(e => e.message)
+					.Where(m => !string.IsNullOrEmpty(m))
+					.Distinct()
+					.ToList();
+
+				if (msg.Count > 0)
+					sb.AppendLine(string.Join(" / ", msg));
+
+				if (expected.Count > 0)
+				{
+					string oneOf = msg.Count > 1 ? " one of" : "";
+					if (expected.Any(e => e.Contains('\n') || e.Contains('\r')))
+						sb.AppendLine($"Expected{oneOf}:\n" + string.Join("\n", expected).Indent("  "));
+					else
+						sb.AppendLine($"Expected{oneOf}: " + string.Join(", ", expected));
+				}
+
+				sb.AppendLine("The line where the error occurred:");
+				sb.Append(PositionalFormatter.Format(context.str, groupedError.Key));
 
 				if (i < last - 1)
 					sb.AppendLine().AppendLine();
@@ -108,5 +146,6 @@ namespace RCLargeLanguageModels.Parsing
 
 			return sb.ToString().Indent("  ", addIndentToFirstLine: false);
 		}
+
 	}
 }

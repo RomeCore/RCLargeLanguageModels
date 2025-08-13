@@ -16,9 +16,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 	/// </remarks>
 	public class LiteralChoiceTokenPattern : TokenPattern
 	{
-		/// <summary>
-		/// The set of literal strings to match.
-		/// </summary>
+		private readonly bool _comparerWasSet;
 		private readonly TrieNode _root;
 
 		/// <summary>
@@ -49,24 +47,26 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			Comparer = comparer ?? StringComparer.Ordinal;
 			CharComparer = new CharComparer(Comparer);
 			Literals = ImmutableHashSet.CreateRange(Comparer, literals);
-			_root = new TrieNode(CharComparer);
+
+			_comparerWasSet = comparer != null;
+			_root = new TrieNode(_comparerWasSet ? CharComparer : null);
 
 			foreach (var literal in literals)
 			{
 				if (string.IsNullOrEmpty(literal))
 					throw new ArgumentException("Literals cannot contain null or empty strings.", nameof(literals));
-				AddLiteral(literal);
+				AddLiteral(literal, _comparerWasSet ? CharComparer : null);
 			}
 		}
 
-		private void AddLiteral(string literal)
+		private void AddLiteral(string literal, CharComparer? comparer)
 		{
 			var node = _root;
 			foreach (var ch in literal)
 			{
 				if (!node.Children.TryGetValue(ch, out var child))
 				{
-					child = new TrieNode(CharComparer);
+					child = new TrieNode(_comparerWasSet ? CharComparer : null);
 					node.Children[ch] = child;
 				}
 				node = child;
@@ -104,11 +104,10 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			if (lastMatchNode != null)
 			{
 				int length = lastMatchPos - context.position;
-				token = new ParsedToken(Id, context.position, length, ParsedValueFactory, lastMatchNode.Literal);
+				token = new ParsedToken(Id, context.position, length, lastMatchNode.Literal);
 				return true;
 			}
 
-			context.RecordError($"Failed to match {this}.");
 			token = ParsedToken.Fail;
 			return false;
 		}
@@ -142,9 +141,12 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			public bool IsTerminal { get; set; }
 			public string? Literal { get; set; }
 
-			public TrieNode(CharComparer comparer)
+			public TrieNode(CharComparer? comparer)
 			{
-				Children = new Dictionary<char, TrieNode>(comparer);
+				if (comparer == null)
+					Children = new Dictionary<char, TrieNode>();
+				else
+					Children = new Dictionary<char, TrieNode>(comparer);
 			}
 		}
 	}

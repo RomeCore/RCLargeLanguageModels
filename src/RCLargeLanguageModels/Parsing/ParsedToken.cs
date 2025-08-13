@@ -33,11 +33,6 @@ namespace RCLargeLanguageModels.Parsing
 		public int length;
 
 		/// <summary>
-		/// Gets the parsed value factory associated with this token.
-		/// </summary>
-		public Func<ParsedTokenResult, object?>? parsedValueFactory;
-
-		/// <summary>
 		/// Gets the intermediate value associated with this token.
 		/// </summary>
 		/// <remarks>
@@ -58,15 +53,13 @@ namespace RCLargeLanguageModels.Parsing
 		/// <param name="tokenId">The ID of the token that was parsed.</param>
 		/// <param name="startIndex">The starting index of the token in the input text.</param>
 		/// <param name="length">The length of the token.</param>
-		/// <param name="parsedValueFactory">The parsed value factory associated with this token.</param>
 		/// <param name="intermediateValue">The intermediate value associated with this token.</param>
-		public ParsedToken(int tokenId, int startIndex, int length, Func<ParsedTokenResult, object?>? parsedValueFactory = null, object? intermediateValue = null)
+		public ParsedToken(int tokenId, int startIndex, int length, object? intermediateValue = null)
 		{
 			this.success = true;
 			this.tokenId = tokenId;
 			this.startIndex = startIndex;
 			this.length = length;
-			this.parsedValueFactory = parsedValueFactory;
 			this.intermediateValue = intermediateValue;
 		}
 
@@ -77,21 +70,19 @@ namespace RCLargeLanguageModels.Parsing
 		/// <param name="tokenId">The ID of the token that was parsed.</param>
 		/// <param name="startIndex">The starting index of the token in the input text.</param>
 		/// <param name="length">The length of the token.</param>
-		/// <param name="parsedValueFactory">The parsed value factory associated with this token.</param>
 		/// <param name="intermediateValue">The intermediate value associated with this token.</param>
-		private ParsedToken(bool success, int tokenId, int startIndex, int length, Func<ParsedTokenResult, object?>? parsedValueFactory = null, object? intermediateValue = null)
+		private ParsedToken(bool success, int tokenId, int startIndex, int length, object? intermediateValue = null)
 		{
 			this.success = success;
 			this.tokenId = tokenId;
 			this.startIndex = startIndex;
 			this.length = length;
-			this.parsedValueFactory = parsedValueFactory;
 			this.intermediateValue = intermediateValue;
 		}
 
 		/// <summary>
 		/// Gets a parsed token that represents failure.
 		/// </summary>
-		public static ParsedToken Fail { get; } = new ParsedToken(false, -1, -1, 0, null, null);
+		public static ParsedToken Fail { get; } = new ParsedToken(false, -1, -1, 0, null);
 	}
 }

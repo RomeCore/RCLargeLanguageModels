@@ -82,7 +82,7 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 					// If there is a separator at the start — this is an error (unexpected leading separator)
 					if (TryParseRule(Separator, childContext, out var sepAtStart))
 					{
-						childContext.RecordError($"Unexpected separator '{GetRule(Separator)}' before any element.");
+						RecordError(childContext, "Unexpected separator before any element.");
 						result = ParsedRule.Fail;
 						return false;
 					}
@@ -92,14 +92,13 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 						Id,
 						initialPosition,
 						0,
-						ImmutableList<ParsedRule>.Empty,
-						ParsedValueFactory);
+						new List<ParsedRule>());
 					return true;
 				}
 				else
 				{
 					// Minimum count > 0, but first element not found — explicit error
-					childContext.RecordError($"Expected at least {MinCount} repetitions of {GetRule(Rule)} but found 0.");
+					RecordError(childContext, $"Expected at least {MinCount} repetitions of child rule, but found 0.");
 					result = ParsedRule.Fail;
 					return false;
 				}
@@ -108,7 +107,7 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 			// We have the first element
 			if (firstElement.length == 0)
 			{
-				childContext.RecordError($"Parsed element '{GetRule(Rule)}' has zero length — would cause infinite loop.");
+				RecordError(childContext, "Parsed child element has zero length, which is not allowed.");
 				result = ParsedRule.Fail;
 				return false;
 			}
@@ -128,7 +127,7 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 				if (parsedSep.length == 0)
 				{
-					childContext.RecordError($"Separator '{GetRule(Separator)}' has zero length — would cause infinite loop.");
+					RecordError(childContext, "Parsed separator element has zero length, which is not allowed.");
 					result = ParsedRule.Fail;
 					return false;
 				}
@@ -148,7 +147,7 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 					}
 					else
 					{
-						childContext.RecordError($"Expected element after separator '{GetRule(Separator)}'.");
+						RecordError(childContext, "Expected element after separator, but found none.");
 						result = ParsedRule.Fail;
 						return false;
 					}
@@ -156,7 +155,7 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 				if (nextElement.length == 0)
 				{
-					childContext.RecordError($"Parsed element '{GetRule(Rule)}' has zero length — would cause infinite loop.");
+					RecordError(childContext, "Parsed child element has zero length, which is not allowed.");
 					result = ParsedRule.Fail;
 					return false;
 				}
@@ -171,7 +170,7 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 			// Check minimum count
 			if (elements.Count < MinCount)
 			{
-				childContext.RecordError($"Expected at least {MinCount} repetitions of {GetRule(Rule)} but found {elements.Count}.");
+				RecordError(childContext, $"Expected at least {MinCount} repetitions of child rule, but found {elements.Count}.");
 				result = ParsedRule.Fail;
 				return false;
 			}
@@ -180,8 +179,7 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 				Id,
 				initialPosition,
 				childContext.position - initialPosition,
-				elements.ToImmutableList(),
-				ParsedValueFactory);
+				elements);
 
 			return true;
 		}

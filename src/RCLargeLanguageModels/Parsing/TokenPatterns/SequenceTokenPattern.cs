@@ -48,7 +48,6 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			{
 				if (!TryMatchToken(tokenId, childContext, out var subToken))
 				{
-					context.RecordError($"Failed to match {GetTokenPattern(tokenId)}");
 					token = ParsedToken.Fail;
 					return false;
 				}
@@ -68,7 +67,6 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 				Id,
 				initialPosition,
 				childContext.position - initialPosition,
-				ParsedValueFactory,
 				intermediateValue);
 			return true;
 		}

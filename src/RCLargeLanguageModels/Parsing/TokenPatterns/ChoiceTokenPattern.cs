@@ -36,8 +36,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			{
 				if (TryMatchToken(tokenId, childContext, out token))
 				{
-					token = new ParsedToken(Id, token.startIndex, token.length,
-						ParsedValueFactory, token.intermediateValue);
+					token = new ParsedToken(Id, token.startIndex, token.length, token.intermediateValue);
 					return true;
 				}
 			}

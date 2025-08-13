@@ -40,7 +40,7 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 			{
 				if (!TryParseRule(rule, childContext, out var parsedRule))
 				{
-					childContext.RecordError($"Failed to parse {GetRule(rule)}");
+					RecordError(childContext, $"Failed to parse sequence rule.");
 					result = ParsedRule.Fail;
 					return false;
 				}
@@ -50,8 +50,7 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 				childContext.position = parsedRule.startIndex + parsedRule.length;
 			}
 
-			result = new ParsedRule(Id, startIndex, childContext.position - startIndex,
-				rules.ToImmutableList(), ParsedValueFactory);
+			result = new ParsedRule(Id, startIndex, childContext.position - startIndex, rules);
 
 			return true;
 		}

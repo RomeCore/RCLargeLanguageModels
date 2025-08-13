@@ -22,7 +22,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 		{
 			if (context.position >= context.str.Length)
 			{
-				token = new ParsedToken(Id, context.str.Length, 0, ParsedValueFactory, null);
+				token = new ParsedToken(Id, context.str.Length, 0);
 				return true;
 			}
 

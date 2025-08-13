@@ -74,9 +74,9 @@ namespace RCLargeLanguageModels.Parsing
 	public enum ParserCachingMode
 	{
 		/// <summary>
-		/// Caches both rules and token patterns. This is the default mode.
+		/// Caches nothing. The parser will not cache any rules or token patterns. This is the default mode.
 		/// </summary>
-		Default = 0,
+		NDefault = 0,
 
 		/// <summary>
 		/// Caches only rules.
@@ -89,9 +89,9 @@ namespace RCLargeLanguageModels.Parsing
 		TokenPatterns,
 
 		/// <summary>
-		/// Caches nothing. The parser will not cache any rules or token patterns. This may impact performance if parsing is done multiple times.
+		/// Caches both rules and token patterns. This may help
 		/// </summary>
-		NoCache
+		CacheAll
 	}
 
 	/// <summary>
@@ -100,7 +100,7 @@ namespace RCLargeLanguageModels.Parsing
 	public struct ParserSettings : IEquatable<ParserSettings>
 	{
 		/// <summary>
-		/// The rule ID to skip when parsing a specific rule. If set to -1, no rules are skipped.
+		/// The rule ID to skip before parsing a specific rule. If set to -1, no rules are skipped.
 		/// </summary>
 		public int skipRule;
 
@@ -249,6 +249,13 @@ namespace RCLargeLanguageModels.Parsing
 	public struct ParserLocalSettings : IEquatable<ParserLocalSettings>
 	{
 		/// <summary>
+		/// The value indicating that all *UseModes are set to InheritForSelfAndChildren.
+		/// </summary>
+		public bool isDefault;
+
+
+
+		/// <summary>
 		/// Defines an override mode for <see cref="skipRule"/> setting.
 		/// </summary>
 		public ParserSettingMode skipRuleUseMode;
@@ -297,7 +304,8 @@ namespace RCLargeLanguageModels.Parsing
 
 		public readonly bool Equals(ParserLocalSettings other)
 		{
-			return skipRuleUseMode == other.skipRuleUseMode &&
+			return isDefault == other.isDefault &&
+				   skipRuleUseMode == other.skipRuleUseMode &&
 				   skipRule == other.skipRule &&
 				   errorHandlingUseMode == other.errorHandlingUseMode &&
 				   errorHandling == other.errorHandling &&
@@ -310,6 +318,7 @@ namespace RCLargeLanguageModels.Parsing
 		public override readonly int GetHashCode()
 		{
 			int hash = 17;
+			hash ^= 23 * isDefault.GetHashCode();
 			hash ^= 23 * skipRuleUseMode.GetHashCode();
 			hash ^= 23 * skipRule.GetHashCode();
 			hash ^= 23 * errorHandlingUseMode.GetHashCode();

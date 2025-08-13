@@ -31,12 +31,17 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 		{
 			if (context.parser.TryParseRule(Rule, childContext, out var parsedRule))
 			{
-				result = new ParsedRule(Id, parsedRule.startIndex, parsedRule.length, ImmutableList.Create(parsedRule), ParsedValueFactory, parsedRule.intermediateValue);
+				result = new ParsedRule(
+					Id,
+					parsedRule.startIndex,
+					parsedRule.length,
+					new List<ParsedRule> { parsedRule },
+					parsedRule.intermediateValue);
 				return true;
 			}
 			else
 			{
-				result = new ParsedRule(Id, context.position, 0, ImmutableList<ParsedRule>.Empty, ParsedValueFactory, null);
+				result = new ParsedRule(Id, context.position, 0, new List<ParsedRule> { }, null);
 				return true;
 			}
 		}

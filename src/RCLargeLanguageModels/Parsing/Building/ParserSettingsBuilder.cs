@@ -119,19 +119,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 		}
 
 		/// <summary>
-		/// Sets the default caching mode.
-		/// </summary>
-		/// <remarks>
-		/// This will cause the parser to use and write both rules and token patterns via caching.
-		/// </remarks>
-		/// <returns>This instance for method chaining.</returns>
-		public ParserSettingsBuilder CacheAll()
-		{
-			return Caching(ParserCachingMode.Default);
-		}
-
-		/// <summary>
-		/// Sets the disabled caching mode.
+		/// Sets the default (disabled) caching mode.
 		/// </summary>
 		/// <remarks>
 		/// This will cause the parser to ignore any caching.
@@ -139,7 +127,19 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// <returns>This instance for method chaining.</returns>
 		public ParserSettingsBuilder NoCaching()
 		{
-			return Caching(ParserCachingMode.NoCache);
+			return Caching(ParserCachingMode.NDefault);
+		}
+
+		/// <summary>
+		/// Sets the token and rule caching mode.
+		/// </summary>
+		/// <remarks>
+		/// This will cause the parser to use and write both rules and token patterns via caching.
+		/// </remarks>
+		/// <returns>This instance for method chaining.</returns>
+		public ParserSettingsBuilder CacheAll()
+		{
+			return Caching(ParserCachingMode.CacheAll);
 		}
 
 		/// <summary>

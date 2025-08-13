@@ -51,7 +51,7 @@ namespace RCLargeLanguageModels.Tests.Parsing
 		public void CharRangeToken_MatchesRange()
 		{
 			var builder = new ParserBuilder();
-			builder.CreateToken("hexdigit").CharRange('0', '9');
+			builder.CreateToken("hexdigit").Char(c => c >= '0' && c <= '9');
 
 			var parser = builder.Build();
 			var ctx = parser.CreateContext("7F");

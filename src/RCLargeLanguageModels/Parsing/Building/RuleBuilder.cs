@@ -28,8 +28,10 @@ namespace RCLargeLanguageModels.Parsing.Building
 			return AddRule(new BuildableTokenParserRule
 			{
 				Child = childToken
-			});
+			}, TokenParserRule_DefaultValueFactory);
 		}
+
+		private static object? TokenParserRule_DefaultValueFactory(ParsedRuleResult result) => result.Token?.Value;
 
 		/// <summary>
 		/// Adds a token (name or child pattern) to the current sequence with the parsed value factory.
@@ -44,9 +46,8 @@ namespace RCLargeLanguageModels.Parsing.Building
 		{
 			return AddRule(new BuildableTokenParserRule
 			{
-				Child = childToken,
-				ParsedValueFactory = parsedValueFactory
-			});
+				Child = childToken
+			}, TokenParserRule_DefaultValueFactory);
 		}
 
 		/// <summary>
@@ -114,7 +115,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 			return AddRule(new BuildableTokenParserRule
 			{
 				Child = tokenName
-			}, parsedValueFactory, config);
+			}, parsedValueFactory ?? TokenParserRule_DefaultValueFactory, config);
 		}
 
 		/// <summary>
@@ -133,7 +134,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 				{
 					TokenPattern = token
 				}
-			}, parsedValueFactory, config);
+			}, parsedValueFactory ?? TokenParserRule_DefaultValueFactory, config);
 		}
 
 		/// <summary>
@@ -156,7 +157,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 			return AddRule(new BuildableTokenParserRule
 			{
 				Child = builder.BuildingPattern.Value
-			}, parsedValueFactory, config);
+			}, parsedValueFactory ?? TokenParserRule_DefaultValueFactory, config);
 		}
 
 		/// <summary>
@@ -416,7 +417,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// <param name="config">The action to configure the local settings for this rule.</param>
 		/// <returns>Current instance for method chaining.</returns>
 		/// <exception cref="ParserBuildingException">Thrown if any of the builder actions did not add any elements.</exception>
-		public RuleBuilder SeparatedRepeat(Action<RuleBuilder> builderAction, Action<RuleBuilder> separatorBuilderAction,
+		public RuleBuilder RepeatSeparated(Action<RuleBuilder> builderAction, Action<RuleBuilder> separatorBuilderAction,
 			int min, bool allowTrailingSeparator = false, Func<ParsedRuleResult, object?>? parsedValueFactory = null,
 			Action<ParserLocalSettingsBuilder>? config = null)
 		{

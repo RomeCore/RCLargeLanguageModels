@@ -18,21 +18,21 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 		public string Literal { get; }
 
 		/// <summary>
-		/// Gets the comparer used for matching.
+		/// Gets the string comparison type used for literal matching.
 		/// </summary>
-		public StringComparer Comparer { get; }
+		public StringComparison Comparison { get; }
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="LiteralTokenPattern"/> class.
 		/// </summary>
 		/// <param name="literal">The literal string to match.</param>
-		/// <param name="comparer">The comparer to use for matching.</param>
-		public LiteralTokenPattern(string literal, StringComparer? comparer = null)
+		/// <param name="comparison">The string comparison type to use for literal matching.</param>
+		public LiteralTokenPattern(string literal, StringComparison comparison = StringComparison.Ordinal)
 		{
 			Literal = string.IsNullOrEmpty(literal)
 				? throw new ArgumentException("Literal cannot be null or empty.", nameof(literal))
 				: literal;
-			Comparer = comparer ?? StringComparer.Ordinal;
+			Comparison = comparison;
 		}
 
 
@@ -41,19 +41,16 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 		{
 			if (context.position + Literal.Length > context.str.Length)
 			{
-				context.RecordError($"Failed to match {this}, input text too short.");
 				token = ParsedToken.Fail;
 				return false;
 			}
 
-			var inputSlice = context.str.Substring(context.position, Literal.Length);
-			if (Comparer.Compare(inputSlice, Literal) == 0)
+			if (context.str.AsSpan(context.position, Literal.Length).Equals(Literal.AsSpan(), Comparison))
 			{
-				token = new ParsedToken(Id, context.position, Literal.Length, ParsedValueFactory, Literal);
+				token = new ParsedToken(Id, context.position, Literal.Length, Literal);
 				return true;
 			}
 
-			context.RecordError($"Failed to match {this}.");
 			token = ParsedToken.Fail;
 			return false;
 		}
@@ -70,14 +67,14 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			return base.Equals(obj) &&
 				   obj is LiteralTokenPattern pattern &&
 				   Literal == pattern.Literal &&
-				   Comparer == pattern.Comparer;
+				   Comparison == pattern.Comparison;
 		}
 
 		public override int GetHashCode()
 		{
 			int hashCode = base.GetHashCode();
 			hashCode = hashCode * -1521134295 + Literal.GetHashCode();
-			hashCode = hashCode * -1521134295 + Comparer.GetHashCode();
+			hashCode = hashCode * -1521134295 + Comparison.GetHashCode();
 			return hashCode;
 		}
 	}

@@ -19,7 +19,7 @@ namespace RCLargeLanguageModels.Tests.Parsing
 
 			builder.CreateToken("string")
 				.Literal('"')
-				.EscapedText(escapeMappings, forbidden, config: null)
+				.EscapedText(escapeMappings, forbidden, comparer, config: null)
 				.Literal('"')
 				// choose the inner token (EscapedText is second element in sequence: 0='"', 1=EscapedText, 2='"')
 				.Pass(t => t[1]);
@@ -33,9 +33,9 @@ namespace RCLargeLanguageModels.Tests.Parsing
 			// arrange: JSON-like escapes
 			var escapes = new[]
 			{
-				new KeyValuePair<string,string>(@"\\\""", @""""),
-				new KeyValuePair<string,string>(@"\\\\", @"\"),
-				new KeyValuePair<string,string>(@"\\n", "\n"),
+				new KeyValuePair<string,string>(@"\""", @""""),
+				new KeyValuePair<string,string>(@"\\", @"\"),
+				new KeyValuePair<string,string>(@"\n", "\n"),
 			};
 			var forbidden = new[] { "\"" }; // unescaped quote terminates
 
@@ -115,7 +115,7 @@ namespace RCLargeLanguageModels.Tests.Parsing
 			{
 				new KeyValuePair<string,string>("}}}}", "}}")
 			};
-			var forbidden = new[] { "}}" };
+			var forbidden = new[] { "\"", "}}" };
 
 			var parserBuilder = new ParserBuilder();
 			parserBuilder.CreateToken("string")
@@ -125,7 +125,7 @@ namespace RCLargeLanguageModels.Tests.Parsing
 				.Pass(t => t[1]);
 			var parser = parserBuilder.Build();
 
-			parser.MatchToken("string", "\"hello}}rest\"");
+			parser.MatchToken("string", "\"hello}}}}rest\"");
 		}
 
 		[Fact(DisplayName = "Empty input or immediate forbidden results in no match")]
@@ -152,7 +152,7 @@ namespace RCLargeLanguageModels.Tests.Parsing
 			var forbidden = new[] { "\"" };
 
 			var parser = BuildQuotedStringTokenParser(escapes, forbidden);
-			var result = parser.MatchToken("string", "\"x\\u0041\\n\\\\y\"");
+			var result = parser.MatchToken("string", @"""x\u0041\\n\\\\y""");
 
 			var inner = (string)result.IntermediateValue!;
 			Assert.Equal("xA\n\\y", inner);

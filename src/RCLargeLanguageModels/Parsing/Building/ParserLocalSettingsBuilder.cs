@@ -27,6 +27,13 @@ namespace RCLargeLanguageModels.Parsing.Building
 		{
 			var result = _settings;
 			result.skipRule = ruleChildren[0];
+
+			result.isDefault = 
+				result.skipRuleUseMode == ParserSettingMode.InheritForSelfAndChildren &&
+				result.maxRecursionDepthUseMode == ParserSettingMode.InheritForSelfAndChildren &&
+				result.errorHandlingUseMode == ParserSettingMode.InheritForSelfAndChildren &&
+				result.cachingUseMode == ParserSettingMode.InheritForSelfAndChildren;
+
 			return result;
 		}
 
@@ -47,7 +54,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 
 
 		/// <summary>
-		/// Sets the skip rule.
+		/// Sets the skip rule that will be skipped before parsing the current rule.
 		/// </summary>
 		/// <param name="builderAction">The action to build the skip rule.</param>
 		/// <param name="overrideMode">The override mode for the skip rule setting.</param>
@@ -57,6 +64,18 @@ namespace RCLargeLanguageModels.Parsing.Building
 			var builder = new RuleBuilder();
 			builderAction(builder);
 			_skipRule = builder.BuildingRule;
+			_settings.skipRuleUseMode = overrideMode;
+			return this;
+		}
+
+		/// <summary>
+		/// Removes the skip rule.
+		/// </summary>
+		/// <param name="overrideMode">The override mode for the skip rule setting.</param>
+		/// <returns>This instance for method chaining.</returns>
+		public ParserLocalSettingsBuilder NoSkipping(ParserSettingMode overrideMode = ParserSettingMode.LocalForSelfAndChildren)
+		{
+			_skipRule = null;
 			_settings.skipRuleUseMode = overrideMode;
 			return this;
 		}
@@ -127,20 +146,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 		}
 
 		/// <summary>
-		/// Sets the default caching mode.
-		/// </summary>
-		/// <remarks>
-		/// This will cause the parser element to use and write both rules and token patterns via caching.
-		/// </remarks>
-		/// <param name="overrideMode">The override mode for the caching setting.</param>
-		/// <returns>This instance for method chaining.</returns>
-		public ParserLocalSettingsBuilder CacheAll(ParserSettingMode overrideMode = ParserSettingMode.LocalForSelfAndChildren)
-		{
-			return Caching(ParserCachingMode.Default, overrideMode);
-		}
-
-		/// <summary>
-		/// Sets the disabled caching mode.
+		/// Sets the default (disabled) caching mode.
 		/// </summary>
 		/// <remarks>
 		/// This will cause the parser element to ignore any caching.
@@ -149,7 +155,20 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// <returns>This instance for method chaining.</returns>
 		public ParserLocalSettingsBuilder NoCaching(ParserSettingMode overrideMode = ParserSettingMode.LocalForSelfAndChildren)
 		{
-			return Caching(ParserCachingMode.NoCache, overrideMode);
+			return Caching(ParserCachingMode.NDefault, overrideMode);
+		}
+
+		/// <summary>
+		/// Sets the token and rule caching mode.
+		/// </summary>
+		/// <remarks>
+		/// This will cause the parser element to use and write both rules and token patterns via caching.
+		/// </remarks>
+		/// <param name="overrideMode">The override mode for the caching setting.</param>
+		/// <returns>This instance for method chaining.</returns>
+		public ParserLocalSettingsBuilder CacheAll(ParserSettingMode overrideMode = ParserSettingMode.LocalForSelfAndChildren)
+		{
+			return Caching(ParserCachingMode.CacheAll, overrideMode);
 		}
 
 		/// <summary>

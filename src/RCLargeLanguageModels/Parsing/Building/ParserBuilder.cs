@@ -308,6 +308,10 @@ namespace RCLargeLanguageModels.Parsing.Building
 				List<int> settingsRuleChildren,
 				List<string> aliases)> finalMap = new();
 
+			// Build the final parser settings with resolved child rules
+			var settings = _settingsBuilder.Build(parserSettingsRuleChildren
+				.Select(r => r == null ? -1 : elements[r]).ToList());
+
 			// Fill the final map
 			foreach (var elem in elements)
 			{
@@ -351,10 +355,6 @@ namespace RCLargeLanguageModels.Parsing.Building
 				else if (builtElement is TokenPattern pattern)
 					resultTokenPatterns[id] = pattern;
 			}
-
-			// Build the final parser settings with resolved child rules
-			var settings = _settingsBuilder.Build(parserSettingsRuleChildren
-				.Select(r => r == null ? -1 : elements[r]).ToList());
 
 			// Return the fully built parser instance with rules and token patterns
 			return new Parser(resultTokenPatterns.ToImmutableArray(), resultRules.ToImmutableArray(), settings);

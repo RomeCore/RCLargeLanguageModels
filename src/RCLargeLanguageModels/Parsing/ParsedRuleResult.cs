@@ -104,10 +104,11 @@ namespace RCLargeLanguageModels.Parsing
 			Result = result;
 			Token = result.isToken ? new ParsedTokenResult(this, context, result.token) : null;
 
-			_textLazy = new Lazy<string>(() => context.str.Substring(result.startIndex, result.length));
-			_valueLazy = new Lazy<object?>(() => result.parsedValueFactory?.Invoke(this) ?? null);
+			_textLazy = new Lazy<string>(() => Context.str.Substring(Result.startIndex, Result.length));
+			_valueLazy = new Lazy<object?>(() => Rule.ParsedValueFactory?.Invoke(this) ?? null);
 			_childrenLazy = new Lazy<ImmutableList<ParsedRuleResult>>(() =>
-				Result.rules.Select(r => new ParsedRuleResult(this, context, r)).ToImmutableList());
+				Result.rules?.Select(r => new ParsedRuleResult(this, context, r)).ToImmutableList() ??
+				ImmutableList<ParsedRuleResult>.Empty);
 		}
 
 		/// <summary>
@@ -117,7 +118,7 @@ namespace RCLargeLanguageModels.Parsing
 		/// <returns>A collection of child parsed rules. Returns this element if no children are present or the maximum depth is reached.</returns>
 		public IEnumerable<ParsedRuleResult> GetJoinedChildren(int maxDepth)
 		{
-			if (maxDepth <= 0 || Result.rules.Count == 0)
+			if (maxDepth <= 0 || (Result.rules?.Count ?? 0) == 0)
 				return this.WrapIntoEnumerable();
 
 			return Children.SelectMany(r => r.GetJoinedChildren(maxDepth - 1));
@@ -131,6 +132,38 @@ namespace RCLargeLanguageModels.Parsing
 		IEnumerator IEnumerable.GetEnumerator()
 		{
 			return ((IEnumerable)Children).GetEnumerator();
+		}
+
+		public string Dump(int maxDepth)
+		{
+			StringBuilder sb = new StringBuilder();
+
+			sb.AppendLine($"Rule: {Rule.ToString(2)}");
+
+			string valueStr = string.Empty;
+			try
+			{
+				valueStr = Value?.ToString() ?? "null";
+			}
+			catch (Exception ex)
+			{
+				valueStr = $"Error {ex.GetType().Name}: {ex.Message}";
+			}
+
+			string intermediateValueStr = IntermediateValue?.ToString() ?? "null";
+
+			if (IsToken)
+				sb.AppendLine(Token.Dump());
+
+			sb.AppendLine($"Value: {valueStr}");
+			sb.AppendLine($"Intermediate Value: {intermediateValueStr}");
+
+			foreach (var child in Children)
+			{
+				sb.AppendLine(child.Dump(maxDepth - 1).Indent("  "));
+			}
+
+			return sb.ToString();
 		}
 	}
 }

@@ -122,34 +122,13 @@ namespace RCLargeLanguageModels.Parsing
 		}
 
 		/// <summary>
-		/// Advances the parser context to use for this and child elements.
-		/// </summary>
-		/// <remarks>
-		/// For <paramref name="context"/> it updates the settings to use as local element. <br/>
-		/// It makes a <paramref name="childContext"/> that have advanced recursion depth and settings for child elements.
-		/// </remarks>
-		private void AdvanceContext(ParserElement element, ref ParserContext context, out ParserContext childContext)
-		{
-			childContext = context;
-
-			context.settings.Resolve(element.Settings, Settings, out var forLocal, out var forChildren);
-			context.settings = forLocal;
-
-			childContext.settings = forChildren;
-			childContext.recursionDepth++;
-		}
-
-		/// <summary>
 		/// Tries to parse rule based on the caching settings.
 		/// </summary>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private bool TryParseNonValidated(int ruleId, ParserContext context, out ParsedRule parsedRule)
+		private bool TryParseNonValidated(ParserRule rule, int ruleId,
+			ParserContext context, ParserContext childContext, out ParsedRule parsedRule)
 		{
-			var rule = Rules[ruleId];
-
-			AdvanceContext(rule, ref context, out var childContext);
-
-			if (context.settings.caching == ParserCachingMode.Default ||
+			if (context.settings.caching == ParserCachingMode.CacheAll ||
 				context.settings.caching == ParserCachingMode.Rules)
 			{
 				if (!context.cache.TryGetRule(ruleId, context.position, out parsedRule))
@@ -163,12 +142,8 @@ namespace RCLargeLanguageModels.Parsing
 				rule.TryParse(context, childContext, out parsedRule);
 			}
 
-			if (parsedRule.success)
-			{
-				if (context.position == 54)
-					Console.WriteLine("ASS");
-				context.successPositions.Add(context.position);
-			}
+			if (parsedRule.success && context.position < context.str.Length)
+				context.successPositions[context.position] = true;
 
 			return parsedRule.success;
 		}
@@ -177,13 +152,10 @@ namespace RCLargeLanguageModels.Parsing
 		/// Tries to match token based on the caching settings.
 		/// </summary>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private bool TryMatchNonValidated(int tokenPatternId, ParserContext context, out ParsedToken parsedToken)
+		private bool TryMatchNonValidated(TokenPattern token, int tokenPatternId,
+			ParserContext context, ParserContext childContext, out ParsedToken parsedToken)
 		{
-			var token = TokenPatterns[tokenPatternId];
-
-			AdvanceContext(token, ref context, out var childContext);
-
-			if (context.settings.caching == ParserCachingMode.Default ||
+			if (context.settings.caching == ParserCachingMode.CacheAll ||
 				context.settings.caching == ParserCachingMode.TokenPatterns)
 			{
 				if (!context.cache.TryGetToken(tokenPatternId, context.position, out parsedToken))
@@ -197,8 +169,8 @@ namespace RCLargeLanguageModels.Parsing
 				token.TryMatch(context, childContext, out parsedToken);
 			}
 
-			if (parsedToken.success)
-				context.successPositions.Add(context.position);
+			if (parsedToken.success && context.position < context.str.Length)
+				context.successPositions[context.position] = true;
 
 			return parsedToken.success;
 		}
@@ -207,18 +179,31 @@ namespace RCLargeLanguageModels.Parsing
 		/// Tries to skip the skip-rule specified in settings.
 		/// </summary>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private void TrySkip(ref ParserContext context)
+		private void TrySkip(ref ParserContext context, ref ParserContext childContext)
 		{
-			if (context.settings.skipRule != -1)
+			int skipRuleId = context.settings.skipRule;
+
+			if (skipRuleId != -1 && context.position < context.str.Length &&
+				!context.skippedPositions[context.position])
 			{
-				context.disableSuccessRecording = true;
-				TryParseNonValidated(context.settings.skipRule, context, out var parsedSkipRule);
+				var skipRule = Rules[skipRuleId];
+
+				var ctx = context;
+				ctx.settings.skipRule = -1;
+				var childCtx = childContext;
+				childCtx.settings.skipRule = -1;
+
+				TryParseNonValidated(skipRule, skipRuleId,
+					ctx, childCtx, out var parsedSkipRule);
 
 				if (parsedSkipRule.success)
 				{
 					context.position = parsedSkipRule.startIndex + parsedSkipRule.length;
+					childContext.position = parsedSkipRule.startIndex + parsedSkipRule.length;
 					context.skippedRules.Add(parsedSkipRule);
 				}
+
+				context.skippedPositions[context.position] = true;
 			}
 		}
 
@@ -235,10 +220,10 @@ namespace RCLargeLanguageModels.Parsing
 				if (!string.IsNullOrEmpty(error.message))
 					return error.ToException(context);
 
-				return new ParsingException("Unknown error.", context.str, 0);
+				return new ParsingException(context, "Unknown error.");
 			}
 
-			return new ParsingException(context.str, errors);
+			return new ParsingException(context, errors);
 		}
 
 		/// <summary>
@@ -250,11 +235,13 @@ namespace RCLargeLanguageModels.Parsing
 		internal ParsedRule ParseRule(int ruleId, ParserContext context)
 		{
 			if (CheckRecursionDepth(context))
-				throw new ParsingException("Maximum recursion depth exceeded.", context.str, context.position);
+				throw new ParsingException(context, "Maximum recursion depth exceeded.");
 
-			TrySkip(ref context);
+			var rule = Rules[ruleId];
+			rule.AdvanceContext(ref context, out var childContext);
+			TrySkip(ref context, ref childContext);
 
-			if (TryParseNonValidated(ruleId, context, out var parsedRule))
+			if (TryParseNonValidated(rule, ruleId, context, childContext, out var parsedRule))
 				return parsedRule;
 
 			throw ExceptionFromContext(context);
@@ -276,9 +263,11 @@ namespace RCLargeLanguageModels.Parsing
 				return false;
 			}
 
-			TrySkip(ref context);
+			var rule = Rules[ruleId];
+			rule.AdvanceContext(ref context, out var childContext);
+			TrySkip(ref context, ref childContext);
 
-			return TryParseNonValidated(ruleId, context, out parsedRule);
+			return TryParseNonValidated(rule, ruleId, context, childContext, out parsedRule);
 		}
 
 		/// <summary>
@@ -290,10 +279,14 @@ namespace RCLargeLanguageModels.Parsing
 		internal ParsedToken MatchToken(int tokenPatternId, ParserContext context)
 		{
 			if (CheckRecursionDepth(context))
-				throw new ParsingException("Maximum recursion depth exceeded.", context.str, context.position);
+				throw new ParsingException(context, "Maximum recursion depth exceeded.");
 
-			if (TryMatchNonValidated(tokenPatternId, context, out var parsedRule))
-				return parsedRule;
+			var pattern = TokenPatterns[tokenPatternId];
+
+			pattern.AdvanceContext(ref context, out var childContext);
+
+			if (TryMatchNonValidated(pattern, tokenPatternId, context, childContext, out var parsedToken))
+				return parsedToken;
 
 			throw ExceptionFromContext(context);
 		}
@@ -314,7 +307,11 @@ namespace RCLargeLanguageModels.Parsing
 				return false;
 			}
 
-			return TryMatchNonValidated(tokenPatternId, context, out parsedToken);
+			var pattern = TokenPatterns[tokenPatternId];
+
+			pattern.AdvanceContext(ref context, out var childContext);
+
+			return TryMatchNonValidated(pattern, tokenPatternId, context, childContext, out parsedToken);
 		}
 
 

@@ -199,7 +199,7 @@ namespace RCLargeLanguageModels.Parsing
 		public readonly IEnumerable<ParsingError> GetRelevantErrors()
 		{
 			var successPos = successPositions;
-			return errors;
+			return errors.Where(e => !successPos[e.position]);
 		}
 	}
 }

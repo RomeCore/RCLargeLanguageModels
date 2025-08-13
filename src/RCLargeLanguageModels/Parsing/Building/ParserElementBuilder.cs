@@ -358,7 +358,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// <param name="factory">The factory function to create a parsed value.</param>
 		/// <param name="config">The action to configure the local settings for this token.</param>
 		/// <returns>Current instance for method chaining.</returns>
-		public T EscapedTextDoubleSequences(IEnumerable<string> sequences, StringComparer comparer,
+		public T EscapedTextDoubleSequences(IEnumerable<string> sequences, StringComparer? comparer,
 			Func<ParsedTokenResult, object?>? factory = null, Action<ParserLocalSettingsBuilder>? config = null)
 		{
 			return AddToken(EscapedTextTokenPattern.CreateDoubleSequences(sequences, comparer), factory, config);

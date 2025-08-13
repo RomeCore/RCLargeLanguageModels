@@ -189,21 +189,29 @@ namespace RCLargeLanguageModels.Parsing
 				var skipRule = Rules[skipRuleId];
 
 				var ctx = context;
+				skipRule.AdvanceContext(ref ctx, out var childCtx);
+
 				ctx.settings.skipRule = -1;
-				var childCtx = childContext;
 				childCtx.settings.skipRule = -1;
 
-				TryParseNonValidated(skipRule, skipRuleId,
-					ctx, childCtx, out var parsedSkipRule);
+				int skipRuleLength = 0;
 
-				if (parsedSkipRule.success)
+				do
 				{
-					context.position = parsedSkipRule.startIndex + parsedSkipRule.length;
-					childContext.position = parsedSkipRule.startIndex + parsedSkipRule.length;
-					context.skippedRules.Add(parsedSkipRule);
-				}
+					TryParseNonValidated(skipRule, skipRuleId,
+						ctx, childCtx, out var parsedSkipRule);
 
-				context.skippedPositions[context.position] = true;
+					skipRuleLength = parsedSkipRule.length;
+					if (parsedSkipRule.success)
+					{
+						int newPosition = parsedSkipRule.startIndex + parsedSkipRule.length;
+						context.position = childContext.position = ctx.position = childCtx.position = newPosition;
+						context.skippedRules.Add(parsedSkipRule);
+					}
+
+					context.skippedPositions[context.position] = true;
+				}
+				while (skipRuleLength > 0);
 			}
 		}
 
@@ -214,14 +222,12 @@ namespace RCLargeLanguageModels.Parsing
 		private ParsingException ExceptionFromContext(ParserContext context)
 		{
 			var errors = context.GetRelevantErrors().ToArray();
-			if (errors.Length == 0)
-			{
-				var error = context.GetMostRelevantError();
-				if (!string.IsNullOrEmpty(error.message))
-					return error.ToException(context);
 
+			if (errors.Length == 0)
+				errors = context.errors.ToArray();
+
+			if (errors.Length == 0)
 				return new ParsingException(context, "Unknown error.");
-			}
 
 			return new ParsingException(context, errors);
 		}

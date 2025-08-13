@@ -114,6 +114,7 @@ namespace RCLargeLanguageModels.Parsing
 						? context.parser.TokenPatterns[e.elementId].ToString()
 						: context.parser.Rules[e.elementId].ToString())
 					.Distinct()
+					.Reverse()
 					.ToList();
 
 				var msg = groupedError
@@ -123,10 +124,14 @@ namespace RCLargeLanguageModels.Parsing
 					.ToList();
 
 				if (msg.Count > 0)
-					sb.AppendLine(string.Join(" / ", msg));
+					sb.AppendLine(string.Join(" / ", msg)).AppendLine();
+
+				sb.AppendLine("The line where the error occurred:");
+				sb.AppendLine(PositionalFormatter.Format(context.str, groupedError.Key));
 
 				if (expected.Count > 0)
 				{
+					sb.AppendLine();
 					string oneOf = msg.Count > 1 ? " one of" : "";
 					if (expected.Any(e => e.Contains('\n') || e.Contains('\r')))
 						sb.AppendLine($"Expected{oneOf}:\n" + string.Join("\n", expected).Indent("  "));
@@ -134,8 +139,7 @@ namespace RCLargeLanguageModels.Parsing
 						sb.AppendLine($"Expected{oneOf}: " + string.Join(", ", expected));
 				}
 
-				sb.AppendLine("The line where the error occurred:");
-				sb.Append(PositionalFormatter.Format(context.str, groupedError.Key));
+				sb.Length--;
 
 				if (i < last - 1)
 					sb.AppendLine().AppendLine();

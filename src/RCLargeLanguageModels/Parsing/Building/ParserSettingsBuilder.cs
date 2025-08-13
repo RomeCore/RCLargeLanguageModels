@@ -90,7 +90,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// This will cause the parser to ignore any errors when trying to record them.
 		/// </remarks>
 		/// <returns>This instance for method chaining.</returns>
-		public ParserSettingsBuilder SkipErrors()
+		public ParserSettingsBuilder IgnoreErrors()
 		{
 			return ErrorHandling(ParserErrorHandlingMode.NoRecord);
 		}

@@ -90,9 +90,16 @@ namespace RCLargeLanguageModels.Parsing
 		public static string Format(string str, int position)
 		{
 			Decompose(str, position, out int lineStart, out int lineLength, out int lineNumber, out int column);
-			string pointerLine = new string(' ', column - 1) + '^';
 
-			return $"{str.Substring(lineStart, lineLength)}\n{pointerLine} line {lineNumber}, column {column}";
+			string lineAndColumn = $"line {lineNumber}, column {column}";
+
+			string pointerLine;
+			if (column + 2 <= lineAndColumn.Length)
+				pointerLine = new string(' ', column - 1) + '^' + ' ' + lineAndColumn;
+			else
+				pointerLine = new string(' ', column - 2 - lineAndColumn.Length) + lineAndColumn + ' ' + '^';
+
+			return $"{str.Substring(lineStart, lineLength)}\n{pointerLine}";
 		}
 	}
 }

@@ -150,20 +150,28 @@ namespace RCLargeLanguageModels.Tests.Parsing
 			var builder = new ParserBuilder();
 
 			builder.Settings()
-				.Skip(r => r.Whitespaces());
+				.Skip(r => r.Rule("skip"));
+
+			// Parser will always try to skip the skip-rules until they are not capturing anything
+			// So we don't need to create another .OneOrMore(c => c.Choice(...))
+			builder.CreateRule("skip")
+				.Choice(
+					[b => b.Whitespaces(),
+					 b => b.Literal("//").ZeroOrMoreChars(c => c != '\n' && c != '\r')],
+					config: c => c.IgnoreErrors());
 
 			builder.CreateToken("string")
 				.Literal("\"")
-				.EscapedTextPrefix("\\", "\\", "\"")
+				.EscapedTextPrefix(prefix: "\\", "\\", "\"") // This sub-token automatically escapes the source string and puts it into intermediate value
 				.Literal("\"")
-				.Pass(v => v[1])
-				.Transform(v => v.IntermediateValue);
+				.Pass(v => v[1]) // Pass the EscapedTextPrefix's intermediate value up
+				.Transform(v => v.IntermediateValue); // And use it as parsed value
 
 			builder.CreateToken("number")
-				.Regex(@"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?", v => double.Parse(v.Text));
+				.Regex(@"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?", v => double.Parse(v.Text.Replace('.', ','))); // Hehe, here you can use Regex
 
 			builder.CreateToken("boolean")
-				.LiteralChoice(["true", "false"], v => v.Text == "true");
+				.LiteralChoice(["true", "false"], v => v.Text == "true"); // LiteralChoice uses Trie
 
 			builder.CreateToken("null")
 				.Literal("null", _ => null);
@@ -176,19 +184,21 @@ namespace RCLargeLanguageModels.Tests.Parsing
 					c => c.Token("null"),
 					c => c.Rule("array"),
 					c => c.Rule("object")],
-					v => v.Children[0].Value
+					v => v.Children[0].Value // Pass the parsed value up
 				);
 
 			builder.CreateRule("array")
-				.Literal("[")
-				.ZeroOrMoreSeparated(v => v.Rule("value"), s => s.Literal(","), allowTrailingSeparator: true,
+				.Literal("[") // The string with one character automatically converts to LiteralCharTokenPattern
+				.ZeroOrMoreSeparated(v => v.Rule("value"), s => s.Literal(","),
+					allowTrailingSeparator: true, includeSeparatorsInResult: false,
 					factory: v => v.Children.Select(a => a.Value).ToArray())
 				.Literal("]")
 				.Transform(v => v.Children[1].Value);
 
 			builder.CreateRule("object")
-				.Literal("{")
-				.ZeroOrMoreSeparated(v => v.Rule("pair"), s => s.Literal(","), allowTrailingSeparator: true,
+				.Literal("{") // And chained calling with builder converts the rule into SequenceParserRule by default
+				.ZeroOrMoreSeparated(v => v.Rule("pair"), s => s.Literal(","),
+					allowTrailingSeparator: true, includeSeparatorsInResult: false,
 					factory: v => v.Children.Select(a => (KeyValuePair<string, object>)a.Value!)
 						.ToDictionary(k => k.Key, v => v.Value))
 				.Literal("}")
@@ -202,21 +212,21 @@ namespace RCLargeLanguageModels.Tests.Parsing
 
 			builder.CreateRule("content")
 				.Rule("value")
-				.EOF()
+				.EOF() // Sure that we captured all the input
 				.Transform(v => v.Children[0].Value);
 
-			var jsonParser = builder.Build();
+			var jsonParser = builder.Build(); // <-- Here is the horryfying deduplication algorithm that builds the parser!
 
 			var json =
 			"""
 			{
 				"id": 1,
 				"name": "Sample Data",
-				"created": "2023-01-01T00:00:00",
-				"tags": ["tag1", "tag2", "tag3"],
+				"created": "2023-01-01T00:00:00", // Lol, this is a comment
+				"tags": ["tag1", "tag2", "tag3"], // But the comments also can be viewed in the parsing results!
 				"isActive": true,
 				"nested": {
-					"value": 123,
+					"value": 123.456,
 					"description": "Nested description"
 				}
 			}

@@ -163,7 +163,7 @@ namespace RCLargeLanguageModels.Parsing
 		public override string ToString()
 		{
 			if (Aliases.Count > 0)
-				return $"\"{Aliases[0]}\"";
+				return $"'{Aliases[0]}'";
 			return ToString(2); // Default depth is 2.
 		}
 

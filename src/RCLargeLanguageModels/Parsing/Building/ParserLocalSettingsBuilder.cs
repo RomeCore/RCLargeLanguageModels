@@ -114,7 +114,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// </remarks>
 		/// <param name="overrideMode">The override mode for the error handling setting.</param>
 		/// <returns>This instance for method chaining.</returns>
-		public ParserLocalSettingsBuilder SkipErrors(ParserSettingMode overrideMode = ParserSettingMode.LocalForSelfAndChildren)
+		public ParserLocalSettingsBuilder IgnoreErrors(ParserSettingMode overrideMode = ParserSettingMode.LocalForSelfAndChildren)
 		{
 			return ErrorHandling(ParserErrorHandlingMode.NoRecord, overrideMode);
 		}

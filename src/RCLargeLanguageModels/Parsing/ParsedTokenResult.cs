@@ -122,5 +122,10 @@ namespace RCLargeLanguageModels.Parsing
 
 			return sb.ToString();
 		}
+
+		public override string ToString()
+		{
+			return Text;
+		}
 	}
 }

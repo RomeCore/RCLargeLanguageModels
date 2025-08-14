@@ -79,7 +79,7 @@ namespace RCLargeLanguageModels.Tests.Parsing
 
 			parserBuilder.CreateToken("str")
 				.Literal('\'')
-				.EscapedTextDoubleCharacters(new[] { '\'' }) // "''" -> "'"
+				.EscapedTextDoubleChars(new[] { '\'' }) // "''" -> "'"
 				.Literal('\'')
 				.Pass(t => t[1]);
 

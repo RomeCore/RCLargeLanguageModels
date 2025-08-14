@@ -41,8 +41,7 @@ namespace RCLargeLanguageModels.Parsing
 		/// For <see cref="OptionalTokenPattern"/> it will be the inner value if present, otherwise null.
 		/// <para/>
 		/// For leaf token implementations this may be, for example,
-		/// <see cref="Match"/> for <see cref="RegexTokenPattern"/>,
-		/// or <see cref="char"/> for <see cref="CharRangeTokenPattern"/>. <br/>
+		/// <see cref="Match"/> for <see cref="RegexTokenPattern"/>. <br/>
 		/// See remarks for specific implementations.
 		/// </remarks>
 		public object? intermediateValue;

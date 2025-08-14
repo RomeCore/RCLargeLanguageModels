@@ -162,7 +162,7 @@ namespace RCLargeLanguageModels.Tests.Parsing
 
 			builder.CreateToken("string")
 				.Literal("\"")
-				.EscapedTextPrefix(prefix: "\\", "\\", "\"") // This sub-token automatically escapes the source string and puts it into intermediate value
+				.EscapedTextPrefix(prefix: '\\', '\\', '\"') // This sub-token automatically escapes the source string and puts it into intermediate value
 				.Literal("\"")
 				.Pass(v => v[1]) // Pass the EscapedTextPrefix's intermediate value up
 				.Transform(v => v.IntermediateValue); // And use it as parsed value

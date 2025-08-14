@@ -433,7 +433,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// <param name="factory">The factory function to create a parsed value.</param>
 		/// <param name="config">The action to configure the local settings for this token.</param>
 		/// <returns>Current instance for method chaining.</returns>
-		public T EscapedTextDoubleCharacters(IEnumerable<char> charSource, bool allowsEmpty = true, StringComparer? comparer = null,
+		public T EscapedTextDoubleChars(IEnumerable<char> charSource, bool allowsEmpty = true, StringComparer? comparer = null,
 			Func<ParsedTokenResult, object?>? factory = null, Action<ParserLocalSettingsBuilder>? config = null)
 		{
 			return AddToken(EscapedTextTokenPattern.CreateDoubleCharacters(charSource, allowsEmpty, comparer), factory, config);

@@ -383,7 +383,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// <param name="config">The action to configure the local settings for this rule.</param>
 		/// <returns>Current instance for method chaining.</returns>
 		/// <exception cref="ParserBuildingException">Thrown if any of the builder actions did not add any elements.</exception>
-		public RuleBuilder SeparatedRepeat(Action<RuleBuilder> builderAction, Action<RuleBuilder> separatorBuilderAction,
+		public RuleBuilder RepeatSeparated(Action<RuleBuilder> builderAction, Action<RuleBuilder> separatorBuilderAction,
 			int min, int max, bool allowTrailingSeparator = false, bool includeSeparatorsInResult = false,
 			Func<ParsedRuleResult, object?>? factory = null, Action<ParserLocalSettingsBuilder>? config = null)
 		{
@@ -424,7 +424,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 			int min, bool allowTrailingSeparator = false, bool includeSeparatorsInResult = false,
 			Func<ParsedRuleResult, object?>? factory = null, Action<ParserLocalSettingsBuilder>? config = null)
 		{
-			return SeparatedRepeat(builderAction, separatorBuilderAction, min, -1, allowTrailingSeparator,
+			return RepeatSeparated(builderAction, separatorBuilderAction, min, -1, allowTrailingSeparator,
 				 includeSeparatorsInResult, factory, config);
 		}
 
@@ -443,7 +443,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 			bool allowTrailingSeparator = false, bool includeSeparatorsInResult = false, Func<ParsedRuleResult, object?>? factory = null,
 			Action<ParserLocalSettingsBuilder>? config = null)
 		{
-			return SeparatedRepeat(builderAction, separatorBuilderAction, 0, -1, allowTrailingSeparator,
+			return RepeatSeparated(builderAction, separatorBuilderAction, 0, -1, allowTrailingSeparator,
 				includeSeparatorsInResult, factory, config);
 		}
 
@@ -462,7 +462,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 			bool allowTrailingSeparator = false, bool includeSeparatorsInResult = false,
 			Func<ParsedRuleResult, object?>? factory = null, Action<ParserLocalSettingsBuilder>? config = null)
 		{
-			return SeparatedRepeat(builderAction, separatorBuilderAction, 1, -1, allowTrailingSeparator,
+			return RepeatSeparated(builderAction, separatorBuilderAction, 1, -1, allowTrailingSeparator,
 				includeSeparatorsInResult, factory, config);
 		}
 	}

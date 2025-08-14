@@ -19,7 +19,7 @@ namespace RCLargeLanguageModels.Tests.Parsing
 
 			builder.CreateToken("string")
 				.Literal('"')
-				.EscapedText(escapeMappings, forbidden, comparer, config: null)
+				.EscapedText(escapeMappings, forbidden, comparer: comparer, config: null)
 				.Literal('"')
 				// choose the inner token (EscapedText is second element in sequence: 0='"', 1=EscapedText, 2='"')
 				.Pass(t => t[1]);

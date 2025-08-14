@@ -157,7 +157,7 @@ namespace RCLargeLanguageModels.Tests.Parsing
 			builder.CreateRule("skip")
 				.Choice(
 					[b => b.Whitespaces(),
-					 b => b.Literal("//").ZeroOrMoreChars(c => c != '\n' && c != '\r')],
+					 b => b.Literal("//").TextUntil('\n', '\r')],
 					config: c => c.IgnoreErrors());
 
 			builder.CreateToken("string")

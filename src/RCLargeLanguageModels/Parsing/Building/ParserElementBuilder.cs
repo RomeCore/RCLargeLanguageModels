@@ -229,6 +229,132 @@ namespace RCLargeLanguageModels.Parsing.Building
 		}
 
 		/// <summary>
+		/// Adds an identifier token to the current sequence.
+		/// </summary>
+		/// <param name="startPredicate">The predicate to use for the first character of the identifier.</param>
+		/// <param name="continuePredicate">The predicate to use for the remaining characters of the identifier.</param>
+		/// <param name="factory">The factory function to create a parsed value.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T Identifier(Func<char, bool> startPredicate, Func<char, bool> continuePredicate,
+			Func<ParsedTokenResult, object?>? factory = null,
+			Action<ParserLocalSettingsBuilder>? config = null)
+		{
+			return AddToken(new IdentifierTokenPattern(startPredicate, continuePredicate), factory, config);
+		}
+
+		/// <summary>
+		/// Adds an identifier token to the current sequence.
+		/// </summary>
+		/// <param name="startPredicate">The predicate to use for the first character of the identifier.</param>
+		/// <param name="continuePredicate">The predicate to use for the remaining characters of the identifier.</param>
+		/// <param name="minLength">The minimum length of the identifier. Default is 1.</param>
+		/// <param name="factory">The factory function to create a parsed value.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T Identifier(Func<char, bool> startPredicate, Func<char, bool> continuePredicate,
+			int minLength, Func<ParsedTokenResult, object?>? factory = null,
+			Action<ParserLocalSettingsBuilder>? config = null)
+		{
+			return AddToken(new IdentifierTokenPattern(startPredicate, continuePredicate, minLength), factory, config);
+		}
+
+		/// <summary>
+		/// Adds an identifier token to the current sequence.
+		/// </summary>
+		/// <param name="startPredicate">The predicate to use for the first character of the identifier.</param>
+		/// <param name="continuePredicate">The predicate to use for the remaining characters of the identifier.</param>
+		/// <param name="minLength">The minimum length of the identifier. Default is 1.</param>
+		/// <param name="maxLength">The maximum length of the identifier. Default is -1 (no limit).</param>
+		/// <param name="factory">The factory function to create a parsed value.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T Identifier(Func<char, bool> startPredicate, Func<char, bool> continuePredicate,
+			int minLength, int maxLength, Func<ParsedTokenResult, object?>? factory = null,
+			Action<ParserLocalSettingsBuilder>? config = null)
+		{
+			return AddToken(new IdentifierTokenPattern(startPredicate, continuePredicate, minLength, maxLength), factory, config);
+		}
+
+		/// <summary>
+		/// Adds an ASCII identifier token to the current sequence.
+		/// </summary>
+		/// <param name="factory">The factory function to create a parsed value.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T Identifier(Func<ParsedTokenResult, object?>? factory = null,
+			Action<ParserLocalSettingsBuilder>? config = null)
+		{
+			return AddToken(IdentifierTokenPattern.AsciiIdentifier(), factory, config);
+		}
+
+		/// <summary>
+		/// Adds an ASCII identifier token to the current sequence.
+		/// </summary>
+		/// <param name="minLength">The minimum length of the identifier. Default is 1.</param>
+		/// <param name="factory">The factory function to create a parsed value.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T Identifier(int minLength, Func<ParsedTokenResult, object?>? factory = null,
+			Action<ParserLocalSettingsBuilder>? config = null)
+		{
+			return AddToken(IdentifierTokenPattern.AsciiIdentifier(minLength), factory, config);
+		}
+
+		/// <summary>
+		/// Adds an ASCII identifier token to the current sequence.
+		/// </summary>
+		/// <param name="minLength">The minimum length of the identifier. Default is 1.</param>
+		/// <param name="maxLength">The maximum length of the identifier. Default is -1 (no limit).</param>
+		/// <param name="factory">The factory function to create a parsed value.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T Identifier(int minLength, int maxLength, Func<ParsedTokenResult, object?>? factory = null,
+			Action<ParserLocalSettingsBuilder>? config = null)
+		{
+			return AddToken(IdentifierTokenPattern.AsciiIdentifier(minLength, maxLength), factory, config);
+		}
+
+		/// <summary>
+		/// Adds an Unicode identifier token to the current sequence.
+		/// </summary>
+		/// <param name="factory">The factory function to create a parsed value.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T UnicodeIdentifier(Func<ParsedTokenResult, object?>? factory = null,
+			Action<ParserLocalSettingsBuilder>? config = null)
+		{
+			return AddToken(IdentifierTokenPattern.UnicodeIdentifier(), factory, config);
+		}
+
+		/// <summary>
+		/// Adds an Unicode identifier token to the current sequence.
+		/// </summary>
+		/// <param name="minLength">The minimum length of the identifier. Default is 1.</param>
+		/// <param name="factory">The factory function to create a parsed value.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T UnicodeIdentifier(int minLength, Func<ParsedTokenResult, object?>? factory = null,
+			Action<ParserLocalSettingsBuilder>? config = null)
+		{
+			return AddToken(IdentifierTokenPattern.UnicodeIdentifier(minLength), factory, config);
+		}
+
+		/// <summary>
+		/// Adds an Unicode identifier token to the current sequence.
+		/// </summary>
+		/// <param name="minLength">The minimum length of the identifier. Default is 1.</param>
+		/// <param name="maxLength">The maximum length of the identifier. Default is -1 (no limit).</param>
+		/// <param name="factory">The factory function to create a parsed value.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T UnicodeIdentifier(int minLength, int maxLength, Func<ParsedTokenResult, object?>? factory = null,
+			Action<ParserLocalSettingsBuilder>? config = null)
+		{
+			return AddToken(IdentifierTokenPattern.UnicodeIdentifier(minLength, maxLength), factory, config);
+		}
+
+		/// <summary>
 		/// Adds a regular expression token to the current sequence.
 		/// </summary>
 		/// <param name="regex">The regular expression.</param>
@@ -282,86 +408,60 @@ namespace RCLargeLanguageModels.Parsing.Building
 		#region EscapedText
 
 		/// <summary>
-		/// Adds an escaped text token to the current sequence with custom escape mappings and forbidden sequences.
-		/// </summary>
-		/// <param name="escapeMappings">The mappings for escape sequences to their replacements.</param>
-		/// <param name="forbidden">The set of forbidden sequences that terminate the match.</param>
-		/// <param name="factory">The factory function to create a parsed value.</param>
-		/// <param name="config">The action to configure the local settings for this token.</param>
-		/// <returns>Current instance for method chaining.</returns>
-		public T EscapedText(IEnumerable<KeyValuePair<string, string>> escapeMappings, IEnumerable<string> forbidden,
-			Func<ParsedTokenResult, object?>? factory = null, Action<ParserLocalSettingsBuilder>? config = null)
-		{
-			return AddToken(new EscapedTextTokenPattern(escapeMappings, forbidden), factory, config);
-		}
-
-		/// <summary>
 		/// Adds an escaped text token to the current sequence with custom escape mappings, forbidden sequences, and string comparer.
 		/// </summary>
 		/// <param name="escapeMappings">The mappings for escape sequences to their replacements.</param>
 		/// <param name="forbidden">The set of forbidden sequences that terminate the match.</param>
+		/// <param name="allowsEmpty">Indicates whether an empty string is allowed as a match.</param>
 		/// <param name="comparer">The string comparer to use.</param>
 		/// <param name="factory">The factory function to create a parsed value.</param>
 		/// <param name="config">The action to configure the local settings for this token.</param>
 		/// <returns>Current instance for method chaining.</returns>
-		public T EscapedText(IEnumerable<KeyValuePair<string, string>> escapeMappings, IEnumerable<string> forbidden, StringComparer? comparer,
+		public T EscapedText(IEnumerable<KeyValuePair<string, string>> escapeMappings, IEnumerable<string> forbidden,
+			bool allowsEmpty = true, StringComparer? comparer = null,
 			Func<ParsedTokenResult, object?>? factory = null, Action<ParserLocalSettingsBuilder>? config = null)
 		{
-			return AddToken(new EscapedTextTokenPattern(escapeMappings, forbidden, comparer), factory, config);
+			return AddToken(new EscapedTextTokenPattern(escapeMappings, forbidden, allowsEmpty, comparer), factory, config);
 		}
 
 		/// <summary>
 		/// Adds an escaped text token to the current sequence with double character escaping strategy.
 		/// </summary>
 		/// <param name="charSource">The source string of characters to be escaped.</param>
+		/// <param name="allowsEmpty">Indicates whether an empty string is allowed as a match.</param>
+		/// <param name="comparer">The string comparer to use.</param>
 		/// <param name="factory">The factory function to create a parsed value.</param>
 		/// <param name="config">The action to configure the local settings for this token.</param>
 		/// <returns>Current instance for method chaining.</returns>
-		public T EscapedTextDoubleCharacters(IEnumerable<char> charSource,
+		public T EscapedTextDoubleCharacters(IEnumerable<char> charSource, bool allowsEmpty = true, StringComparer? comparer = null,
 			Func<ParsedTokenResult, object?>? factory = null, Action<ParserLocalSettingsBuilder>? config = null)
 		{
-			return AddToken(EscapedTextTokenPattern.CreateDoubleCharacters(charSource), factory, config);
+			return AddToken(EscapedTextTokenPattern.CreateDoubleCharacters(charSource, allowsEmpty, comparer), factory, config);
+		}
+
+		/// <summary>
+		/// Adds an escaped text token to the current sequence with double sequence escaping strategy.
+		/// </summary>
+		/// <param name="sequences">The source collection of sequences to be escaped.</param>
+		/// <param name="allowsEmpty">Indicates whether an empty string is allowed as a match.</param>
+		/// <param name="comparer">The string comparer to use.</param>
+		/// <param name="factory">The factory function to create a parsed value.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T EscapedTextDoubleSequences(IEnumerable<string> sequences, bool allowsEmpty = true, StringComparer? comparer = null,
+			Func<ParsedTokenResult, object?>? factory = null, Action<ParserLocalSettingsBuilder>? config = null)
+		{
+			return AddToken(EscapedTextTokenPattern.CreateDoubleSequences(sequences, allowsEmpty, comparer), factory, config);
 		}
 
 		/// <summary>
 		/// Adds an escaped text token to the current sequence with double character escaping strategy.
 		/// </summary>
-		/// <param name="charSource">The source string of characters to be escaped.</param>
-		/// <param name="comparer">The string comparer to use.</param>
-		/// <param name="factory">The factory function to create a parsed value.</param>
-		/// <param name="config">The action to configure the local settings for this token.</param>
+		/// <param name="characters">The source collection of characters to be escaped.</param>
 		/// <returns>Current instance for method chaining.</returns>
-		public T EscapedTextDoubleCharacters(IEnumerable<char> charSource, StringComparer comparer,
-			Func<ParsedTokenResult, object?>? factory = null, Action<ParserLocalSettingsBuilder>? config = null)
+		public T EscapedTextDoubleChars(params char[] characters)
 		{
-			return AddToken(EscapedTextTokenPattern.CreateDoubleCharacters(charSource, comparer), factory, config);
-		}
-
-		/// <summary>
-		/// Adds an escaped text token to the current sequence with double sequence escaping strategy.
-		/// </summary>
-		/// <param name="sequences">The source collection of sequences to be escaped.</param>
-		/// <param name="factory">The factory function to create a parsed value.</param>
-		/// <param name="config">The action to configure the local settings for this token.</param>
-		/// <returns>Current instance for method chaining.</returns>
-		public T EscapedTextDoubleSequences(IEnumerable<string> sequences,
-			Func<ParsedTokenResult, object?>? factory = null, Action<ParserLocalSettingsBuilder>? config = null)
-		{
-			return AddToken(EscapedTextTokenPattern.CreateDoubleSequences(sequences), factory, config);
-		}
-
-		/// <summary>
-		/// Adds an escaped text token to the current sequence with double sequence escaping strategy.
-		/// </summary>
-		/// <param name="sequences">The source collection of sequences to be escaped.</param>
-		/// <param name="comparer">The string comparer to use.</param>
-		/// <param name="factory">The factory function to create a parsed value.</param>
-		/// <param name="config">The action to configure the local settings for this token.</param>
-		/// <returns>Current instance for method chaining.</returns>
-		public T EscapedTextDoubleSequences(IEnumerable<string> sequences, StringComparer? comparer,
-			Func<ParsedTokenResult, object?>? factory = null, Action<ParserLocalSettingsBuilder>? config = null)
-		{
-			return AddToken(EscapedTextTokenPattern.CreateDoubleSequences(sequences, comparer), factory, config);
+			return AddToken(EscapedTextTokenPattern.CreateDoubleCharacters(characters), null, null);
 		}
 
 		/// <summary>
@@ -379,28 +479,15 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// </summary>
 		/// <param name="charSource">The source collection (or <see cref="string"/>) of characters to be escaped.</param>
 		/// <param name="prefix">The prefix used for escaping.</param>
-		/// <param name="factory">The factory function to create a parsed value.</param>
-		/// <param name="config">The action to configure the local settings for this token.</param>
-		/// <returns>Current instance for method chaining.</returns>
-		public T EscapedTextPrefix(IEnumerable<char> charSource, string prefix = "\\",
-			Func<ParsedTokenResult, object?>? factory = null, Action<ParserLocalSettingsBuilder>? config = null)
-		{
-			return AddToken(EscapedTextTokenPattern.CreatePrefix(charSource, prefix), factory, config);
-		}
-
-		/// <summary>
-		/// Adds an escaped text token to the current sequence with prefix escaping strategy.
-		/// </summary>
-		/// <param name="charSource">The source collection (or <see cref="string"/>) of characters to be escaped.</param>
-		/// <param name="prefix">The prefix used for escaping.</param>
+		/// <param name="allowsEmpty">Indicates whether an empty string is allowed as a match.</param>
 		/// <param name="comparer">The string comparer to use.</param>
 		/// <param name="factory">The factory function to create a parsed value.</param>
 		/// <param name="config">The action to configure the local settings for this token.</param>
 		/// <returns>Current instance for method chaining.</returns>
-		public T EscapedTextPrefix(IEnumerable<char> charSource, string prefix, StringComparer comparer,
+		public T EscapedTextPrefix(IEnumerable<char> charSource, char prefix, bool allowsEmpty = true, StringComparer? comparer = null,
 			Func<ParsedTokenResult, object?>? factory = null, Action<ParserLocalSettingsBuilder>? config = null)
 		{
-			return AddToken(EscapedTextTokenPattern.CreatePrefix(charSource, prefix, comparer), factory, config);
+			return AddToken(EscapedTextTokenPattern.CreatePrefix(charSource, prefix, allowsEmpty, comparer), factory, config);
 		}
 
 		/// <summary>
@@ -408,28 +495,26 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// </summary>
 		/// <param name="sequences">The source collection of sequences to be escaped.</param>
 		/// <param name="prefix">The prefix used for escaping.</param>
-		/// <param name="factory">The factory function to create a parsed value.</param>
-		/// <param name="config">The action to configure the local settings for this token.</param>
-		/// <returns>Current instance for method chaining.</returns>
-		public T EscapedTextPrefix(IEnumerable<string> sequences, string prefix = "\\",
-			Func<ParsedTokenResult, object?>? factory = null, Action<ParserLocalSettingsBuilder>? config = null)
-		{
-			return AddToken(EscapedTextTokenPattern.CreatePrefix(sequences, prefix), factory, config);
-		}
-
-		/// <summary>
-		/// Adds an escaped text token to the current sequence with prefix sequence escaping strategy.
-		/// </summary>
-		/// <param name="sequences">The source collection of sequences to be escaped.</param>
-		/// <param name="prefix">The prefix used for escaping.</param>
+		/// <param name="allowsEmpty">Indicates whether an empty string is allowed as a match.</param>
 		/// <param name="comparer">The string comparer to use.</param>
 		/// <param name="factory">The factory function to create a parsed value.</param>
 		/// <param name="config">The action to configure the local settings for this token.</param>
 		/// <returns>Current instance for method chaining.</returns>
-		public T EscapedTextPrefix(IEnumerable<string> sequences, string prefix, StringComparer comparer,
+		public T EscapedTextPrefix(IEnumerable<string> sequences, string prefix, bool allowsEmpty = true, StringComparer? comparer = null,
 			Func<ParsedTokenResult, object?>? factory = null, Action<ParserLocalSettingsBuilder>? config = null)
 		{
-			return AddToken(EscapedTextTokenPattern.CreatePrefix(sequences, prefix, comparer), factory, config);
+			return AddToken(EscapedTextTokenPattern.CreatePrefix(sequences, prefix, allowsEmpty, comparer), factory, config);
+		}
+
+		/// <summary>
+		/// Adds an escaped text token to the current sequence with prefix character escaping strategy.
+		/// </summary>
+		/// <param name="prefix">The prefix used for escaping.</param>
+		/// <param name="characters">The source collection of characters to be escaped.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T EscapedTextPrefix(char prefix, params char[] characters)
+		{
+			return AddToken(EscapedTextTokenPattern.CreatePrefix(characters, prefix), null, null);
 		}
 
 		/// <summary>
@@ -441,6 +526,59 @@ namespace RCLargeLanguageModels.Parsing.Building
 		public T EscapedTextPrefix(string prefix, params string[] sequences)
 		{
 			return AddToken(EscapedTextTokenPattern.CreatePrefix(sequences, prefix), null, null);
+		}
+		/// <summary>
+		/// Adds an escaped text token to the current sequence that matches until any of the specified forbidden sequences is encountered,
+		/// with no escape sequences defined.
+		/// </summary>
+		/// <param name="forbidden">The set of forbidden sequences that terminate the match.</param>
+		/// <param name="allowsEmpty">Indicates whether an empty string is allowed as a match.</param>
+		/// <param name="comparer">The string comparer to use.</param>
+		/// <param name="factory">The factory function to create a parsed value.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T TextUntil(IEnumerable<string> forbidden, bool allowsEmpty = true, StringComparer? comparer = null,
+			Func<ParsedTokenResult, object?>? factory = null, Action<ParserLocalSettingsBuilder>? config = null)
+		{
+			return AddToken(EscapedTextTokenPattern.CreateUntil(forbidden, allowsEmpty, comparer), factory, config);
+		}
+
+		/// <summary>
+		/// Adds an escaped text token to the current sequence that matches until any of the specified forbidden characters is encountered,
+		/// with no escape sequences defined.
+		/// </summary>
+		/// <param name="forbiddenChars">The set of forbidden characters that terminate the match.</param>
+		/// <param name="allowsEmpty">Indicates whether an empty string is allowed as a match.</param>
+		/// <param name="comparer">The string comparer to use.</param>
+		/// <param name="factory">The factory function to create a parsed value.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T TextUntil(IEnumerable<char> forbiddenChars, bool allowsEmpty = true, StringComparer? comparer = null,
+			Func<ParsedTokenResult, object?>? factory = null, Action<ParserLocalSettingsBuilder>? config = null)
+		{
+			return AddToken(EscapedTextTokenPattern.CreateUntil(forbiddenChars, allowsEmpty, comparer), factory, config);
+		}
+
+		/// <summary>
+		/// Adds an escaped text token to the current sequence that matches until any of the specified forbidden characters is encountered,
+		/// with no escape sequences defined.
+		/// </summary>
+		/// <param name="characters">The source collection of characters to be forbidden.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T TextUntil(params char[] characters)
+		{
+			return AddToken(EscapedTextTokenPattern.CreateUntil(characters), null, null);
+		}
+
+		/// <summary>
+		/// Adds an escaped text token to the current sequence that matches until any of the specified forbidden sequences is encountered,
+		/// with no escape sequences defined.
+		/// </summary>
+		/// <param name="forbidden">The array of forbidden sequences that terminate the match.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public T TextUntil(params string[] forbidden)
+		{
+			return AddToken(EscapedTextTokenPattern.CreateUntil(forbidden), null, null);
 		}
 
 		#endregion

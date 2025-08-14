@@ -31,6 +31,11 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 		public ImmutableHashSet<string> ForbiddenSequences { get; }
 
 		/// <summary>
+		/// Gets a value indicating whether empty strings are allowed as valid matches.
+		/// </summary>
+		public bool AllowsEmpty { get; }
+
+		/// <summary>
 		/// The string comparer used for comparing and searching within the Trie nodes.
 		/// </summary>
 		public StringComparer Comparer { get; }
@@ -45,9 +50,10 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 		/// </summary>
 		/// <param name="escapeMappings">The mappings for escape sequences to their replacements.</param>
 		/// <param name="forbidden">The set of forbidden sequences that terminate the match if encountered unescaped.</param>
+		/// <param name="allowsEmpty">Indicates whether empty strings are allowed as valid matches.</param>
 		/// <param name="comparer">The comparer to use for matching.</param>
 		public EscapedTextTokenPattern(IEnumerable<KeyValuePair<string, string>> escapeMappings,
-			IEnumerable<string> forbidden, StringComparer? comparer = null)
+			IEnumerable<string> forbidden, bool allowsEmpty = true, StringComparer? comparer = null)
 		{
 			if (escapeMappings == null)
 				throw new ArgumentNullException(nameof(escapeMappings));
@@ -58,6 +64,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			CharComparer = new CharComparer(Comparer);
 			EscapeMappings = ImmutableDictionary.CreateRange(Comparer, escapeMappings);
 			ForbiddenSequences = ImmutableHashSet.CreateRange(Comparer, forbidden);
+			AllowsEmpty = allowsEmpty;
 
 			_comparerWasSet = comparer != null;
 			_escape = new Trie(escapeMappings.Select(kvp => new KeyValuePair<string, object?>(kvp.Key, kvp.Value)),
@@ -75,13 +82,15 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 		/// with "{{" -> "{", "}}" -> "}" as escape sequences with "{" and "}" as forbidden sequences.
 		/// </remarks>
 		/// <param name="charSource">The source collection (or <see cref="string"/>) of characters to be escaped.</param>
+		/// <param name="allowsEmpty">Indicates whether empty strings are allowed as valid matches.</param>
 		/// <param name="comparer">The comparer to use for matching.</param>
 		/// <returns>A created <see cref="EscapedTextTokenPattern"/> instance.</returns>
-		public static EscapedTextTokenPattern CreateDoubleCharacters(IEnumerable<char> charSource, StringComparer? comparer = null)
+		public static EscapedTextTokenPattern CreateDoubleCharacters(IEnumerable<char> charSource, bool allowsEmpty = true, StringComparer? comparer = null)
 		{
 			return new EscapedTextTokenPattern(
 				charSource.Select(c => new KeyValuePair<string, string>(new string(c, 2), new string(c, 1))),
 				charSource.Select(c => c.ToString()),
+				allowsEmpty,
 				comparer
 			);
 		}
@@ -94,14 +103,16 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 		/// with "abab" -> "ab", "bcbc" -> "bc" as escape sequences with "ab" and "bc" as forbidden sequences.
 		/// </remarks>
 		/// <param name="sequences">The source collection of sequences to be escaped.</param>
+		/// <param name="allowsEmpty">Indicates whether empty strings are allowed as valid matches.</param>
 		/// <param name="comparer">The comparer to use for matching.</param>
 		/// <returns>A created <see cref="EscapedTextTokenPattern"/> instance.</returns>
-		public static EscapedTextTokenPattern CreateDoubleSequences(IEnumerable<string> sequences, StringComparer? comparer = null)
+		public static EscapedTextTokenPattern CreateDoubleSequences(IEnumerable<string> sequences, bool allowsEmpty = true, StringComparer? comparer = null)
 		{
 			var sourceList = sequences.AsReadOnlyList();
 			return new EscapedTextTokenPattern(
 				sourceList.Select(c => new KeyValuePair<string, string>(c + c, c)),
 				sourceList,
+				allowsEmpty,
 				comparer
 			);
 		}
@@ -115,13 +126,15 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 		/// </remarks>
 		/// <param name="charSource">The source collection (or <see cref="string"/>) of characters to be escaped.</param>
 		/// <param name="prefix">The prefix used for escaping.</param>
+		/// <param name="allowsEmpty">Indicates whether empty strings are allowed as valid matches.</param>
 		/// <param name="comparer">The comparer to use for matching.</param>
 		/// <returns>A created <see cref="EscapedTextTokenPattern"/> instance.</returns>
-		public static EscapedTextTokenPattern CreatePrefix(IEnumerable<char> charSource, string prefix = "\\", StringComparer? comparer = null)
+		public static EscapedTextTokenPattern CreatePrefix(IEnumerable<char> charSource, char prefix = '\\', bool allowsEmpty = true, StringComparer? comparer = null)
 		{
 			return new EscapedTextTokenPattern(
-				charSource.Select(c => new KeyValuePair<string, string>(prefix + c, c.ToString())),
+				charSource.Select(c => new KeyValuePair<string, string>($"{prefix}{c}", c.ToString())),
 				charSource.Select(c => c.ToString()),
+				allowsEmpty,
 				comparer
 			);
 		}
@@ -135,17 +148,56 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 		/// </remarks>
 		/// <param name="sequences">The source collection of sequences to be escaped.</param>
 		/// <param name="prefix">The prefix used for escaping.</param>
+		/// <param name="allowsEmpty">Indicates whether empty strings are allowed as valid matches.</param>
 		/// <param name="comparer">The comparer to use for matching.</param>
 		/// <returns>A created <see cref="EscapedTextTokenPattern"/> instance.</returns>
-		public static EscapedTextTokenPattern CreatePrefix(IEnumerable<string> sequences, string prefix = "\\", StringComparer? comparer = null)
+		public static EscapedTextTokenPattern CreatePrefix(IEnumerable<string> sequences, string prefix = "\\", bool allowsEmpty = true, StringComparer? comparer = null)
 		{
 			var sourceList = sequences.AsReadOnlyList();
 			return new EscapedTextTokenPattern(
 				sourceList.Select(c => new KeyValuePair<string, string>(prefix + c, c)),
 				sourceList,
+				allowsEmpty,
 				comparer
 			);
 		}
+
+		/// <summary>
+		/// Creates an <see cref="EscapedTextTokenPattern"/> that matches text until any of the specified forbidden characters is encountered,
+		/// with no escape sequences defined.
+		/// </summary>
+		/// <param name="forbiddenChars">The set of forbidden characters that terminate the match if encountered.</param>
+		/// <param name="allowsEmpty">Indicates whether empty strings are allowed as valid matches.</param>
+		/// <param name="comparer">The comparer to use for matching.</param>
+		/// <returns>A created <see cref="EscapedTextTokenPattern"/> instance.</returns>
+		public static EscapedTextTokenPattern CreateUntil(IEnumerable<char> forbiddenChars, bool allowsEmpty = true, StringComparer? comparer = null)
+		{
+			return new EscapedTextTokenPattern(
+				Array.Empty<KeyValuePair<string, string>>(),
+				forbiddenChars.Select(c => c.ToString()),
+				allowsEmpty,
+				comparer
+			);
+		}
+
+		/// <summary>
+		/// Creates an <see cref="EscapedTextTokenPattern"/> that matches text until any of the specified forbidden sequences is encountered,
+		/// with no escape sequences defined.
+		/// </summary>
+		/// <param name="forbidden">The set of forbidden sequences that terminate the match if encountered.</param>
+		/// <param name="allowsEmpty">Indicates whether empty strings are allowed as valid matches.</param>
+		/// <param name="comparer">The comparer to use for matching.</param>
+		/// <returns>A created <see cref="EscapedTextTokenPattern"/> instance.</returns>
+		public static EscapedTextTokenPattern CreateUntil(IEnumerable<string> forbidden, bool allowsEmpty = true, StringComparer? comparer = null)
+		{
+			return new EscapedTextTokenPattern(
+				Array.Empty<KeyValuePair<string, string>>(),
+				forbidden,
+				allowsEmpty,
+				comparer
+			);
+		}
+
 
 
 
@@ -201,8 +253,15 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 				pos++;
 			}
 
-			// produce token; note: we allow zero-length result if you intentionally permit it.
+			// Produce token
 			int length = pos - start;
+
+			if (length == 0 && !AllowsEmpty) // empty match and not allowed -> error
+			{
+				token = ParsedToken.Fail;
+				return false;
+			}
+
 			token = new ParsedToken(Id, start, length, sb.ToString());
 			return true;
 		}
@@ -211,7 +270,10 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 		public override string ToString(int remainingDepth)
 		{
-			return $"escaped text: {string.Join(" ", EscapeMappings.Keys.Select(e => $"'{e}'"))} forbidden: {string.Join(" ", ForbiddenSequences.Select(e => $"'{e}'"))}";
+			string escapes = string.Join(" ", EscapeMappings.Keys.Select(e => $"'{e}'"));
+			string forbidden = string.Join(" ", ForbiddenSequences.Select(e => $"'{e}'"));
+			string allowsEmpty = AllowsEmpty ? " allows empty" : " disallows empty";
+			return $"escaped {{{escapes}}} forbidden: {{{forbidden}}}{allowsEmpty}";
 		}
 
 		public override bool Equals(object? obj)
@@ -221,6 +283,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 				   EscapeMappings.SequenceEqual(other.EscapeMappings) &&
 				   ForbiddenSequences.SetEquals(other.ForbiddenSequences) &&
 				   Equals(Comparer, other.Comparer) &&
+				   AllowsEmpty == other.AllowsEmpty &&
 				   _comparerWasSet == other._comparerWasSet;
 		}
 
@@ -230,6 +293,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			hashCode = hashCode * -1521134295 + EscapeMappings.GetSetHashCode(Comparer);
 			hashCode = hashCode * -1521134295 + ForbiddenSequences.GetSetHashCode();
 			hashCode = hashCode * -1521134295 + Comparer.GetHashCode();
+			hashCode = hashCode * -1521134295 + AllowsEmpty.GetHashCode();
 			hashCode = hashCode * -1521134295 + _comparerWasSet.GetHashCode();
 			return hashCode;
 		}

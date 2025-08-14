@@ -38,8 +38,8 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 		/// <param name="maxLength">The maximum number of characters that the identifier can have. -1 indicates no limit.</param>
 		public IdentifierTokenPattern(Func<char, bool> startPredicate, Func<char, bool> continuePredicate, int minLength = 1, int maxLength = -1)
 		{
-			if (minLength < 0)
-				throw new ArgumentOutOfRangeException(nameof(minLength), "minLength must be greater than or equal to 0");
+			if (minLength < 1)
+				throw new ArgumentOutOfRangeException(nameof(minLength), "minLength must be greater than or equal to 1");
 
 			if (maxLength < minLength && maxLength != -1)
 				throw new ArgumentOutOfRangeException(nameof(maxLength), "maxLength must be greater than or equal to minLength or be -1 if no maximum is specified.");

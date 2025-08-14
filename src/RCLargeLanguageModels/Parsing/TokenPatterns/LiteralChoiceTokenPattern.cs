@@ -17,7 +17,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 	public class LiteralChoiceTokenPattern : TokenPattern
 	{
 		private readonly bool _comparerWasSet;
-		private readonly TrieNode _root;
+		private readonly Trie _root;
 
 		/// <summary>
 		/// Gets the set of literal strings to match.
@@ -49,62 +49,16 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			Literals = ImmutableHashSet.CreateRange(Comparer, literals);
 
 			_comparerWasSet = comparer != null;
-			_root = new TrieNode(_comparerWasSet ? CharComparer : null);
-
-			foreach (var literal in literals)
-			{
-				if (string.IsNullOrEmpty(literal))
-					throw new ArgumentException("Literals cannot contain null or empty strings.", nameof(literals));
-				AddLiteral(literal, _comparerWasSet ? CharComparer : null);
-			}
-		}
-
-		private void AddLiteral(string literal, CharComparer? comparer)
-		{
-			var node = _root;
-			foreach (var ch in literal)
-			{
-				if (!node.Children.TryGetValue(ch, out var child))
-				{
-					child = new TrieNode(_comparerWasSet ? CharComparer : null);
-					node.Children[ch] = child;
-				}
-				node = child;
-			}
-			node.IsTerminal = true;
-			node.Literal = literal;
+			_root = new Trie(literals.Select(l => new KeyValuePair<string, object?>(l, l)), _comparerWasSet ? CharComparer : null);
 		}
 
 
 
 		public override bool TryMatch(ParserContext context, ParserContext childContext, out ParsedToken token)
 		{
-			int pos = context.position;
-			var node = _root;
-			TrieNode? lastMatchNode = null;
-			int lastMatchPos = pos;
-
-			while (pos < context.str.Length)
+			if (_root.TryGetLongestMatch(context.str, context.position, out var matchedLiteral, out int matchedLength))
 			{
-				char currentChar = context.str[pos];
-
-				if (!node.Children.TryGetValue(currentChar, out var child))
-					break;
-
-				node = child;
-				pos++;
-
-				if (node.IsTerminal)
-				{
-					lastMatchNode = node;
-					lastMatchPos = pos;
-				}
-			}
-
-			if (lastMatchNode != null)
-			{
-				int length = lastMatchPos - context.position;
-				token = new ParsedToken(Id, context.position, length, lastMatchNode.Literal);
+				token = new ParsedToken(Id, context.position, matchedLength, matchedLiteral);
 				return true;
 			}
 
@@ -133,21 +87,6 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			hashCode = hashCode * -1521134295 + Literals.GetSetHashCode();
 			hashCode = hashCode * -1521134295 + Comparer.GetHashCode();
 			return hashCode;
-		}
-
-		private class TrieNode
-		{
-			public Dictionary<char, TrieNode> Children { get; }
-			public bool IsTerminal { get; set; }
-			public string? Literal { get; set; }
-
-			public TrieNode(CharComparer? comparer)
-			{
-				if (comparer == null)
-					Children = new Dictionary<char, TrieNode>();
-				else
-					Children = new Dictionary<char, TrieNode>(comparer);
-			}
 		}
 	}
 }

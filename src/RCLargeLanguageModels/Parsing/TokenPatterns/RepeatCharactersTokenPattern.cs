@@ -65,20 +65,24 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 		public override string ToString(int remainingDepth)
 		{
-			return "repeat predicate";
+			return $"repeat predicate{{{MinCount}..{(MaxCount == -1 ? "" : MaxCount)}}}";
 		}
 
 		public override bool Equals(object? obj)
 		{
 			return base.Equals(obj) &&
 				   obj is RepeatCharactersTokenPattern other &&
+				   MinCount == other.MinCount &&
+				   MaxCount == other.MaxCount &&
 				   CharacterPredicate == other.CharacterPredicate;
 		}
 
 		public override int GetHashCode()
 		{
 			int hash = base.GetHashCode();
-			hash *= CharacterPredicate.GetHashCode() * 17;
+			hash *= MinCount.GetHashCode() * 17 + 397;
+			hash *= MaxCount.GetHashCode() * 17 + 397;
+			hash *= CharacterPredicate.GetHashCode() * 17 + 397;
 			return hash;
 		}
 	}

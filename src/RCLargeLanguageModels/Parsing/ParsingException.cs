@@ -150,6 +150,5 @@ namespace RCLargeLanguageModels.Parsing
 
 			return sb.ToString().Indent("  ", addIndentToFirstLine: false);
 		}
-
 	}
 }

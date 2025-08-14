@@ -32,16 +32,16 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 		{
 			if (string.IsNullOrEmpty(pattern))
 				throw new ArgumentException("Pattern cannot be null or empty.", nameof(pattern));
-			RegexPattern = pattern.TrimStart('^');
-			Regex = new Regex($"^{RegexPattern}", options);
+			RegexPattern = pattern;
+			Regex = new Regex($"\\G{RegexPattern}", options);
 		}
 
 
 
 		public override bool TryMatch(ParserContext context, ParserContext childContext, out ParsedToken token)
 		{
-			var match = Regex.Match(context.str.Substring(context.position));
-			if (!match.Success || match.Index != 0)
+			var match = Regex.Match(context.str, context.position);
+			if (!match.Success || match.Index != context.position)
 			{
 				token = ParsedToken.Fail;
 				return false;

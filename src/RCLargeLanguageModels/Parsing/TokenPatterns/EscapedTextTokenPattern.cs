@@ -17,8 +17,8 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 	public class EscapedTextTokenPattern : TokenPattern
 	{
 		private readonly bool _comparerWasSet;
-		private readonly TrieNode _escapeRoot;
-		private readonly TrieNode _forbiddenRoot;
+		private readonly Trie _escape;
+		private readonly Trie _forbidden;
 
 		/// <summary>
 		/// The set of escape mappings to use for escaping sequences in the input text.
@@ -60,38 +60,9 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			ForbiddenSequences = ImmutableHashSet.CreateRange(Comparer, forbidden);
 
 			_comparerWasSet = comparer != null;
-			_escapeRoot = new TrieNode(comparer != null ? CharComparer : null);
-			_forbiddenRoot = new TrieNode(comparer != null ? CharComparer : null);
-
-			foreach (var kvp in escapeMappings)
-			{
-				if (string.IsNullOrEmpty(kvp.Key))
-					throw new ArgumentException("Escape sequences cannot be null or empty.", nameof(escapeMappings));
-				AddToTrie(_escapeRoot, kvp.Key, kvp.Value);
-			}
-
-			foreach (var forb in forbidden)
-			{
-				if (string.IsNullOrEmpty(forb))
-					throw new ArgumentException("Forbidden sequences cannot be null or empty.", nameof(forbidden));
-				AddToTrie(_forbiddenRoot, forb, null);
-			}
-		}
-
-		private void AddToTrie(TrieNode root, string sequence, string? replacement)
-		{
-			var node = root;
-			foreach (var ch in sequence)
-			{
-				if (!node.Children.TryGetValue(ch, out var child))
-				{
-					child = new TrieNode(_comparerWasSet ? CharComparer : null);
-					node.Children[ch] = child;
-				}
-				node = child;
-			}
-			node.IsTerminal = true;
-			node.Replacement = replacement;
+			_escape = new Trie(escapeMappings.Select(kvp => new KeyValuePair<string, object?>(kvp.Key, kvp.Value)),
+				comparer != null ? CharComparer : null);
+			_forbidden = new Trie(forbidden,comparer != null ? CharComparer : null);
 		}
 
 
@@ -189,16 +160,16 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			{
 				// 1) Try to match the longest escape starting at pos.
 				//    If found — apply replacement and continue.
-				if (TryMatchSequence(_escapeRoot, input, pos, out int escapeConsumed, out string? replacement))
+				if (_escape.TryGetLongestMatch(input, pos, out var replacement, out int escapeConsumed))
 				{
-					sb.Append(replacement ?? string.Empty);
+					sb.Append(replacement as string ?? string.Empty);
 					pos += escapeConsumed;
 					continue;
 				}
 
 				// 2) No escape terminal at this position.
 				//    If a forbidden terminal starts here, stop (do not consume forbidden).
-				if (TryMatchSequence(_forbiddenRoot, input, pos, out int forbiddenConsumed))
+				if (_forbidden.TryGetLongestMatch(input, pos, out _, out int forbiddenConsumed))
 				{
 					break; // unescaped forbidden sequence -> end of matched text
 				}
@@ -208,7 +179,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 				//    If the remainder of the input starting at pos is a strict prefix of some escape
 				//    AND we are at the end of the input (no more chars to try) => incomplete escape -> error.
 				//    Otherwise treat the current char as normal text.
-				if (IsStrictPrefixOfSomeEscape(input, pos))
+				if (_escape.IsStrictPrefixOfAny(input, pos))
 				{
 					// If the remaining input is a strict prefix of some escape and we are at EOF
 					// (i.e. there are no more characters to complete that escape), then it's invalid.
@@ -236,79 +207,6 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			return true;
 		}
 
-		/// <summary>
-		/// Try to match the longest terminal in the trie that starts at startPos.
-		/// If found, returns true and sets consumed to the length and optional replacement.
-		/// Otherwise returns false.
-		/// </summary>
-		private bool TryMatchSequence(TrieNode root, string input, int startPos, out int consumed, out string? replacement)
-		{
-			consumed = 0;
-			replacement = null;
-
-			int pos = startPos;
-			var node = root;
-			int lastTerminalPos = -1;
-			string? lastReplacement = null;
-
-			while (pos < input.Length)
-			{
-				char ch = input[pos];
-				if (!node.Children.TryGetValue(ch, out var child))
-					break;
-
-				node = child;
-				pos++;
-
-				if (node.IsTerminal)
-				{
-					lastTerminalPos = pos;
-					lastReplacement = node.Replacement;
-				}
-			}
-
-			if (lastTerminalPos >= 0)
-			{
-				consumed = lastTerminalPos - startPos;
-				replacement = lastReplacement;
-				return true;
-			}
-
-			return false;
-		}
-
-		/// <summary>
-		/// Helper: returns true iff the substring input[startPos..] is a strict prefix of some escape sequence
-		/// (i.e. you can walk the escape trie following all remaining chars, and at the final node there is
-		/// at least one child and the node itself is not terminal).
-		/// This indicates "we ended inside a branch of the trie" (possible incomplete escape).
-		/// </summary>
-		private bool IsStrictPrefixOfSomeEscape(string input, int startPos)
-		{
-			var node = _escapeRoot;
-			int pos = startPos;
-
-			// Walk as far as input goes.
-			while (pos < input.Length)
-			{
-				char ch = input[pos];
-				if (!node.Children.TryGetValue(ch, out var child))
-					return false; // mismatch => not a prefix at all
-				node = child;
-				pos++;
-			}
-
-			// We consumed the whole remaining input along trie path.
-			// If node is terminal => the remaining input itself *is* a terminal (should have been matched earlier).
-			// If node is not terminal but has some children => it's a strict prefix of some longer escape.
-			return !node.IsTerminal && node.Children.Count > 0;
-		}
-
-		private bool TryMatchSequence(TrieNode root, string input, int startPos, out int consumed)
-		{
-			return TryMatchSequence(root, input, startPos, out consumed, out string? _);
-		}
-
 
 
 		public override string ToString(int remainingDepth)
@@ -334,21 +232,6 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			hashCode = hashCode * -1521134295 + Comparer.GetHashCode();
 			hashCode = hashCode * -1521134295 + _comparerWasSet.GetHashCode();
 			return hashCode;
-		}
-
-		private class TrieNode
-		{
-			public Dictionary<char, TrieNode> Children { get; }
-			public bool IsTerminal { get; set; }
-			public string? Replacement { get; set; }
-
-			public TrieNode(CharComparer? comparer)
-			{
-				if (comparer == null)
-					Children = new Dictionary<char, TrieNode>();
-				else
-					Children = new Dictionary<char, TrieNode>(comparer);
-			}
 		}
 	}
 }

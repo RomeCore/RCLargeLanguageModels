@@ -80,9 +80,14 @@ namespace RCLargeLanguageModels.Parsing
 
 		private readonly Lazy<string> _textLazy;
 		/// <summary>
-		/// Gets the parsed input text that was parsed.
+		/// Gets the parsed input text that was captured.
 		/// </summary>
 		public string Text => _textLazy.Value;
+
+		/// <summary>
+		/// Gets the parsed input text that was captured as a span of characters.
+		/// </summary>
+		public ReadOnlySpan<char> Span => Context.str.AsSpan(Result.startIndex, Result.length);
 
 		private readonly Lazy<object?> _valueLazy;
 		/// <summary>
@@ -90,11 +95,11 @@ namespace RCLargeLanguageModels.Parsing
 		/// </summary>
 		public object? Value => _valueLazy.Value;
 
-		private readonly Lazy<ImmutableList<ParsedRuleResult>> _childrenLazy;
+		private readonly Lazy<ParsedRuleResult[]> _childrenLazy;
 		/// <summary>
 		/// Gets the children results of this rule. Valid for parallel and sequence rules.
 		/// </summary>
-		public ImmutableList<ParsedRuleResult> Children => _childrenLazy.Value;
+		public ParsedRuleResult[] Children => _childrenLazy.Value;
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="ParsedRuleResult"/> class.
@@ -111,9 +116,123 @@ namespace RCLargeLanguageModels.Parsing
 
 			_textLazy = new Lazy<string>(() => Context.str.Substring(Result.startIndex, Result.length));
 			_valueLazy = new Lazy<object?>(() => Rule.ParsedValueFactory?.Invoke(this) ?? null);
-			_childrenLazy = new Lazy<ImmutableList<ParsedRuleResult>>(() =>
-				Result.children?.Select(r => new ParsedRuleResult(this, context, r)).ToImmutableList() ??
-				ImmutableList<ParsedRuleResult>.Empty);
+			_childrenLazy = new Lazy<ParsedRuleResult[]>(() =>
+			{
+				var children = new ParsedRuleResult[result.children?.Count ?? 0];
+
+				if (result.children != null)
+				{
+					int i = 0;
+					foreach (var child in result.children)
+						children[i++] = new ParsedRuleResult(this, context, child);
+				}
+
+				return children;
+			});
+		}
+
+		/// <summary>
+		/// Gets the intermediate value associated with this rule as an instance of type <typeparamref name="T"/>.
+		/// </summary>
+		/// <typeparam name="T">The type of value to retrieve.</typeparam>
+		/// <returns>The intermediate value associated with this rule.</returns>
+		public T GetIntermediateValue<T>() => (T)IntermediateValue;
+
+		/// <summary>
+		/// Tries to get the intermediate value associated with this rule as an instance of type <typeparamref name="T"/>.
+		/// </summary>
+		/// <typeparam name="T">The type of value to retrieve.</typeparam>
+		/// <returns>The intermediate value associated with this rule.</returns>
+		public T? TryGetIntermediateValue<T>() where T : class => IntermediateValue as T;
+
+		/// <summary>
+		/// Gets the value associated with this rule as not-null object. If the value is null, throws an exception.
+		/// </summary>
+		/// <returns>The value associated with this rule.</returns>
+		public object GetValue() => Value ?? throw new InvalidOperationException("ParsedRuleResult.Value is null");
+
+		/// <summary>
+		/// Gets the value associated with this rule as an instance of type <typeparamref name="T"/>.
+		/// </summary>
+		/// <typeparam name="T">The type of value to retrieve.</typeparam>
+		/// <returns>The value associated with this rule.</returns>
+		public T GetValue<T>() => (T)Value;
+
+		/// <summary>
+		/// Tries to get the value associated with this rule as an instance of type <typeparamref name="T"/>.
+		/// </summary>
+		/// <typeparam name="T">The type of value to retrieve.</typeparam>
+		/// <returns>The value associated with this rule.</returns>
+		public T? TryGetValue<T>() where T : class => Value as T;
+
+		/// <summary>
+		/// Selects the children values of this rule.
+		/// </summary>
+		/// <returns>The values from the children.</returns>
+		public object?[] SelectArray()
+		{
+			var result = new object?[Result.children?.Count ?? 0];
+			if (result.Length == 0)
+				return result;
+
+			int i = 0;
+			foreach (var child in Children)
+				result[i++] = child.Value;
+			return result;
+		}
+
+		/// <summary>
+		/// Selects the children values of this rule.
+		/// </summary>
+		/// <returns>The values from the children.</returns>
+		public IEnumerable<object> SelectValues()
+		{
+			return Children.Select(child => child.GetValue());
+		}
+
+		/// <summary>
+		/// Selects the casted children values of this rule.
+		/// </summary>
+		/// <typeparam name="T">The type of value to retrieve from the children.</typeparam>
+		/// <returns>The casted values from the children.</returns>
+		public T[] SelectArray<T>()
+		{
+			var result = new T[Result.children?.Count ?? 0];
+			if (result.Length == 0)
+				return result;
+
+			int i = 0;
+			foreach (var child in Children)
+				result[i++] = child.GetValue<T>();
+			return result;
+		}
+
+		/// <summary>
+		/// Selects the casted children values of this rule.
+		/// </summary>
+		/// <typeparam name="T">The type of value to retrieve from the children.</typeparam>
+		/// <returns>The casted values from the children.</returns>
+		public IEnumerable<T> SelectValues<T>()
+		{
+			return Children.Select(child => child.GetValue<T>());
+		}
+
+		/// <summary>
+		/// Selects the children of this rule using a selector function.
+		/// </summary>
+		/// <typeparam name="T">The type of value to retrieve from the children.</typeparam>
+		/// <param name="selector">The selector function to apply to each child.</param>
+		/// <returns>The selected values from the children.</returns>
+		public T[] SelectArray<T>(Func<ParsedRuleResult, T> selector)
+		{
+			var result = new T[Result.children?.Count ?? 0];
+			if (result.Length == 0)
+				return result;
+
+			int i = 0;
+			foreach (var child in Children)
+				result[i++] = selector(child);
+			return result;
 		}
 
 		/// <summary>

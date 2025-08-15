@@ -190,7 +190,7 @@ namespace RCLargeLanguageModels.Tests.Parsing
 				.Literal("[") // The string with one character automatically converts to LiteralCharTokenPattern
 				.ZeroOrMoreSeparated(v => v.Rule("value"), s => s.Literal(","),
 					allowTrailingSeparator: true, includeSeparatorsInResult: false,
-					factory: v => v.Children.Select(a => a.Value).ToArray())
+					factory: v => v.SelectArray())
 				.Literal("]")
 				.Transform(v => v.Children[1].Value);
 
@@ -198,8 +198,7 @@ namespace RCLargeLanguageModels.Tests.Parsing
 				.Literal("{") // And chained calling with builder converts the rule into SequenceParserRule by default
 				.ZeroOrMoreSeparated(v => v.Rule("pair"), s => s.Literal(","),
 					allowTrailingSeparator: true, includeSeparatorsInResult: false,
-					factory: v => v.Children.Select(a => (KeyValuePair<string, object>)a.Value!)
-						.ToDictionary(k => k.Key, v => v.Value))
+					factory: v => v.SelectValues<KeyValuePair<string, object>>().ToDictionary(k => k.Key, v => v.Value))
 				.Literal("}")
 				.Transform(v => v.Children[1].Value);
 
@@ -207,7 +206,7 @@ namespace RCLargeLanguageModels.Tests.Parsing
 				.Token("string")
 				.Literal(":")
 				.Rule("value")
-				.Transform(v => new KeyValuePair<string, object>((string)v.Children[0].Value!, v.Children[2].Value!));
+				.Transform(v => KeyValuePair.Create(v.Children[0].GetValue<string>(), v.Children[2].GetValue()));
 
 			builder.CreateRule("content")
 				.Rule("value")

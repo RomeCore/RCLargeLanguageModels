@@ -69,9 +69,14 @@ namespace RCLargeLanguageModels.Parsing
 
 		private readonly Lazy<string> _textLazy;
 		/// <summary>
-		/// Gets the parsed input text that was parsed.
+		/// Gets the parsed input text that was captured.
 		/// </summary>
 		public string Text => _textLazy.Value;
+
+		/// <summary>
+		/// Gets the parsed input text that was captured as a span of characters.
+		/// </summary>
+		public ReadOnlySpan<char> Span => Context.str.AsSpan(Result.startIndex, Result.length);
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="ParsedTokenResult"/> class.
@@ -87,6 +92,20 @@ namespace RCLargeLanguageModels.Parsing
 
 			_textLazy = new Lazy<string>(() => Context.str.Substring(Result.startIndex, Result.length));
 		}
+
+		/// <summary>
+		/// Gets the intermediate value associated with this token as an instance of type <typeparamref name="T"/>.
+		/// </summary>
+		/// <typeparam name="T">The type of value to retrieve.</typeparam>
+		/// <returns>The intermediate value associated with this token.</returns>
+		public T GetIntermediateValue<T>() => (T)IntermediateValue;
+
+		/// <summary>
+		/// Tries to get the intermediate value associated with this token as an instance of type <typeparamref name="T"/>.
+		/// </summary>
+		/// <typeparam name="T">The type of value to retrieve.</typeparam>
+		/// <returns>The intermediate value associated with this token.</returns>
+		public T? TryGetIntermediateValue<T>() where T : class => IntermediateValue as T;
 
 		/// <summary>
 		/// Dumps the parsed token result to a string representation.

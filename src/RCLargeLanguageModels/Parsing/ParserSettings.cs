@@ -65,6 +65,9 @@ namespace RCLargeLanguageModels.Parsing
 		/// <summary>
 		/// Parser will try to parse the target rule and then skip the skip-rule if parsing fails, then try to parse the target rule again after skipping.
 		/// </summary>
+		/// <remarks>
+		/// Works slower sometimes but allows to include rules that conflicts with skip-rules.
+		/// </remarks>
 		TryParseThenSkip
 	}
 

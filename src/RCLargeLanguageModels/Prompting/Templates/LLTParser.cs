@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.RegularExpressions;
 using RCLargeLanguageModels.Parsing;
 using RCLargeLanguageModels.Parsing.Building;
 
@@ -18,10 +19,23 @@ namespace RCLargeLanguageModels.Prompting.Templates
 				.Skip(s => s.Choice(
 					c => c.Whitespaces(),
 					c => c.Literal("@//").TextUntil('\n', '\r'),
-					c => c.Literal("@*").TextUntil("*@").Literal("*@")));
+					c => c.Literal("@*").TextUntil("*@").Literal("*@")), ParserSkippingStrategy.TryParseThenSkip);
+
+			builder.CreateToken("number")
+				.Regex(@"\d+(?:\.\d+)?", m => double.Parse(m.Text.Replace('.', ',')));
+
+			builder.CreateToken("string")
+				.Literal('"')
+				.EscapedTextDoubleChars('"')
+				.Literal('"')
+				.Pass(v => v[1])
+				.Transform(v => v.IntermediateValue);
+
+			builder.CreateToken("identifier")
+				.Identifier();
 
 			builder.CreateRule("expression")
-				.Identifier();
+				.Token("identifier");
 
 			builder.CreateRule("text_content")
 				.EscapedTextDoubleChars("@{}", allowsEmpty: false);
@@ -33,7 +47,8 @@ namespace RCLargeLanguageModels.Prompting.Templates
 			builder.CreateRule("text_template")
 				.Literal('@')
 				.Literal("template")
-				.Identifier()
+				.Whitespaces()
+				.Token("identifier")
 				.Rule("text_template_content");
 
 			builder.CreateRule("text_template_content")
@@ -53,6 +68,7 @@ namespace RCLargeLanguageModels.Prompting.Templates
 
 			builder.CreateRule("text_if")
 				.Literal("if")
+				.Whitespaces()
 				.Rule("expression")
 				.Rule("text_template_content")
 				.Optional(
@@ -60,8 +76,10 @@ namespace RCLargeLanguageModels.Prompting.Templates
 
 			builder.CreateRule("text_foreach")
 				.Literal("foreach")
-				.Identifier()
+				.Whitespaces()
+				.Token("identifier")
 				.Literal("in")
+				.Whitespaces()
 				.Rule("expression")
 				.Rule("text_template_content");
 

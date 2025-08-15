@@ -30,7 +30,7 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 
 
-		public override bool TryParse(ParserContext context, ParserContext childContext, out ParsedRule result)
+		public override ParsedRule Parse(ParserContext context, ParserContext childContext)
 		{
 			var startIndex = childContext.position;
 			var rules = new List<ParsedRule>();
@@ -38,11 +38,11 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 			foreach (var rule in Rules)
 			{
-				if (!TryParseRule(rule, childContext, out var parsedRule))
+				var parsedRule = TryParseRule(rule, childContext);
+				if (!parsedRule.success)
 				{
-					RecordError(childContext, $"Failed to parse sequence rule.");
-					result = ParsedRule.Fail;
-					return false;
+					RecordError(context, "Failed to parse sequence rule.");
+					return ParsedRule.Fail;
 				}
 
 				parsedRule.occurency = i++;
@@ -50,14 +50,12 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 				childContext.position = parsedRule.startIndex + parsedRule.length;
 			}
 
-			result = new ParsedRule(Id, startIndex, childContext.position - startIndex, rules);
-
-			return true;
+			return ParsedRule.Rule(Id, startIndex, childContext.position - startIndex, rules);
 		}
 
 
 
-		public override string ToString(int remainingDepth)
+		public override string ToStringOverride(int remainingDepth)
 		{
 			if (remainingDepth <= 0)
 				return "Sequence...";

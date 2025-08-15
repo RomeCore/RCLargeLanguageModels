@@ -39,21 +39,19 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 
 
-		public override bool TryMatch(ParserContext context, ParserContext childContext, out ParsedToken token)
+		public override ParsedElement Match(string input, int position)
 		{
-			var initialPosition = childContext.position;
-			var tokens = new List<ParsedToken>();
+			var initialPosition = position;
+			var tokens = new List<ParsedElement>();
 
 			foreach (var tokenId in TokenPatterns)
 			{
-				if (!TryMatchToken(tokenId, childContext, out var subToken))
-				{
-					token = ParsedToken.Fail;
-					return false;
-				}
+				var token = TryMatchToken(tokenId, input, position);
+				if (!token.success)
+					return ParsedElement.Fail;
 
-				tokens.Add(subToken);
-				childContext.position = subToken.startIndex + subToken.length;
+				tokens.Add(token);
+				position = token.startIndex + token.length;
 			}
 
 			object? intermediateValue = null;
@@ -63,17 +61,12 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 				intermediateValue = PassageFunction(intermediateValues);
 			}
 
-			token = new ParsedToken(
-				Id,
-				initialPosition,
-				childContext.position - initialPosition,
-				intermediateValue);
-			return true;
+			return new ParsedElement(Id, initialPosition, position - initialPosition, intermediateValue);
 		}
 
 
 
-		public override string ToString(int remainingDepth)
+		public override string ToStringOverride(int remainingDepth)
 		{
 			if (remainingDepth <= 0)
 				return "sequence...";

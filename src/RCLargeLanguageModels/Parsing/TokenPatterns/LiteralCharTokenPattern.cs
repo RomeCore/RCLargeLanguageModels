@@ -38,38 +38,34 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 
 
-		public override bool TryMatch(ParserContext context, ParserContext childContext, out ParsedToken token)
+		public override ParsedElement Match(string input, int position)
 		{
-			if (context.position + 1 > context.str.Length)
+			if (position + 1 > input.Length)
 			{
-				token = ParsedToken.Fail;
-				return false;
+				return ParsedElement.Fail;
 			}
 
-			if (Comparison  == StringComparison.Ordinal)
+			if (Comparison == StringComparison.Ordinal)
 			{
-				if (Literal == context.str[context.position])
+				if (Literal == input[position])
 				{
-					token = new ParsedToken(Id, context.position, 1, Literal);
-					return true;
+					return new ParsedElement(Id, position, 1, Literal);
 				}
 			}
 			else
 			{
-				if (context.str.AsSpan(context.position, 1).Equals(charPool.AsSpan(), Comparison))
+				if (input.AsSpan(position, 1).Equals(charPool.AsSpan(), Comparison))
 				{
-					token = new ParsedToken(Id, context.position, 1, Literal);
-					return true;
+					return new ParsedElement(Id, position, 1, Literal);
 				}
 			}
 
-			token = ParsedToken.Fail;
-			return false;
+			return ParsedElement.Fail;
 		}
 
 
 
-		public override string ToString(int remainingDepth)
+		public override string ToStringOverride(int remainingDepth)
 		{
 			return $"literal: '{Literal}'";
 		}

@@ -48,17 +48,18 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 
 
-		public override bool TryParse(ParserContext context, ParserContext childContext, out ParsedRule result)
+		public override ParsedRule Parse(ParserContext context, ParserContext childContext)
 		{
 			var rules = new List<ParsedRule>();
 			var initialPosition = childContext.position;
+			ParsedRule parsedRule = default;
 
 			for (int i = 0; i < this.MaxCount || this.MaxCount == -1; i++)
 			{
-				if (!TryParseRule(Rule, childContext, out var parsedRule))
-				{
+				parsedRule = TryParseRule(Rule, childContext);
+				if (!parsedRule.success)
 					break;
-				}
+
 				childContext.position = parsedRule.startIndex + parsedRule.length;
 				parsedRule.occurency = i;
 				rules.Add(parsedRule);
@@ -66,23 +67,16 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 			if (rules.Count < MinCount)
 			{
-				RecordError(childContext, $"Expected at least {MinCount} repetitions of child rule, but found {rules.Count}.");
-				result = ParsedRule.Fail;
-				return false;
+				RecordError(context, $"Expected at least {MinCount} repetitions of child rule, but found {rules.Count}.");
+				return ParsedRule.Fail;
 			}
 
-			result = new ParsedRule(
-				Id,
-				initialPosition,
-				childContext.position - initialPosition,
-				rules);
-
-			return true;
+			return ParsedRule.Rule(Id, initialPosition, childContext.position - initialPosition, rules, null);
 		}
 
 
 
-		public override string ToString(int remainingDepth)
+		public override string ToStringOverride(int remainingDepth)
 		{
 			if (remainingDepth <= 0)
 				return $"Repeat{{{MinCount}..{(MaxCount == -1 ? "" : MaxCount)}}}...";

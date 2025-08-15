@@ -16,7 +16,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 		{
 		}
 
-		public override string ToString(int remainingDepth)
+		public override string ToStringOverride(int remainingDepth)
 		{
 			return "[WS]";
 		}

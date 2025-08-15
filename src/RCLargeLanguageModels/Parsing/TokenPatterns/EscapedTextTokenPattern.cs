@@ -201,11 +201,10 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 
 
-		public override bool TryMatch(ParserContext context, ParserContext childContext, out ParsedToken token)
+		public override ParsedElement Match(string input, int position)
 		{
-			int start = context.position;
+			int start = position;
 			int pos = start;
-			var input = context.str;
 			var sb = new StringBuilder();
 
 			while (pos < input.Length)
@@ -239,10 +238,7 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 					// that can arrive (we operate on the full string), so this is true incomplete escape.
 					if (pos + (input.Length - pos) >= input.Length) // redundant but explicit: we are at end-of-input suffix
 					{
-						// Record error at the failure location
-						RecordError(childContext, pos, $"Invalid escape sequence.");
-						token = ParsedToken.Fail;
-						return false;
+						return ParsedElement.Fail;
 					}
 					// If we are not at EOF, we still append current char as normal — future iterations
 					// may complete into a terminal escape (rare here because we scan the whole input).
@@ -258,17 +254,15 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 			if (length == 0 && !AllowsEmpty) // empty match and not allowed -> error
 			{
-				token = ParsedToken.Fail;
-				return false;
+				return ParsedElement.Fail;
 			}
 
-			token = new ParsedToken(Id, start, length, sb.ToString());
-			return true;
+			return new ParsedElement(Id, start, length, sb.ToString());
 		}
 
 
 
-		public override string ToString(int remainingDepth)
+		public override string ToStringOverride(int remainingDepth)
 		{
 			string escapes = string.Join(" ", EscapeMappings.Keys.Select(e => $"'{e}'"));
 			string forbidden = string.Join(" ", ForbiddenSequences.Select(e => $"'{e}'"));

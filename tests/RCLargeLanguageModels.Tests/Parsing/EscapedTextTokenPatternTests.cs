@@ -43,10 +43,9 @@ namespace RCLargeLanguageModels.Tests.Parsing
 
 			// input: "a\"b\\c\n"
 			var input = "\"a\\\"b\\\\c\\n\"";
-			var ctx = parser.CreateContext(input);
 
 			// act
-			var result = parser.TryMatchToken("string", ctx, out var tokenResult);
+			var result = parser.TryMatchToken("string", input, out var tokenResult);
 
 			// assert
 			Assert.True(result, "TryMatchToken should return true");

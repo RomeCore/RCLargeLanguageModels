@@ -27,28 +27,22 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 
 
-		public override bool TryParse(ParserContext context, ParserContext childContext, out ParsedRule result)
+		public override ParsedRule Parse(ParserContext context, ParserContext childContext)
 		{
-			if (context.parser.TryParseRule(Rule, childContext, out var parsedRule))
+			var result = TryParseRule(Rule, childContext);
+			if (result.success)
 			{
-				result = new ParsedRule(
-					Id,
-					parsedRule.startIndex,
-					parsedRule.length,
-					new List<ParsedRule> { parsedRule },
-					parsedRule.intermediateValue);
-				return true;
+				return ParsedRule.Rule(Id, result.startIndex, result.length, new List<ParsedRule> { result }, result.intermediateValue);
 			}
 			else
 			{
-				result = new ParsedRule(Id, context.position, 0, new List<ParsedRule> { }, null);
-				return true;
+				return ParsedRule.Rule(Id, context.position, 0, new List<ParsedRule> { }, null);
 			}
 		}
 
 
 
-		public override string ToString(int remainingDepth)
+		public override string ToStringOverride(int remainingDepth)
 		{
 			if (remainingDepth <= 0)
 				return "Optional...";

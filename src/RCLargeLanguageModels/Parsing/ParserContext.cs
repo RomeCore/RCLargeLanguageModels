@@ -95,7 +95,7 @@ namespace RCLargeLanguageModels.Parsing
 		/// </summary>
 		/// <param name="parser">The parser object that is performing the parsing.</param>
 		/// <param name="str">The input string to be parsed.</param>
-		public ParserContext(Parser parser, string str)
+		internal ParserContext(Parser parser, string str)
 		{
 			this.str = str ?? throw new ArgumentNullException(nameof(str));
 			position = 0;

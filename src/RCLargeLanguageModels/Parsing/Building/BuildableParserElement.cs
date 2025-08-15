@@ -23,11 +23,6 @@ namespace RCLargeLanguageModels.Parsing.Building
 		public abstract IEnumerable<Or<string, BuildableTokenPattern>>? TokenChildren { get; }
 
 		/// <summary>
-		/// Gets the local settings builder for this parser element.
-		/// </summary>
-		public ParserLocalSettingsBuilder Settings { get; } = new ParserLocalSettingsBuilder();
-
-		/// <summary>
 		/// Builds the parser element with the given children.
 		/// </summary>
 		/// <param name="ruleChildren">The rule children IDs to build the parser element with.</param>
@@ -37,14 +32,12 @@ namespace RCLargeLanguageModels.Parsing.Building
 
 		public override bool Equals(object? obj)
 		{
-			return obj is BuildableParserElement other &&
-				   Equals(Settings, other.Settings);
+			return obj is BuildableParserElement other;
 		}
 
 		public override int GetHashCode()
 		{
 			int hashCode = 17;
-			hashCode ^= Settings.GetHashCode() * 23;
 			return hashCode;
 		}
 	}

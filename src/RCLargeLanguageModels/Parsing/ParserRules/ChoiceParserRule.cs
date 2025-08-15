@@ -26,32 +26,34 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 
 
-		public override bool TryParse(ParserContext context, ParserContext childContext, out ParsedRule result)
+		public override ParsedRule Parse(ParserContext context, ParserContext childContext)
 		{
+			List<ParsedRule> fails = new ();
+
 			int i = 0;
 			foreach (var rule in Choices)
 			{
-				if (TryParseRule(rule, childContext, out var choiceResult))
+				var parsedRule = TryParseRule(rule, childContext);
+				if (parsedRule.success)
 				{
-					choiceResult.occurency = i;
-					result = new ParsedRule(Id,
-						choiceResult.startIndex,
-						choiceResult.length,
-						new List<ParsedRule> { choiceResult },
-						choiceResult.intermediateValue);
-					return true;
+					parsedRule.occurency = i;
+					return ParsedRule.Rule(Id,
+						parsedRule.startIndex,
+						parsedRule.length,
+						new List<ParsedRule> { parsedRule },
+						parsedRule.intermediateValue);
 				}
+				fails.Add(parsedRule);
 				i++;
 			}
 
-			RecordError(childContext, $"Found no matching choice.");
-			result = ParsedRule.Fail;
-			return false;
+			RecordError(context, "Found no matching choice.");
+			return ParsedRule.Fail;
 		}
 
 
 
-		public override string ToString(int remainingDepth)
+		public override string ToStringOverride(int remainingDepth)
 		{
 			if (remainingDepth <= 0)
 				return "Choice...";

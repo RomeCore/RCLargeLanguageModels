@@ -28,16 +28,22 @@ namespace RCLargeLanguageModels.Parsing
 		public Parser Parser { get; internal set; } = null!;
 
 		/// <summary>
-		/// Gets the local settings for this parser element with each setting configurable by override modes.
+		/// Initializes this parser element. This method is called by the parser when it adds all elements (rules and tokens) to itself.
 		/// </summary>
-		public ParserLocalSettings Settings { get; internal set; } = default;
+		/// <remarks>
+		/// May be used to perform some optimizations or other initialization tasks.
+		/// </remarks>
+		protected virtual void Initialize()
+		{
+		}
 
 		/// <summary>
-		/// Returns a string representation of the parser element using a specified depth for expansion.
+		/// Initializes this parser element internally.
 		/// </summary>
-		/// <param name="remainingDepth">The maximum depth to which the element should be expanded in the string representation. Defaults to 2.</param>
-		/// <returns>A string representation of the rule.</returns>
-		public abstract string ToString(int remainingDepth);
+		internal void InitializeInternal()
+		{
+			Initialize();
+		}
 
 		/// <summary>
 		/// Gets the rule by index within the current parser.
@@ -57,32 +63,6 @@ namespace RCLargeLanguageModels.Parsing
 		protected TokenPattern GetTokenPattern(int index)
 		{
 			return Parser.TokenPatterns[index];
-		}
-
-		/// <summary>
-		/// Advances the parser context to use for this and child elements.
-		/// </summary>
-		/// <remarks>
-		/// For <paramref name="context"/> it updates the settings to use as local element. <br/>
-		/// It makes a <paramref name="childContext"/> that have advanced recursion depth and settings for child elements.
-		/// </remarks>
-		public void AdvanceContext(ref ParserContext context, out ParserContext childContext)
-		{
-			childContext = context;
-
-			if (Settings.isDefault)
-			{
-				childContext.settings = context.settings;
-			}
-			else
-			{
-				context.settings.Resolve(Settings, Parser.Settings, out var forLocal, out var forChildren);
-				context.settings = forLocal;
-
-				childContext.settings = forChildren;
-			}
-
-			childContext.recursionDepth++;
 		}
 
 		/// <summary>
@@ -130,41 +110,43 @@ namespace RCLargeLanguageModels.Parsing
 		/// </summary>
 		/// <param name="ruleId">The ID of the rule to parse.</param>
 		/// <param name="context">The parsing context to use for the parse operation.</param>
-		/// <param name="parsedRule">The output parameter to store the parsed rule. If parsing fails, this will be set to a failure rule.</param>
-		/// <returns><see langword="true"/> if parsing was successful; otherwise, <see langword="false"/> if parsing failed.</returns>
-		protected bool TryParseRule(int ruleId, ParserContext context, out ParsedRule parsedRule)
+		/// <returns>The results of rule parsing operation if parsing was successful; otherwise, <see cref="ParsedRule.Fail"/> if parsing failed.</returns>
+		protected ParsedRule TryParseRule(int ruleId, ParserContext context)
 		{
-			return Parser.TryParseRule(ruleId, context, out parsedRule);
-		}
-
-		/// <summary>
-		/// Tries to parse a token pattern with the given ID using the specified parsing context.
-		/// </summary>
-		/// <param name="ruleId">The ID of the token pattern to parse.</param>
-		/// <param name="context">The parsing context to use for the parse operation.</param>
-		/// <returns>The parsed rule result.</returns>
-		protected ParsedRule ParseRule(int ruleId, ParserContext context)
-		{
-			return Parser.ParseRule(ruleId, context);
+			return Parser.TryParseRule(ruleId, context);
 		}
 
 		/// <summary>
 		/// Tries to match a token with the given ID using the specified parsing context.
 		/// </summary>
 		/// <param name="tokenId">The ID of the token to match.</param>
-		/// <param name="context">The parsing context to use for the match operation.</param>
-		/// <param name="parsedToken">The output parameter to store the parsed token. If matching fails, this will be set to a failure token.</param>
-		/// <returns><see langword="true"/> if matching was successful; otherwise, <see langword="false"/> if matching failed.</returns>
-		protected bool TryMatchToken(int tokenId, ParserContext context, out ParsedToken parsedToken)
+		/// <param name="input">The input string to match against.</param>
+		/// <param name="position">The starting position in the input string to match against.</param>
+		/// <returns>The parsed token containing the result of the match operation or <see cref="ParsedElement.Fail"/> if the match failed.</returns>
+		protected ParsedElement TryMatchToken(int tokenId, string input, int position)
 		{
-			return Parser.TryMatchToken(tokenId, context, out parsedToken);
+			return Parser.MatchToken(tokenId, input, position);
+		}
+
+		/// <summary>
+		/// Returns a string representation of the parser element using a specified depth for expansion.
+		/// </summary>
+		/// <param name="remainingDepth">The maximum depth to which the element should be expanded in the string representation. Defaults to 2.</param>
+		/// <returns>A string representation of the rule.</returns>
+		public abstract string ToStringOverride(int remainingDepth);
+
+		public string ToString(int remainingDepth)
+		{
+			if (Aliases.Count > 0)
+				return $"'{Aliases[0]}'";
+			return ToStringOverride(remainingDepth);
 		}
 
 		public override string ToString()
 		{
 			if (Aliases.Count > 0)
 				return $"'{Aliases[0]}'";
-			return ToString(2); // Default depth is 2.
+			return ToStringOverride(2); // Default depth is 2.
 		}
 
 		public override bool Equals(object? obj)
@@ -172,8 +154,7 @@ namespace RCLargeLanguageModels.Parsing
 			return obj is ParserElement other &&
 				Id == other.Id &&
 				ReferenceEquals(Parser, other.Parser) &&
-				Aliases.SequenceEqual(other.Aliases) &&
-				Settings == other.Settings;
+				Aliases.SequenceEqual(other.Aliases);
 		}
 
 		public override int GetHashCode()
@@ -182,7 +163,6 @@ namespace RCLargeLanguageModels.Parsing
 			hashCode ^= Id.GetHashCode() * 23;
 			hashCode ^= (Parser?.GetHashCode() ?? 0) * 27;
 			hashCode ^= Aliases.GetSequenceHashCode() * 29;
-			hashCode ^= Settings.GetHashCode() * 31;
 			return hashCode;
 		}
 	}

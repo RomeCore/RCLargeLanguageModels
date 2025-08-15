@@ -54,21 +54,19 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 
 
-		public override bool TryMatch(ParserContext context, ParserContext childContext, out ParsedToken token)
+		public override ParsedElement Match(string input, int position)
 		{
-			if (_root.TryGetLongestMatch(context.str, context.position, out var matchedLiteral, out int matchedLength))
+			if (_root.TryGetLongestMatch(input, position, out var matchedLiteral, out int matchedLength))
 			{
-				token = new ParsedToken(Id, context.position, matchedLength, matchedLiteral);
-				return true;
+				return new ParsedElement(Id, position, matchedLength, matchedLiteral);
 			}
 
-			token = ParsedToken.Fail;
-			return false;
+			return ParsedElement.Fail;
 		}
 
 
 
-		public override string ToString(int remainingDepth)
+		public override string ToStringOverride(int remainingDepth)
 		{
 			return $"literal choice: '{string.Join("|", Literals)}'";
 		}

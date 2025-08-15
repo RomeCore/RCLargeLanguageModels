@@ -10,30 +10,22 @@ namespace RCLargeLanguageModels.Parsing
 	public abstract class TokenPattern : ParserElement
 	{
 		/// <summary>
-		/// Gets the parsed value factory associated with this token.
-		/// </summary>
-		public Func<ParsedTokenResult, object?>? ParsedValueFactory { get; internal set; } = null;
-
-		/// <summary>
 		/// Tries to match the given context with this pattern.
 		/// </summary>
-		/// <param name="context">The current parsing context to use for this element.</param>
-		/// <param name="childContext">The parsing context to use for child elements.</param>
-		/// <param name="token">The parsed token if the match is successful. Otherwise <see langword="null"/>.</param>
-		/// <returns><see langword="true"/> if the pattern matches; otherwise, <see langword="false"/>.</returns>
-		public abstract bool TryMatch(ParserContext context, ParserContext childContext, out ParsedToken token);
+		/// <param name="input">The input text to match.</param>
+		/// <param name="position">The position in the input text to start matching from.</param>
+		/// <returns>The parsed element containing the result of the match.</returns>
+		public abstract ParsedElement Match(string input, int position);
 
 		public override bool Equals(object? obj)
 		{
 			return base.Equals(obj) &&
-				   obj is TokenPattern other &&
-				   Equals(ParsedValueFactory, other.ParsedValueFactory);
+				   obj is TokenPattern other;
 		}
 
 		public override int GetHashCode()
 		{
 			int hashCode = base.GetHashCode();
-			hashCode ^= (ParsedValueFactory?.GetHashCode() ?? 0) * 23;
 			return hashCode;
 		}
 	}

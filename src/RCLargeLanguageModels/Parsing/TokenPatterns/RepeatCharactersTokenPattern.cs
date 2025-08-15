@@ -44,26 +44,22 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			CharacterPredicate = characterPredicate ?? throw new ArgumentNullException(nameof(characterPredicate));
 		}
 
-		public override bool TryMatch(ParserContext context, ParserContext childContext, out ParsedToken token)
+		public override ParsedElement Match(string input, int position)
 		{
-			int initialPosition = context.position;
-			while (context.position < context.str.Length &&
-				(MaxCount == -1 || context.position - initialPosition < MaxCount) &&
-				CharacterPredicate(context.str[context.position]))
-				context.position++;
+			int initialPosition = position;
+			while (position < input.Length &&
+				(MaxCount == -1 || position - initialPosition < MaxCount) &&
+				CharacterPredicate(input[position]))
+				position++;
 
-			int count = context.position - initialPosition;
+			int count = position - initialPosition;
 			if (count < MinCount)
-			{
-				token = ParsedToken.Fail;
-				return false;
-			}
+				return ParsedElement.Fail;
 
-			token = new ParsedToken(Id, initialPosition, count);
-			return true;
+			return new ParsedElement(Id, initialPosition, count);
 		}
 
-		public override string ToString(int remainingDepth)
+		public override string ToStringOverride(int remainingDepth)
 		{
 			return $"repeat predicate{{{MinCount}..{(MaxCount == -1 ? "" : MaxCount)}}}";
 		}

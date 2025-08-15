@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text;
 
@@ -26,25 +27,31 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 
 
-		public override bool TryParse(ParserContext context, ParserContext childContext, out ParsedRule result)
+
+		private TokenPattern _pattern;
+
+		protected override void Initialize()
 		{
-			if (!TryMatchToken(TokenPattern, childContext, out var parsedToken))
+			_pattern = Parser.TokenPatterns[TokenPattern];
+		}
+
+		public override ParsedRule Parse(ParserContext context, ParserContext childContext)
+		{
+			var match = _pattern.Match(context.str, context.position);
+			if (!match.success)
 			{
-				RecordError(childContext, $"Failed to parse token.");
-				result = ParsedRule.Fail;
-				return false;
+				RecordError(context, "Failed to parse token.");
+				return ParsedRule.Fail;
 			}
 
-			result = new ParsedRule(Id, parsedToken.startIndex, parsedToken.length,
-				parsedToken, parsedToken.intermediateValue);
-			return true;
+			return ParsedRule.Token(Id, TokenPattern, match.startIndex, match.length, match.intermediateValue);
 		}
 
 
 
-		public override string ToString(int remainingDepth)
+		public override string ToStringOverride(int remainingDepth)
 		{
-			return GetTokenPattern(TokenPattern).ToString(remainingDepth);
+			return $"token {GetTokenPattern(TokenPattern).ToString(remainingDepth)}";
 		}
 
 		public override bool Equals(object? obj)

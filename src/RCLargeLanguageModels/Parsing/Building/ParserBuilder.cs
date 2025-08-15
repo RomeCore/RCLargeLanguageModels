@@ -215,6 +215,26 @@ namespace RCLargeLanguageModels.Parsing.Building
 			{
 				// Register an ID if it's not already registered
 				var element = elementsToProcess.Dequeue();
+
+				// Applying the default factory and configs
+				if (element is BuildableTokenParserRule trule)
+				{
+					var child = trule.Child.Match(name =>
+					{
+						if (namedTokenPatterns.TryGetValue(name, out var namedPattern))
+							return namedPattern;
+						else
+							throw new ParserBuildingException($"Unknown token pattern reference '{name}'.");
+					}, bpattern =>
+					{
+						return bpattern;
+					});
+
+					if (!trule.Settings.HaveBeenChanged)
+						child.DefaultConfigurationAction?.Invoke(trule.Settings);
+					trule.ParsedValueFactory ??= child.DefaultParsedValueFactory;
+				}
+
 				if (elements.ContainsKey(element))
 					continue;
 
@@ -269,30 +289,35 @@ namespace RCLargeLanguageModels.Parsing.Building
 
 				// Queue child settings rules for processing
 				List<BuildableParserRule?> settingsRuleChildrenToArgs = new();
-				foreach (var ruleChild in element.Settings.RuleChildren)
-				{
-					if (!ruleChild.HasValue)
+				if (element is BuildableParserRule brule)
+					foreach (var ruleChild in brule.Settings.RuleChildren)
 					{
-						settingsRuleChildrenToArgs.Add(null);
-						continue;
-					}
+						if (!ruleChild.HasValue)
+						{
+							settingsRuleChildrenToArgs.Add(null);
+							continue;
+						}
 
-					ruleChild.Value.Switch(name =>
-					{
-						if (namedRules.TryGetValue(name, out var namedRule))
-							settingsRuleChildrenToArgs.Add(namedRule);
-						else
-							throw new ParserBuildingException($"Unknown rule reference '{name}'.");
-					}, brule =>
-					{
-						settingsRuleChildrenToArgs.Add(brule);
-						elementsToProcess.Enqueue(brule);
-					});
-				}
+						ruleChild.Value.Switch(name =>
+						{
+							if (namedRules.TryGetValue(name, out var namedRule))
+								settingsRuleChildrenToArgs.Add(namedRule);
+							else
+								throw new ParserBuildingException($"Unknown rule reference '{name}'.");
+						}, brule =>
+						{
+							settingsRuleChildrenToArgs.Add(brule);
+							elementsToProcess.Enqueue(brule);
+						});
+					}
 
 				// Register dependencies for building
 				argMap[element] = (ruleChildrenToArgs, tokenChildrenToArgs, settingsRuleChildrenToArgs);
 			}
+
+			// Rebuild the dictionaries since the keys were changed during processing
+			elements = elements.ToDictionary(k => k.Key, v => v.Value);
+			argMap = argMap.ToDictionary(k => k.Key, v => v.Value);
 
 			// Prepare the names map for quick lookup of elements to names
 			var names = namedRules.Select(kvp => new KeyValuePair<string, BuildableParserElement>(kvp.Key, kvp.Value))
@@ -343,17 +368,21 @@ namespace RCLargeLanguageModels.Parsing.Building
 				var settingsRuleChildren = elem.settingsRuleChildren;
 				var aliases = elem.aliases;
 
-				var elementSettings = element.Settings.Build(settingsRuleChildren);
 				var builtElement = element.Build(ruleChildren, tokenChildren);
 
 				builtElement.Id = id;
-				builtElement.Settings = elementSettings;
 				builtElement.Aliases = aliases.ToImmutableList();
 
 				if (builtElement is ParserRule rule)
+				{
+					var elementSettings = (element as BuildableParserRule).Settings.Build(settingsRuleChildren);
+					rule.Settings = elementSettings;
 					resultRules[id] = rule;
+				}
 				else if (builtElement is TokenPattern pattern)
+				{
 					resultTokenPatterns[id] = pattern;
+				}
 			}
 
 			// Return the fully built parser instance with rules and token patterns

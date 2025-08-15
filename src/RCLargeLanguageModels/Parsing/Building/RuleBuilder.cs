@@ -22,19 +22,11 @@ namespace RCLargeLanguageModels.Parsing.Building
 		public Or<string, BuildableParserRule>? BuildingRule => _rule;
 
 		public override bool CanBeBuilt => _rule.HasValue;
-		protected override RuleBuilder GetThis() => this;
-		public override RuleBuilder AddToken(Or<string, BuildableTokenPattern> childToken)
-		{
-			return AddRule(new BuildableTokenParserRule
-			{
-				Child = childToken
-			}, TokenParserRule_DefaultValueFactory);
-		}
 
-		private static object? TokenParserRule_DefaultValueFactory(ParsedRuleResult result) => result.Token?.Value;
+		protected override RuleBuilder GetThis() => this;
 
 		/// <summary>
-		/// Adds a token (name or child pattern) to the current sequence with the parsed value factory.
+		/// Adds a token (name or child pattern) to the current sequence.
 		/// </summary>
 		/// <param name="childToken">The token to add. Can be a name or a child pattern.</param>
 		/// <param name="factory">The factory function to create a parsed value.</param>
@@ -47,7 +39,33 @@ namespace RCLargeLanguageModels.Parsing.Building
 			return AddRule(new BuildableTokenParserRule
 			{
 				Child = childToken
-			}, TokenParserRule_DefaultValueFactory);
+			}, factory, config);
+		}
+
+		public override RuleBuilder AddToken(TokenPattern token, Func<ParsedRuleResult, object?>? factory = null, Action<ParserLocalSettingsBuilder>? config = null)
+		{
+			return AddRule(new BuildableTokenParserRule
+			{
+				Child = new BuildableLeafTokenPattern
+				{
+					TokenPattern = token
+				}
+			}, factory, config);
+		}
+
+		/// <summary>
+		/// Adds a child token to the current sequence.
+		/// </summary>
+		/// <param name="token">The child token to add.</param>
+		/// <param name="factory">The factory function to create a parsed value.</param>
+		/// <param name="config">The action to configure the local settings for this token.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public RuleBuilder AddToken(BuildableTokenPattern token, Func<ParsedRuleResult, object?>? factory = null, Action<ParserLocalSettingsBuilder>? config = null)
+		{
+			return AddRule(new BuildableTokenParserRule
+			{
+				Child = token
+			}, factory, config);
 		}
 
 		/// <summary>
@@ -106,6 +124,19 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// Adds a token to the current sequence.
 		/// </summary>
 		/// <param name="tokenName">The name of the token to add.</param>
+		/// <returns>Current instance for method chaining.</returns>
+		public override RuleBuilder Token(string tokenName)
+		{
+			return AddRule(new BuildableTokenParserRule
+			{
+				Child = tokenName
+			});
+		}
+
+		/// <summary>
+		/// Adds a token to the current sequence.
+		/// </summary>
+		/// <param name="tokenName">The name of the token to add.</param>
 		/// <param name="factory">The factory function to create a parsed value.</param>
 		/// <param name="config">The action to configure the local settings for this rule.</param>
 		/// <returns>Current instance for method chaining.</returns>
@@ -115,7 +146,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 			return AddRule(new BuildableTokenParserRule
 			{
 				Child = tokenName
-			}, factory ?? TokenParserRule_DefaultValueFactory, config);
+			}, factory, config);
 		}
 
 		/// <summary>
@@ -134,7 +165,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 				{
 					TokenPattern = token
 				}
-			}, factory ?? TokenParserRule_DefaultValueFactory, config);
+			}, factory, config);
 		}
 
 		/// <summary>
@@ -157,7 +188,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 			return AddRule(new BuildableTokenParserRule
 			{
 				Child = builder.BuildingPattern.Value
-			}, factory ?? TokenParserRule_DefaultValueFactory, config);
+			}, factory, config);
 		}
 
 		/// <summary>

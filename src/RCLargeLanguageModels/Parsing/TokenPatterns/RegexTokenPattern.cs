@@ -38,22 +38,19 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 
 
-		public override bool TryMatch(ParserContext context, ParserContext childContext, out ParsedToken token)
+		public override ParsedElement Match(string input, int position)
 		{
-			var match = Regex.Match(context.str, context.position);
-			if (!match.Success || match.Index != context.position)
-			{
-				token = ParsedToken.Fail;
-				return false;
-			}
+			var match = Regex.Match(input, position);
 
-			token = new ParsedToken(Id, context.position, match.Length, match);
-			return true;
+			if (!match.Success || match.Index != position)
+				return ParsedElement.Fail;
+			else
+				return new ParsedElement(Id, position, match.Length, match);
 		}
 
 
 
-		public override string ToString(int remainingDepth)
+		public override string ToStringOverride(int remainingDepth)
 		{
 			return $"regex: '{RegexPattern}'";
 		}

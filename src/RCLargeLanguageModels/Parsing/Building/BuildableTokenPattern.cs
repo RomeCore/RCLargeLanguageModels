@@ -15,9 +15,14 @@ namespace RCLargeLanguageModels.Parsing.Building
 		public sealed override IEnumerable<Or<string, BuildableParserRule>>? RuleChildren => null;
 
 		/// <summary>
-		/// Gets the parsed value factory associated with this token.
+		/// Gets the parsed value factory that will be used as the default parsed value factory for the parent rule.
 		/// </summary>
-		public Func<ParsedTokenResult, object?>? ParsedValueFactory { get; set; } = null;
+		public Func<ParsedRuleResult, object?>? DefaultParsedValueFactory { get; set; } = null;
+
+		/// <summary>
+		/// Gets the local settings builder action that will be used as the default configuration action for the parent rule.
+		/// </summary>
+		public Action<ParserLocalSettingsBuilder>? DefaultConfigurationAction { get; set; } = null;
 
 		/// <summary>
 		/// Builds the token pattern with the given children.
@@ -29,7 +34,6 @@ namespace RCLargeLanguageModels.Parsing.Building
 		public override ParserElement Build(List<int>? ruleChildren, List<int>? tokenChildren)
 		{
 			var token = BuildToken(tokenChildren);
-			token.ParsedValueFactory = ParsedValueFactory;
 			return token;
 		}
 
@@ -37,13 +41,15 @@ namespace RCLargeLanguageModels.Parsing.Building
 		{
 			return base.Equals(obj) &&
 				   obj is BuildableTokenPattern other &&
-				   Equals(ParsedValueFactory, other.ParsedValueFactory);
+				   Equals(DefaultParsedValueFactory, other.DefaultParsedValueFactory) &&
+				   Equals(DefaultConfigurationAction, other.DefaultConfigurationAction);
 		}
 
 		public override int GetHashCode()
 		{
 			int hashCode = base.GetHashCode();
-			hashCode ^= ParsedValueFactory?.GetHashCode() * 23 ?? 0;
+			hashCode ^= DefaultParsedValueFactory?.GetHashCode() * 23 ?? 0;
+			hashCode ^= DefaultConfigurationAction?.GetHashCode() * 23 ?? 0;
 			return hashCode;
 		}
 	}

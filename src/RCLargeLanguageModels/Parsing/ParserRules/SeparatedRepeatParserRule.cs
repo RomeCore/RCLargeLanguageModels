@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Data;
@@ -75,49 +76,43 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 
 
-		public override bool TryParse(ParserContext context, ParserContext childContext, out ParsedRule result)
+		public override ParsedRule Parse(ParserContext context, ParserContext childContext)
 		{
 			var elements = new List<ParsedRule>();
 			var initialPosition = childContext.position;
 
 			// Try to parse the first element (if required - error if not found; if optional - may return empty result)
-			if (!TryParseRule(Rule, childContext, out var firstElement))
+			var firstElement = TryParseRule(Rule, childContext);
+			if (!firstElement.success)
 			{
 				// No first element found
 				// If minCount == 0 — OK: empty sequence (but first check if there's a separator at the start)
 				if (MinCount == 0)
 				{
 					// If there is a separator at the start — this is an error (unexpected leading separator)
-					if (TryParseRule(Separator, childContext, out var sepAtStart))
+					var sepAtStart = TryParseRule(Separator, childContext);
+					if (sepAtStart.success)
 					{
-						RecordError(childContext, "Unexpected separator before any element.");
-						result = ParsedRule.Fail;
-						return false;
+						RecordError(context, "Unexpected separator before any element.");
+						return ParsedRule.Fail;
 					}
 
 					// No elements and no separator — return successful empty result
-					result = new ParsedRule(
-						Id,
-						initialPosition,
-						0,
-						new List<ParsedRule>());
-					return true;
+					return ParsedRule.Rule(Id, initialPosition, 0, new List<ParsedRule>());
 				}
 				else
 				{
 					// Minimum count > 0, but first element not found — explicit error
-					RecordError(childContext, $"Expected at least {MinCount} repetitions of child rule, but found 0.");
-					result = ParsedRule.Fail;
-					return false;
+					RecordError(context, $"Expected at least {MinCount} repetitions of child rule, but found 0.");
+					return ParsedRule.Fail;
 				}
 			}
 
 			// We have the first element
 			if (firstElement.length == 0)
 			{
-				RecordError(childContext, "Parsed child element has zero length, which is not allowed.");
-				result = ParsedRule.Fail;
-				return false;
+				RecordError(context, "Parsed child element has zero length, which is not allowed.");
+				return ParsedRule.Fail;
 			}
 
 			firstElement.occurency = elements.Count;
@@ -130,14 +125,14 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 				var beforeSepPos = childContext.position;
 
 				// Try to parse the separator
-				if (!TryParseRule(Separator, childContext, out var parsedSep))
+				var parsedSep = TryParseRule(Separator, childContext);
+				if (!parsedSep.success)
 					break; // no separator — end of sequence
 
 				if (parsedSep.length == 0)
 				{
-					RecordError(childContext, "Parsed separator element has zero length, which is not allowed.");
-					result = ParsedRule.Fail;
-					return false;
+					RecordError(context, "Parsed separator has zero length, which is not allowed.");
+					return ParsedRule.Fail;
 				}
 
 				// Include separator in result if requested
@@ -148,7 +143,8 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 				childContext.position = parsedSep.startIndex + parsedSep.length;
 
 				// Try to parse the next element
-				if (!TryParseRule(Rule, childContext, out var nextElement))
+				var nextElement = TryParseRule(Rule, childContext);
+				if (!nextElement.success)
 				{
 					// Separator was found, but next element is missing
 					if (AllowTrailingSeparator)
@@ -159,17 +155,15 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 					}
 					else
 					{
-						RecordError(childContext, "Expected element after separator, but found none.");
-						result = ParsedRule.Fail;
-						return false;
+						RecordError(context, "Expected element after separator, but found none.");
+						return ParsedRule.Fail;
 					}
 				}
 
 				if (nextElement.length == 0)
 				{
-					RecordError(childContext, "Parsed child element has zero length, which is not allowed.");
-					result = ParsedRule.Fail;
-					return false;
+					RecordError(context, "Parsed child element has zero length, which is not allowed.");
+					return ParsedRule.Fail;
 				}
 
 				nextElement.occurency = elements.Count;
@@ -182,18 +176,12 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 			// Check minimum count
 			if (elements.Count < MinCount)
 			{
-				RecordError(childContext, $"Expected at least {MinCount} repetitions of child rule, but found {elements.Count}.");
-				result = ParsedRule.Fail;
-				return false;
+				;
+				RecordError(context, $"Expected at least {MinCount} repetitions of child rule, but found {elements.Count}.");
+				return ParsedRule.Fail;
 			}
 
-			result = new ParsedRule(
-				Id,
-				initialPosition,
-				childContext.position - initialPosition,
-				elements);
-
-			return true;
+			return ParsedRule.Rule(Id, initialPosition, childContext.position - initialPosition, elements);
 		}
 
 
@@ -201,7 +189,7 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 
 
-		public override string ToString(int remainingDepth)
+		public override string ToStringOverride(int remainingDepth)
 		{
 			string trailing = AllowTrailingSeparator ? " (allow trailing)" : "";
 			if (remainingDepth <= 0)

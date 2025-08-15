@@ -107,12 +107,12 @@ namespace RCLargeLanguageModels.Parsing
 			Parent = parent;
 			Context = context;
 			Result = result;
-			Token = result.isToken ? new ParsedTokenResult(this, context, result.token) : null;
+			Token = result.isToken ? new ParsedTokenResult(this, context, result.element) : null;
 
 			_textLazy = new Lazy<string>(() => Context.str.Substring(Result.startIndex, Result.length));
 			_valueLazy = new Lazy<object?>(() => Rule.ParsedValueFactory?.Invoke(this) ?? null);
 			_childrenLazy = new Lazy<ImmutableList<ParsedRuleResult>>(() =>
-				Result.rules?.Select(r => new ParsedRuleResult(this, context, r)).ToImmutableList() ??
+				Result.children?.Select(r => new ParsedRuleResult(this, context, r)).ToImmutableList() ??
 				ImmutableList<ParsedRuleResult>.Empty);
 		}
 
@@ -123,7 +123,7 @@ namespace RCLargeLanguageModels.Parsing
 		/// <returns>A collection of child parsed rules. Returns this element if no children are present or the maximum depth is reached.</returns>
 		public IEnumerable<ParsedRuleResult> GetJoinedChildren(int maxDepth)
 		{
-			if (maxDepth <= 0 || (Result.rules?.Count ?? 0) == 0)
+			if (maxDepth <= 0 || (Result.children?.Count ?? 0) == 0)
 				return this.WrapIntoEnumerable();
 
 			return Children.SelectMany(r => r.GetJoinedChildren(maxDepth - 1));
@@ -143,7 +143,7 @@ namespace RCLargeLanguageModels.Parsing
 		{
 			StringBuilder sb = new StringBuilder();
 
-			sb.AppendLine($"Rule: {Rule.ToString(2)}");
+			sb.AppendLine($"Rule: {Rule.ToStringOverride(2)}");
 
 			string valueStr = string.Empty;
 			try

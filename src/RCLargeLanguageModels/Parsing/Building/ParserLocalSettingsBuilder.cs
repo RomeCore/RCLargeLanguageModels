@@ -10,6 +10,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 	public class ParserLocalSettingsBuilder
 	{
 		private ParserLocalSettings _settings = default;
+		private bool _changed = false;
 		private Or<string, BuildableParserRule>? _skipRule = null;
 
 		/// <summary>
@@ -17,6 +18,11 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// </summary>
 		public IEnumerable<Or<string, BuildableParserRule>?> RuleChildren =>
 			EnumerableUtils.Params(_skipRule);
+
+		/// <summary>
+		/// Gets a value indicating whether the settings have been changed (at least one setting has been changed).
+		/// </summary>
+		public bool HaveBeenChanged => _changed;
 
 		/// <summary>
 		/// Builds the settings for parser.
@@ -61,6 +67,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// <returns>This instance for method chaining.</returns>
 		public ParserLocalSettingsBuilder Skip(Action<RuleBuilder> builderAction, ParserSettingMode overrideMode = ParserSettingMode.LocalForSelfAndChildren)
 		{
+			_changed = true;
 			var builder = new RuleBuilder();
 			builderAction(builder);
 			_skipRule = builder.BuildingRule;
@@ -75,6 +82,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// <returns>This instance for method chaining.</returns>
 		public ParserLocalSettingsBuilder NoSkipping(ParserSettingMode overrideMode = ParserSettingMode.LocalForSelfAndChildren)
 		{
+			_changed = true;
 			_skipRule = null;
 			_settings.skipRuleUseMode = overrideMode;
 			return this;
@@ -88,6 +96,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// <returns>This instance for method chaining.</returns>
 		public ParserLocalSettingsBuilder ErrorHandling(ParserErrorHandlingMode mode, ParserSettingMode overrideMode = ParserSettingMode.LocalForSelfAndChildren)
 		{
+			_changed = true;
 			_settings.errorHandling = mode;
 			_settings.errorHandlingUseMode = overrideMode;
 			return this;
@@ -140,6 +149,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// <returns>This instance for method chaining.</returns>
 		public ParserLocalSettingsBuilder Caching(ParserCachingMode mode, ParserSettingMode overrideMode = ParserSettingMode.LocalForSelfAndChildren)
 		{
+			_changed = true;
 			_settings.caching = mode;
 			_settings.cachingUseMode = overrideMode;
 			return this;
@@ -205,6 +215,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// <returns>This instance for method chaining.</returns>
 		public ParserLocalSettingsBuilder MaxRecursionDepth(int depth, ParserSettingMode overrideMode = ParserSettingMode.LocalForSelfAndChildren)
 		{
+			_changed = true;
 			_settings.maxRecursionDepth = depth;
 			_settings.maxRecursionDepthUseMode = overrideMode;
 			return this;

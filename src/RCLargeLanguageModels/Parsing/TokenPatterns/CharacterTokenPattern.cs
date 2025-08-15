@@ -21,19 +21,17 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			CharacterPredicate = characterPredicate ?? throw new ArgumentNullException(nameof(characterPredicate));
 		}
 
-		public override bool TryMatch(ParserContext context, ParserContext childContext, out ParsedToken token)
+		public override ParsedElement Match(string input, int position)
 		{
-			if (context.position < context.str.Length && CharacterPredicate(context.str[context.position]))
+			if (position < input.Length && CharacterPredicate(input[position]))
 			{
-				token = new ParsedToken(Id, context.position, 1);
-				return true;
+				return new ParsedElement(Id, position, 1);
 			}
 
-			token = ParsedToken.Fail;
-			return false;
+			return ParsedElement.Fail;
 		}
 
-		public override string ToString(int remainingDepth)
+		public override string ToStringOverride(int remainingDepth)
 		{
 			return "predicate";
 		}

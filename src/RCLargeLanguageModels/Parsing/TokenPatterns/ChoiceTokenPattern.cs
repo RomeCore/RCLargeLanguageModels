@@ -30,24 +30,24 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 
 
-		public override bool TryMatch(ParserContext context, ParserContext childContext, out ParsedToken token)
+		public override ParsedElement Match(string input, int position)
 		{
 			foreach (var tokenId in Choices)
 			{
-				if (TryMatchToken(tokenId, childContext, out token))
+				var token = TryMatchToken(tokenId, input, position);
+				if (token.success)
 				{
-					token = new ParsedToken(Id, token.startIndex, token.length, token.intermediateValue);
-					return true;
+					token.elementId = Id;
+					return token;
 				}
 			}
 
-			token = ParsedToken.Fail;
-			return false;
+			return ParsedElement.Fail;
 		}
 
 
 
-		public override string ToString(int remainingDepth)
+		public override string ToStringOverride(int remainingDepth)
 		{
 			if (remainingDepth <= 0)
 				return "choice...";

@@ -48,41 +48,32 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 
 
-		public override bool TryMatch(ParserContext context, ParserContext childContext, out ParsedToken token)
+		public override ParsedElement Match(string input, int position)
 		{
-			var tokens = new List<ParsedToken>();
-			var initialPosition = context.position;
+			var tokens = new List<ParsedElement>();
+			var initialPosition = position;
 
 			for (int i = 0; i < MaxCount || MaxCount == -1; i++)
 			{
-				ParsedToken matchedToken = ParsedToken.Fail;
-				if (!TryMatchToken(TokenPattern, childContext, out matchedToken)
-					|| matchedToken.startIndex + matchedToken.length == childContext.position)
+				ParsedElement matchedToken = TryMatchToken(TokenPattern, input, position);
+				if (!matchedToken.success || matchedToken.startIndex + matchedToken.length == position)
 				{
 					break;
 				}
 
-				childContext.position = matchedToken.startIndex + matchedToken.length;
+				position = matchedToken.startIndex + matchedToken.length;
 				tokens.Add(matchedToken);
 			}
 
 			if (tokens.Count < this.MinCount)
-			{
-				token = ParsedToken.Fail;
-				return false;
-			}
+				return ParsedElement.Fail;
 
-			token = new ParsedToken(
-				Id,
-				initialPosition,
-				childContext.position - initialPosition);
-
-			return true;
+			return new ParsedElement(Id, initialPosition, position - initialPosition);
 		}
 
 
 
-		public override string ToString(int remainingDepth)
+		public override string ToStringOverride(int remainingDepth)
 		{
 			if (remainingDepth <= 0)
 				return $"repeat{{{MinCount}..{(MaxCount == -1 ? "" : MaxCount)}}}...";

@@ -48,8 +48,7 @@ namespace RCLargeLanguageModels.Tests.Parsing
 			var parser = builder.Build();
 
 			var testString = "a + b";
-			var context = parser.CreateContext(testString);
-			var parsed = parser.ParseRule("expression", context);
+			var parsed = parser.ParseRule("expression", testString);
 
 			var a = parsed.Children[0].Text;
 			Assert.Equal("a", a);
@@ -78,7 +77,7 @@ namespace RCLargeLanguageModels.Tests.Parsing
 
 			var parser = builder.Build();
 			var input = "x, y, z";
-			var result = parser.ParseRule("id_list", parser.CreateContext(input));
+			var result = parser.ParseRule("id_list", input);
 
 			Assert.Equal("x", result.Children[0].Text);
 			Assert.Equal("y", result.Children[1].Children[0].Children[1].Text);
@@ -105,11 +104,11 @@ namespace RCLargeLanguageModels.Tests.Parsing
 
 			var parser = builder.Build();
 			var input = @"""hello"", ""world\n"", ""\""escaped\""""";
-			var result = parser.ParseRule("string_list", parser.CreateContext(input));
+			var result = parser.ParseRule("string_list", input);
 
-			Assert.Equal("hello", result.Children[0].Token!.Value);
-			Assert.Equal("world\\n", result.Children[1].Children[0].Children[1].Token!.Value);
-			Assert.Equal("\"escaped\"", result.Children[1].Children[1].Children[1].Token!.Value);
+			Assert.Equal("hello", result.Children[0].Value);
+			Assert.Equal("world\\n", result.Children[1].Children[0].Children[1].Value);
+			Assert.Equal("\"escaped\"", result.Children[1].Children[1].Children[1].Value);
 		}
 
 		[Fact]
@@ -135,7 +134,7 @@ namespace RCLargeLanguageModels.Tests.Parsing
 
 			var parser = builder.Build();
 			var input = "10 + 20 - 5";
-			var result = parser.ParseRule("expression", parser.CreateContext(input));
+			var result = parser.ParseRule("expression", input);
 
 			var joined = result.GetJoinedChildren(maxDepth: 999).ToList();
 

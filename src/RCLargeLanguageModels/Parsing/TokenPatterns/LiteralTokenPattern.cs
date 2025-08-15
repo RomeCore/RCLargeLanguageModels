@@ -37,27 +37,20 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 
 
-		public override bool TryMatch(ParserContext context, ParserContext childContext, out ParsedToken token)
+		public override ParsedElement Match(string input, int position)
 		{
-			if (context.position + Literal.Length > context.str.Length)
-			{
-				token = ParsedToken.Fail;
-				return false;
-			}
+			if (position + Literal.Length > input.Length)
+				return ParsedElement.Fail;
 
-			if (context.str.AsSpan(context.position, Literal.Length).Equals(Literal.AsSpan(), Comparison))
-			{
-				token = new ParsedToken(Id, context.position, Literal.Length, Literal);
-				return true;
-			}
+			if (input.AsSpan(position, Literal.Length).Equals(Literal.AsSpan(), Comparison))
+				return new ParsedElement(Id, position, Literal.Length, Literal);
 
-			token = ParsedToken.Fail;
-			return false;
+			return ParsedElement.Fail;
 		}
 
 
 
-		public override string ToString(int remainingDepth)
+		public override string ToStringOverride(int remainingDepth)
 		{
 			return $"literal: '{Literal}'";
 		}

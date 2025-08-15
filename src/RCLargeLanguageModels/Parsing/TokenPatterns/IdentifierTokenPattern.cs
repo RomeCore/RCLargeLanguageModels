@@ -73,31 +73,28 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 				minLength, maxLength);
 		}
 
-		public override bool TryMatch(ParserContext context, ParserContext childContext, out ParsedToken token)
+		public override ParsedElement Match(string input, int position)
 		{
-			int startPos = context.position;
+			int startPos = position;
 			int length = 0;
-			string s = context.str;
 
-			if (startPos >= s.Length)
+			if (startPos >= input.Length)
 			{
-				token = ParsedToken.Fail;
-				return false;
+				return ParsedElement.Fail;
 			}
 
-			char c0 = s[startPos];
+			char c0 = input[startPos];
 			if (!StartPredicate(c0))
 			{
-				token = ParsedToken.Fail;
-				return false;
+				return ParsedElement.Fail;
 			}
 
 			length = 1;
 			int pos = startPos + 1;
 
-			while (pos < s.Length &&
+			while (pos < input.Length &&
 				   (MaxLength == -1 || length < MaxLength) &&
-				   ContinuePredicate(s[pos]))
+				   ContinuePredicate(input[pos]))
 			{
 				length++;
 				pos++;
@@ -105,16 +102,13 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 			if (length < MinLength)
 			{
-				token = ParsedToken.Fail;
-				return false;
+				return ParsedElement.Fail;
 			}
 
-			context.position = startPos + length;
-			token = new ParsedToken(Id, startPos, length);
-			return true;
+			return new ParsedElement(Id, startPos, length);
 		}
 
-		public override string ToString(int remainingDepth)
+		public override string ToStringOverride(int remainingDepth)
 		{
 			string range = MaxLength == -1 ? $"{MinLength}.." : $"{MinLength}..{MaxLength}";
 			return $"identifier{{{range}}}";

@@ -18,6 +18,11 @@ namespace RCLargeLanguageModels.Parsing.Building
 		public Func<ParsedRuleResult, object?>? ParsedValueFactory { get; set; } = null;
 
 		/// <summary>
+		/// Gets the local settings builder for this parser rule.
+		/// </summary>
+		public ParserLocalSettingsBuilder Settings { get; } = new ParserLocalSettingsBuilder();
+
+		/// <summary>
 		/// Builds the parser rule with the given children.
 		/// </summary>
 		/// <param name="ruleChildren">The rule children IDs to build the parser rule with.</param>

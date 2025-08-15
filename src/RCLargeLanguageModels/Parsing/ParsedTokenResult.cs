@@ -25,7 +25,7 @@ namespace RCLargeLanguageModels.Parsing
 		/// <summary>
 		/// Gets the parsed token object containing the result of the parse.
 		/// </summary>
-		public ParsedToken Result { get; }
+		public ParsedElement Result { get; }
 
 		/// <summary>
 		/// Gets value indicating whether the parsing operation was successful.
@@ -35,12 +35,12 @@ namespace RCLargeLanguageModels.Parsing
 		/// <summary>
 		/// Gets the unique identifier for the token that was parsed.
 		/// </summary>
-		public int TokenId => Result.tokenId;
+		public int TokenId => Result.elementId;
 
 		/// <summary>
 		/// Gets the parsed value associated with this token.
 		/// </summary>
-		public TokenPattern Token => Context.parser.TokenPatterns[Result.tokenId];
+		public TokenPattern Token => Context.parser.TokenPatterns[Result.elementId];
 
 		/// <summary>
 		/// Gets the alias for the token pattern that was parsed. May be null if no alias is defined.
@@ -73,26 +73,19 @@ namespace RCLargeLanguageModels.Parsing
 		/// </summary>
 		public string Text => _textLazy.Value;
 
-		private readonly Lazy<object?> _valueLazy;
-		/// <summary>
-		/// Gets the parsed value associated with this token.
-		/// </summary>
-		public object? Value => _valueLazy.Value;
-
 		/// <summary>
 		/// Initializes a new instance of the <see cref="ParsedTokenResult"/> class.
 		/// </summary>
 		/// <param name="parent">The parent result of this rule, if any.</param>
 		/// <param name="context">The parser context used for parsing.</param>
 		/// <param name="result">The parsed token object containing the result of the parse.</param>
-		public ParsedTokenResult(ParsedRuleResult? parent, ParserContext context, ParsedToken result)
+		public ParsedTokenResult(ParsedRuleResult? parent, ParserContext context, ParsedElement result)
 		{
 			Parent = parent;
 			Context = context;
 			Result = result;
 
 			_textLazy = new Lazy<string>(() => Context.str.Substring(Result.startIndex, Result.length));
-			_valueLazy = new Lazy<object?>(() => Token.ParsedValueFactory?.Invoke(this) ?? null);
 		}
 
 		/// <summary>
@@ -103,21 +96,9 @@ namespace RCLargeLanguageModels.Parsing
 		{
 			StringBuilder sb = new StringBuilder();
 
-			string valueStr = string.Empty;
-
-			try
-			{
-				valueStr = Value?.ToString() ?? "null";
-			}
-			catch (Exception ex)
-			{
-				valueStr = $"Error {ex.GetType().Name}: {ex.Message}";
-			}
-
 			string intermediateValueStr = IntermediateValue?.ToString() ?? "null";
 
 			sb.AppendLine($"Token: {Token}, Captured Text: \"{Text}\"");
-			sb.AppendLine($"Value: {valueStr}");
 			sb.AppendLine($"Intermediate Value: {intermediateValueStr}");
 
 			return sb.ToString();

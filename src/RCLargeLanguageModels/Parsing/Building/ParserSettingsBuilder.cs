@@ -48,15 +48,39 @@ namespace RCLargeLanguageModels.Parsing.Building
 
 
 		/// <summary>
-		/// Sets the skip rule.
+		/// Sets the skip rule that will be skipped before parsing rules.
 		/// </summary>
 		/// <param name="builderAction">The action to build the skip rule.</param>
+		/// <param name="skippingStrategy">The skipping strategy to use.</param>
 		/// <returns>This instance for method chaining.</returns>
-		public ParserSettingsBuilder Skip(Action<RuleBuilder> builderAction)
+		public ParserSettingsBuilder Skip(Action<RuleBuilder> builderAction,
+			ParserSkippingStrategy skippingStrategy = ParserSkippingStrategy.SkipBeforeParsing)
 		{
 			var builder = new RuleBuilder();
 			builderAction(builder);
 			_skipRule = builder.BuildingRule;
+			_settings.skippingStrategy = skippingStrategy;
+			return this;
+		}
+
+		/// <summary>
+		/// Sets the skipping strategy.
+		/// </summary>
+		/// <param name="skippingStrategy">The skipping strategy to use.</param>
+		/// <returns>This instance for method chaining.</returns>
+		public ParserSettingsBuilder SkippingStrategy(ParserSkippingStrategy skippingStrategy)
+		{
+			_settings.skippingStrategy = skippingStrategy;
+			return this;
+		}
+
+		/// <summary>
+		/// Removes the skip rule.
+		/// </summary>
+		/// <returns>This instance for method chaining.</returns>
+		public ParserSettingsBuilder NoSkipping()
+		{
+			_settings.skippingStrategy = ParserSkippingStrategy.Default;
 			return this;
 		}
 
@@ -127,7 +151,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// <returns>This instance for method chaining.</returns>
 		public ParserSettingsBuilder NoCaching()
 		{
-			return Caching(ParserCachingMode.NDefault);
+			return Caching(ParserCachingMode.Default);
 		}
 
 		/// <summary>

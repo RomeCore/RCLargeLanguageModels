@@ -34,7 +34,8 @@ namespace RCLargeLanguageModels.Parsing.Building
 			var result = _settings;
 			result.skipRule = ruleChildren[0];
 
-			result.isDefault = 
+			result.isDefault =
+				result.skippingStrategyUseMode == ParserSettingMode.InheritForSelfAndChildren &&
 				result.skipRuleUseMode == ParserSettingMode.InheritForSelfAndChildren &&
 				result.maxRecursionDepthUseMode == ParserSettingMode.InheritForSelfAndChildren &&
 				result.errorHandlingUseMode == ParserSettingMode.InheritForSelfAndChildren &&
@@ -63,15 +64,35 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// Sets the skip rule that will be skipped before parsing the current rule.
 		/// </summary>
 		/// <param name="builderAction">The action to build the skip rule.</param>
-		/// <param name="overrideMode">The override mode for the skip rule setting.</param>
+		/// <param name="skippingStrategy">The skipping strategy to use.</param>
+		/// <param name="overrideMode">The override mode for the skip rule and skipping strategy setting.</param>
 		/// <returns>This instance for method chaining.</returns>
-		public ParserLocalSettingsBuilder Skip(Action<RuleBuilder> builderAction, ParserSettingMode overrideMode = ParserSettingMode.LocalForSelfAndChildren)
+		public ParserLocalSettingsBuilder Skip(Action<RuleBuilder> builderAction,
+			ParserSkippingStrategy skippingStrategy = ParserSkippingStrategy.SkipBeforeParsing,
+			ParserSettingMode overrideMode = ParserSettingMode.LocalForSelfAndChildren)
 		{
 			_changed = true;
 			var builder = new RuleBuilder();
 			builderAction(builder);
 			_skipRule = builder.BuildingRule;
 			_settings.skipRuleUseMode = overrideMode;
+			_settings.skippingStrategy = skippingStrategy;
+			_settings.skippingStrategyUseMode = overrideMode;
+			return this;
+		}
+
+		/// <summary>
+		/// Sets the skipping strategy for the current rule.
+		/// </summary>
+		/// <param name="skippingStrategy">The skipping strategy to use.</param>
+		/// <param name="overrideMode">The override mode for the skipping strategy setting.</param>
+		/// <returns>This instance for method chaining.</returns>
+		public ParserLocalSettingsBuilder SkippingStrategy(ParserSkippingStrategy skippingStrategy,
+			ParserSettingMode overrideMode = ParserSettingMode.LocalForSelfAndChildren)
+		{
+			_changed = true;
+			_settings.skippingStrategy = skippingStrategy;
+			_settings.skippingStrategyUseMode = overrideMode;
 			return this;
 		}
 
@@ -83,8 +104,8 @@ namespace RCLargeLanguageModels.Parsing.Building
 		public ParserLocalSettingsBuilder NoSkipping(ParserSettingMode overrideMode = ParserSettingMode.LocalForSelfAndChildren)
 		{
 			_changed = true;
-			_skipRule = null;
-			_settings.skipRuleUseMode = overrideMode;
+			_settings.skippingStrategy = ParserSkippingStrategy.Default;
+			_settings.skippingStrategyUseMode = overrideMode;
 			return this;
 		}
 
@@ -165,7 +186,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// <returns>This instance for method chaining.</returns>
 		public ParserLocalSettingsBuilder NoCaching(ParserSettingMode overrideMode = ParserSettingMode.LocalForSelfAndChildren)
 		{
-			return Caching(ParserCachingMode.NDefault, overrideMode);
+			return Caching(ParserCachingMode.Default, overrideMode);
 		}
 
 		/// <summary>

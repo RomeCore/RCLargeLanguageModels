@@ -48,6 +48,27 @@ namespace RCLargeLanguageModels.Parsing
 	}
 
 	/// <summary>
+	/// Defines how parser should handle skipping of rules.
+	/// </summary>
+	public enum ParserSkippingStrategy
+	{
+		/// <summary>
+		/// Parser will always ignore the skip-rule and try to parse the target rule. Default behavior.
+		/// </summary>
+		Default = 0,
+
+		/// <summary>
+		/// Parser will try to skip the skip-rule before parsing the target rule.
+		/// </summary>
+		SkipBeforeParsing,
+
+		/// <summary>
+		/// Parser will try to parse the target rule and then skip the skip-rule if parsing fails, then try to parse the target rule again after skipping.
+		/// </summary>
+		TryParseThenSkip
+	}
+
+	/// <summary>
 	/// Defines how parser elements should handle errors.
 	/// </summary>
 	public enum ParserErrorHandlingMode
@@ -76,7 +97,7 @@ namespace RCLargeLanguageModels.Parsing
 		/// <summary>
 		/// Caches nothing. The parser will not cache any rules or token patterns. This is the default mode.
 		/// </summary>
-		NDefault = 0,
+		Default = 0,
 
 		/// <summary>
 		/// Caches only rules.
@@ -99,6 +120,11 @@ namespace RCLargeLanguageModels.Parsing
 	/// </summary>
 	public struct ParserSettings : IEquatable<ParserSettings>
 	{
+		/// <summary>
+		/// The skipping strategy to use when parsing rules. Default is to try skip before parsing the target rule.
+		/// </summary>
+		public ParserSkippingStrategy skippingStrategy;
+
 		/// <summary>
 		/// The rule ID to skip before parsing a specific rule. If set to -1, no rules are skipped.
 		/// </summary>
@@ -137,6 +163,13 @@ namespace RCLargeLanguageModels.Parsing
 		{
 			forLocal = new ParserSettings();
 			forChildren = new ParserSettings();
+
+			// ---- skippingStrategy ----
+			ApplySetting(
+				this.skippingStrategy, localSettings.skippingStrategy, globalSettings.skippingStrategy,
+				localSettings.skippingStrategyUseMode,
+				ref forLocal.skippingStrategy, ref forChildren.skippingStrategy
+			);
 
 			// ---- skipRule ----
 			ApplySetting(
@@ -216,7 +249,8 @@ namespace RCLargeLanguageModels.Parsing
 
 		public readonly bool Equals(ParserSettings other)
 		{
-			return skipRule == other.skipRule &&
+			return skippingStrategy == other.skippingStrategy &&
+				   skipRule == other.skipRule &&
 				   errorHandling == other.errorHandling &&
 				   caching == other.caching &&
 				   maxRecursionDepth == other.maxRecursionDepth;
@@ -225,6 +259,7 @@ namespace RCLargeLanguageModels.Parsing
 		public override readonly int GetHashCode()
 		{
 			int hash = 17;
+			hash ^= 23 * skippingStrategy.GetHashCode();
 			hash ^= 23 * skipRule.GetHashCode();
 			hash ^= 23 * errorHandling.GetHashCode();
 			hash ^= 23 * caching.GetHashCode();
@@ -252,6 +287,16 @@ namespace RCLargeLanguageModels.Parsing
 		/// The value indicating that all *UseModes are set to InheritForSelfAndChildren.
 		/// </summary>
 		public bool isDefault;
+
+
+
+		/// <summary>
+		/// Defines an override mode for <see cref="skippingStrategy"/> setting.
+		/// </summary>
+		public ParserSettingMode skippingStrategyUseMode;
+
+		/// <inheritdoc cref="ParserSettings.skippingStrategy"/>
+		public ParserSkippingStrategy skippingStrategy;
 
 
 
@@ -305,6 +350,8 @@ namespace RCLargeLanguageModels.Parsing
 		public readonly bool Equals(ParserLocalSettings other)
 		{
 			return isDefault == other.isDefault &&
+				   skippingStrategyUseMode == other.skippingStrategyUseMode &&
+				   skippingStrategy == other.skippingStrategy &&
 				   skipRuleUseMode == other.skipRuleUseMode &&
 				   skipRule == other.skipRule &&
 				   errorHandlingUseMode == other.errorHandlingUseMode &&
@@ -319,6 +366,8 @@ namespace RCLargeLanguageModels.Parsing
 		{
 			int hash = 17;
 			hash ^= 23 * isDefault.GetHashCode();
+			hash ^= 23 * skippingStrategyUseMode.GetHashCode();
+			hash ^= 23 * skippingStrategy.GetHashCode();
 			hash ^= 23 * skipRuleUseMode.GetHashCode();
 			hash ^= 23 * skipRule.GetHashCode();
 			hash ^= 23 * errorHandlingUseMode.GetHashCode();

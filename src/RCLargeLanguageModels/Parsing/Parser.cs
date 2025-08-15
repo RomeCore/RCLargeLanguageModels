@@ -5,6 +5,7 @@ using System.Data;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using Newtonsoft.Json.Linq;
+using RCLargeLanguageModels.Parsing.ParserRules;
 
 namespace RCLargeLanguageModels.Parsing
 {
@@ -122,34 +123,57 @@ namespace RCLargeLanguageModels.Parsing
 		/// </summary>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private ParsedRule ParseNonValidated(ParserRule rule, int ruleId,
-			ParserContext context, ParserContext childContext)
+			ref ParserContext context, ref ParserContext childContext)
 		{
-			ParsedRule parsedRule;
-
-			if (context.settings.caching == ParserCachingMode.CacheAll ||
-				context.settings.caching == ParserCachingMode.Rules)
+			switch (context.settings.caching)
 			{
-				if (!context.cache.TryGetRule(ruleId, context.position, out parsedRule))
-				{
-					parsedRule = rule.Parse(context, childContext);
-					context.cache.AddRule(ruleId, context.position, parsedRule);
-				}
-			}
-			else
-			{
-				parsedRule = rule.Parse(context, childContext);
-			}
+				case ParserCachingMode.Default:
+					return rule.Parse(context, childContext);
 
-			return parsedRule;
+				case ParserCachingMode.CacheAll:
+					if (!context.cache.TryGetRule(ruleId, context.position, out var parsedRule))
+					{
+						parsedRule = rule.Parse(context, childContext);
+						context.cache.AddRule(ruleId, context.position, parsedRule);
+					}
+					return parsedRule;
+
+				case ParserCachingMode.TokenPatterns:
+					if (rule is TokenParserRule)
+					{
+						if (!context.cache.TryGetRule(ruleId, context.position, out parsedRule))
+						{
+							parsedRule = rule.Parse(context, childContext);
+							context.cache.AddRule(ruleId, context.position, parsedRule);
+						}
+						return parsedRule;
+					}
+					return rule.Parse(context, childContext);
+
+				case ParserCachingMode.Rules:
+					if (rule is not TokenParserRule)
+					{
+						if (!context.cache.TryGetRule(ruleId, context.position, out parsedRule))
+						{
+							parsedRule = rule.Parse(context, childContext);
+							context.cache.AddRule(ruleId, context.position, parsedRule);
+						}
+						return parsedRule;
+					}
+					return rule.Parse(context, childContext);
+
+				default:
+					throw new InvalidOperationException("Invalid caching mode.");
+			}
 		}
 
 		/// <summary>
 		/// Tries to skip the skip-rule specified in settings.
 		/// </summary>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private void TrySkip(ref ParserContext context, ref ParserContext childContext)
+		private bool TrySkip(ref ParserContext context, ref ParserContext childContext)
 		{
 			int skipRuleId = context.settings.skipRule;
+			int startIndex = context.position;
 
 			if (skipRuleId != -1 && context.position < context.str.Length &&
 				!context.skippedPositions[context.position])
@@ -167,7 +191,7 @@ namespace RCLargeLanguageModels.Parsing
 				do
 				{
 					var parsedSkipRule = ParseNonValidated(skipRule, skipRuleId,
-						ctx, childCtx);
+						ref ctx, ref childCtx);
 
 					skipRuleLength = parsedSkipRule.length;
 					if (parsedSkipRule.success)
@@ -181,6 +205,8 @@ namespace RCLargeLanguageModels.Parsing
 				}
 				while (skipRuleLength > 0);
 			}
+
+			return startIndex != context.position;
 		}
 
 		/// <summary>
@@ -211,14 +237,7 @@ namespace RCLargeLanguageModels.Parsing
 		/// <returns>A parsed rule object containing the result of the parse.</returns>
 		internal ParsedRule ParseRule(int ruleId, ParserContext context)
 		{
-			if (CheckRecursionDepth(context))
-				throw new ParsingException(context, "Maximum recursion depth exceeded.");
-
-			var rule = Rules[ruleId];
-			rule.AdvanceContext(ref context, out var childContext);
-			TrySkip(ref context, ref childContext);
-
-			var parsedRule = ParseNonValidated(rule, ruleId, context, childContext);
+			var parsedRule = TryParseRule(ruleId, context);
 			if (parsedRule.success)
 				return parsedRule;
 
@@ -238,15 +257,51 @@ namespace RCLargeLanguageModels.Parsing
 
 			var rule = Rules[ruleId];
 			rule.AdvanceContext(ref context, out var childContext);
-			TrySkip(ref context, ref childContext);
 
-			return ParseNonValidated(rule, ruleId, context, childContext);
+			switch (context.settings.skippingStrategy)
+			{
+				case ParserSkippingStrategy.Default:
+
+					var parsedRule = ParseNonValidated(rule, ruleId, ref context, ref childContext);
+					if (parsedRule.success)
+						context.successPositions[parsedRule.startIndex] = true;
+					return parsedRule;
+
+				case ParserSkippingStrategy.SkipBeforeParsing:
+
+					TrySkip(ref context, ref childContext);
+
+					parsedRule = ParseNonValidated(rule, ruleId, ref context, ref childContext);
+					if (parsedRule.success && parsedRule.startIndex < context.str.Length)
+						context.successPositions[parsedRule.startIndex] = true;
+					return parsedRule;
+
+				case ParserSkippingStrategy.TryParseThenSkip:
+
+					parsedRule = ParseNonValidated(rule, ruleId, ref context, ref childContext);
+					if (parsedRule.success)
+					{
+						if (parsedRule.startIndex < context.str.Length)
+							context.successPositions[parsedRule.startIndex] = true;
+						return parsedRule;
+					}
+
+					TrySkip(ref context, ref childContext);
+
+					parsedRule = ParseNonValidated(rule, ruleId, ref context, ref childContext);
+					if (parsedRule.success && parsedRule.startIndex < context.str.Length)
+						context.successPositions[parsedRule.startIndex] = true;
+					return parsedRule;
+
+				default:
+					throw new ParsingException(context, "Invalid skipping strategy.");
+			}
 		}
 
 		/// <summary>
-		/// Parses the given input using the specified rule identifier and parser context.
+		/// Matches the given input using the specified token identifier and parser context.
 		/// </summary>
-		/// <returns>A parsed rule object containing the result of the parse.</returns>
+		/// <returns>A parsed token object containing the result of the match.</returns>
 		internal ParsedElement MatchToken(int tokenPatternId, string input, int position)
 		{
 			var tokenPattern = TokenPatterns[tokenPatternId];

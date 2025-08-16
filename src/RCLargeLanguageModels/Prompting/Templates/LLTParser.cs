@@ -16,16 +16,17 @@ namespace RCLargeLanguageModels.Prompting.Templates
 		{
 			var builder = new ParserBuilder();
 
-			// Settings
+			// Settings //
 
 			builder.Settings()
 				.Skip(s => s.Choice(
 					c => c.Whitespaces(),
 					c => c.Literal("@//").TextUntil('\n', '\r'), // @// C#-like comments
 					c => c.Literal("@*").TextUntil("*@").Literal("*@")), // @*...*@ comments
-					ParserSkippingStrategy.TryParseThenSkip); // Allows to use 'Whitespace' tokens in rules
+					ParserSkippingStrategy.TryParseThenSkip) // Allows rules to capture skip-rules contents if can, such as whitespaces
+				.CacheAll(); // If caching is disabled, prepare to wait for a long time (seconds) when encountering an error :P (you will also get a million of errors, seriously)
 
-			// Values
+			// ---- Values ---- //
 
 			builder.CreateToken("identifier")
 				.Identifier();
@@ -55,7 +56,33 @@ namespace RCLargeLanguageModels.Prompting.Templates
 				.Literal("null",
 				_ => TemplateNullAccessor.Instance);
 
-			// Expressions
+			// Constants //
+
+			builder.CreateRule("constant")
+				.Choice(
+					c => c.Token("number"),
+					c => c.Token("string"),
+					c => c.Token("boolean"),
+					c => c.Token("null"),
+					c => c.Rule("constant_array"),
+					c => c.Rule("constant_object"));
+
+			builder.CreateRule("constant_pair")
+				.Token("identifier")
+				.Literal(":")
+				.Rule("constant");
+
+			builder.CreateRule("constant_array")
+				.Literal("[")
+				.ZeroOrMoreSeparated(b => b.Rule("constant"), b => b.Literal(","), allowTrailingSeparator: true)
+				.Literal("]");
+
+			builder.CreateRule("constant_object")
+				.Literal("{")
+				.ZeroOrMoreSeparated(b => b.Rule("constant_pair"), b => b.Literal(","), allowTrailingSeparator: true)
+				.Literal("}");
+
+			// Expression values //
 
 			builder.CreateRule("primary")
 				.Choice(
@@ -64,10 +91,29 @@ namespace RCLargeLanguageModels.Prompting.Templates
 					c => c.Token("boolean"),
 					c => c.Token("null"),
 					c => c.Token("identifier"),
+					c => c.Rule("array"),
+					c => c.Rule("object"),
 					c => c.Literal('(').Rule("expression").Literal(')'));
 
 			builder.CreateRule("value")
 				.Rule("primary"); // Add alias for 'primary' rule
+
+			builder.CreateRule("pair")
+				.Token("identifier")
+				.Literal(':')
+				.Rule("value");
+
+			builder.CreateRule("array")
+				.Literal("[")
+				.ZeroOrMoreSeparated(b => b.Rule("value"), b => b.Literal(","), allowTrailingSeparator: true)
+				.Literal("]");
+
+			builder.CreateRule("object")
+				.Literal("{")
+				.ZeroOrMoreSeparated(b => b.Rule("pair"), b => b.Literal(","), allowTrailingSeparator: true)
+				.Literal("}");
+
+			// Expressions //
 
 			builder.CreateRule("postfix_member")
 				.Rule("primary")
@@ -90,7 +136,7 @@ namespace RCLargeLanguageModels.Prompting.Templates
 				.ZeroOrMore(b => b.LiteralChoice("+", "-", "!"))
 				.Rule("postfix_member");
 
-			// Operators
+			// Operators //
 
 			builder.CreateRule("multiplicative_operator") // multiplicative
 				.OneOrMoreSeparated(b => b.Rule("prefix_operator"),
@@ -128,27 +174,123 @@ namespace RCLargeLanguageModels.Prompting.Templates
 			builder.CreateRule("expression")
 				.Rule("logical_or_operator");
 
-			// Templates
-
-			builder.CreateRule("text_content")
-				.EscapedTextDoubleChars("@{}", allowsEmpty: false);
+			// ---- Templates ---- //
 
 			builder.CreateRule("template")
 				.Choice(
-					b => b.Rule("text_template"));
+					b => b.Rule("text_template"),
+					b => b.Rule("messages_template"));
+
+			builder.CreateRule("metadata_block")
+				.Literal('@')
+				.Literal("metadata")
+				.Rule("constant_object");
+
+			// Messages templates //
+
+			builder.CreateRule("messages_template")
+				.Literal('@')
+				.Literal("messages")
+				.Whitespaces()
+				.Literal("template")
+				.Whitespaces()
+				.Token("identifier")
+				.Rule("messages_template_main_block");
+
+			builder.CreateRule("messages_template_main_block")
+				.Literal('{')
+				.Optional(b =>
+					b.Rule("metadata_block"))
+				.Rule("message_statements")
+				.Literal('}');
+
+			builder.CreateRule("messages_template_block")
+				.Literal('{')
+				.Rule("message_statements")
+				.Literal('}');
+
+			builder.CreateRule("message_statements")
+				.ZeroOrMore(b => b
+					.Literal('@')
+					.Choice(
+						c => c.Rule("message_block"),
+						c => c.Rule("messages_if"),
+						c => c.Rule("messages_foreach"),
+						c => c.Rule("messages_while")));
+
+			builder.CreateRule("message_block")
+				.Choice(
+					b => b.Rule("message_block_explicit_role"),
+					b => b.Rule("message_block_variable_role"));
+
+			builder.CreateRule("message_block_explicit_role")
+				.LiteralChoice("system", "user", "assistant", "tool")
+				.Whitespaces()
+				.Literal("message")
+				.Rule("text_template_block");
+
+			builder.CreateRule("message_block_variable_role")
+				.Literal("message")
+				.Rule("message_variable_role_block");
+
+			builder.CreateRule("message_variable_role_block")
+				.Literal('{')
+				.Literal('@')
+				.Literal("role")
+				.Rule("text_expression")
+				.Rule("text_statements")
+				.Literal('}');
+
+			builder.CreateRule("messages_if")
+				.Literal("if")
+				.Whitespaces()
+				.Rule("expression")
+				.Rule("messages_template_block")
+				.Optional(
+					b => b.Literal("else").Choice(
+						b => b.Rule("messages_if"),
+						b => b.Rule("messages_template_block")));
+
+			builder.CreateRule("messages_foreach")
+				.Literal("foreach")
+				.Whitespaces()
+				.Token("identifier")
+				.Literal("in")
+				.Whitespaces()
+				.Rule("expression")
+				.Rule("messages_template_block");
+
+			builder.CreateRule("messages_while")
+				.Literal("while")
+				.Rule("expression")
+				.Rule("messages_template_block");
+
+			// Text templates //
 
 			builder.CreateRule("text_template")
 				.Literal('@')
 				.Literal("template")
 				.Whitespaces()
 				.Token("identifier")
-				.Rule("text_template_content");
+				.Rule("text_template_main_block");
 
-			builder.CreateRule("text_template_content")
-				.Literal('{')
+			builder.CreateRule("text_content")
+				.EscapedTextDoubleChars("@{}", allowsEmpty: false);
+
+			builder.CreateRule("text_statements")
 				.ZeroOrMore(b => b.Choice(
 					c => c.Rule("text_content"),
-					c => c.Rule("text_statement")))
+					c => c.Rule("text_statement")));
+
+			builder.CreateRule("text_template_main_block")
+				.Literal('{')
+				.Optional(b => b.Rule("metadata_block"))
+				.Rule("text_statements")
+				.Literal('}');
+
+			builder.CreateRule("text_template_block")
+				.Literal('{')
+				.Rule("text_statements")
 				.Literal('}');
 
 			builder.CreateRule("text_statement")
@@ -167,11 +309,11 @@ namespace RCLargeLanguageModels.Prompting.Templates
 				.Literal("if")
 				.Whitespaces()
 				.Rule("expression")
-				.Rule("text_template_content")
+				.Rule("text_template_block")
 				.Optional(
 					b => b.Literal("else").Choice(
 						b => b.Rule("text_if"),
-						b => b.Rule("text_template_content")));
+						b => b.Rule("text_template_block")));
 
 			builder.CreateRule("text_foreach")
 				.Literal("foreach")
@@ -180,12 +322,14 @@ namespace RCLargeLanguageModels.Prompting.Templates
 				.Literal("in")
 				.Whitespaces()
 				.Rule("expression")
-				.Rule("text_template_content");
+				.Rule("text_template_block");
 
 			builder.CreateRule("text_while")
 				.Literal("while")
 				.Rule("expression")
-				.Rule("text_template_content");
+				.Rule("text_template_block");
+
+			// Main rule
 
 			builder.CreateRule("file_content")
 				.ZeroOrMore(b => b.Rule("template"))

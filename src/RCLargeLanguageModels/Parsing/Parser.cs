@@ -185,8 +185,7 @@ namespace RCLargeLanguageModels.Parsing
 				ctx.settings.skipRule = -1;
 				childCtx.settings.skipRule = -1;
 
-				int skipRuleLength = 0;
-
+				int skipRuleLength;
 				do
 				{
 					var parsedSkipRule = ParseNonValidated(skipRule, skipRuleId,

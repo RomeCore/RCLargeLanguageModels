@@ -9,6 +9,7 @@ namespace RCLargeLanguageModels.Tests.Templates
 {
 	public class BasicTemplateParsingTests
 	{
+
 		[Fact]
 		public void SimpleTemplateParsing()
 		{
@@ -92,8 +93,49 @@ namespace RCLargeLanguageModels.Tests.Templates
 			""";
 
 			var parser = new LLTParser();
-			var result = parser.ParseAST("@template a { @-number @a.b a }");
-			result = parser.ParseAST(templateStr);
+			var result = parser.ParseAST(templateStr);
+		}
+
+		[Fact]
+		public void SimpleMessagesTemplateParsing()
+		{
+			string templateStr =
+			"""
+			@messages template ChatBot {
+			    @metadata {
+			        language: "ru",
+			        version: 1
+			    }
+
+			    @system message {
+			        You are a helpful assistant.
+			    }
+
+			    @user message {
+			        Hello!
+			    }
+
+			    @if user.isAdmin {
+			        @assistant message {
+			            Welcome back, admin!
+			        }
+			    } else {
+			        @assistant message {
+			            Welcome, user!
+			        }
+			    }
+
+			    @foreach item in items {
+			        @assistant message {
+			            Processing item: @item
+			        }
+			    }
+			}
+			
+			""";
+
+			var parser = new LLTParser();
+			var result = parser.ParseAST(templateStr);
 		}
 	}
 }

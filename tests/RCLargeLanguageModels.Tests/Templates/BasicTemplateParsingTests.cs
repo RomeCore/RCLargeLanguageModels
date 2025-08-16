@@ -14,21 +14,21 @@ namespace RCLargeLanguageModels.Tests.Templates
 		{
 			string templateStr =
 			"""
-			@// Главный шаблон
+			@// The main template.
 			@template MainTemplate {
 			    @*
-				Приветствие пользователя
+				Use the template to display a greeting message.
 				*@
 			    Hello, @user.name!
 			
-			    @// Простое выражение
-			    @// Value: @number
+			    @// Display a number.
+			    Value: @number.
 			
-			    @// Вызовы методов и поля
-			    Method test: @data.getItem(1, "arg").fieldName
+			    @// Method call with parameters.
+			    Method test: @data.getItem(1, "arg").fieldName.
 			
-			    @// Арифметика и логика
-			    Result: @(a * (b + c) - 42 / value % 3 > 0 && !flag || isAdmin)
+			    @// Simple arithmetic and logical operations.
+			    Result: @(a * (b + c) - 42 / value % 3 > 0 && !flag || isAdmin).
 
 			    @if user.age >= 18 {
 			        Adult content
@@ -55,22 +55,22 @@ namespace RCLargeLanguageModels.Tests.Templates
 			        }
 			    }
 			
-			    @// Тест строк и экранирования
+			    @// String literals, booleans, and null values.
 			    String literal: @"hello ""world"" "
 			    Boolean true: @true
 			    Boolean false: @false
 			    Null test: @null
 			}
 
-			@// Второй шаблон
+			@// Second template with no expressions.
 			@template Secondary {
 			    Static text only
 			    No expressions here
 			}
 
-			@// Третий шаблон со смешанным содержимым
+			@// Third template with mixed content.
 			@template Mixed {
-			    @// Проверим вложенные условия
+			    @// Nested if-else statements.
 			    @if flag {
 			        YES
 			    } else {
@@ -81,7 +81,7 @@ namespace RCLargeLanguageModels.Tests.Templates
 			        }
 			    }
 
-			    @// Форич в фориче
+			    @// Foreach loop with nested foreach.
 			    @foreach group in groups {
 			        Group: @group.name
 			        @foreach member in group.members {

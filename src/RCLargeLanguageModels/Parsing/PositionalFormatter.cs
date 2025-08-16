@@ -94,7 +94,7 @@ namespace RCLargeLanguageModels.Parsing
 			string lineAndColumn = $"line {lineNumber}, column {column}";
 
 			string pointerLine;
-			if (column + 2 <= lineAndColumn.Length)
+			if (column <= lineAndColumn.Length + 2)
 				pointerLine = new string(' ', column - 1) + '^' + ' ' + lineAndColumn;
 			else
 				pointerLine = new string(' ', column - 2 - lineAndColumn.Length) + lineAndColumn + ' ' + '^';

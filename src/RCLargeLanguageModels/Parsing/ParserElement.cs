@@ -138,14 +138,14 @@ namespace RCLargeLanguageModels.Parsing
 		public string ToString(int remainingDepth)
 		{
 			if (Aliases.Count > 0)
-				return $"'{Aliases[0]}'";
+				return $"'{Aliases.Last()}'";
 			return ToStringOverride(remainingDepth);
 		}
 
 		public override string ToString()
 		{
 			if (Aliases.Count > 0)
-				return $"'{Aliases[0]}'";
+				return $"'{Aliases.Last()}'";
 			return ToStringOverride(2); // Default depth is 2.
 		}
 

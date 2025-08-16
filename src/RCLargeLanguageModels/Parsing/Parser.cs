@@ -215,10 +215,7 @@ namespace RCLargeLanguageModels.Parsing
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private ParsingException ExceptionFromContext(ParserContext context)
 		{
-			var errors = context.GetRelevantErrors().ToArray();
-
-			if (errors.Length == 0)
-				errors = context.errors.ToArray();
+			var errors = context.errors.ToArray();
 
 			if (errors.Length == 0)
 				return new ParsingException(context, "Unknown error.");
@@ -311,73 +308,6 @@ namespace RCLargeLanguageModels.Parsing
 
 
 		/// <summary>
-		/// Parses the given input using the specified rule alias and parser context.
-		/// </summary>
-		/// <param name="ruleAlias">The alias for the parser rule to use.</param>
-		/// <param name="context">The parser context to use for parsing.</param>
-		/// <returns>A parsed rule containing the result of the parse.</returns>
-		public ParsedRuleResult ParseRule(string ruleAlias, ParserContext context)
-		{
-			if (!_rulesAliases.TryGetValue(ruleAlias, out var ruleId))
-				throw new ArgumentException("Invalid rule alias", nameof(ruleAlias));
-
-			return new ParsedRuleResult(null, context, ParseRule(ruleId, context));
-		}
-
-		/// <summary>
-		/// Tries to parse a rule using the specified rule alias and parser context.
-		/// </summary>
-		/// <param name="ruleAlias">The alias for the parser rule to use.</param>
-		/// <param name="context">The parser context to use for parsing.</param>
-		/// <param name="result">The parsed rule containing the result of the parse.</param>
-		/// <returns>True if a rule was parsed successfully, false otherwise.</returns>
-		public bool TryParseRule(string ruleAlias, ParserContext context, out ParsedRuleResult result)
-		{
-			if (!_rulesAliases.TryGetValue(ruleAlias, out var ruleId))
-				throw new ArgumentException("Invalid rule alias", nameof(ruleAlias));
-
-			var parsedRule = ParseRule(ruleId, context);
-			result = new ParsedRuleResult(null, context, parsedRule);
-			return parsedRule.success;
-		}
-
-		/// <summary>
-		/// Parses the given input using the specified token pattern alias.
-		/// </summary>
-		/// <param name="tokenPatternAlias">The alias for the token pattern to use.</param>
-		/// <param name="context">The parser context to use for parsing.</param>
-		/// <returns>The parsed token containing the result of the parse.</returns>
-		public ParsedTokenResult MatchToken(string tokenPatternAlias, ParserContext context)
-		{
-			if (!_tokenPatternsAliases.TryGetValue(tokenPatternAlias, out var tokenPatternId))
-				throw new ArgumentException("Invalid token pattern alias", nameof(tokenPatternAlias));
-
-			var tokenPattern = TokenPatterns[tokenPatternId];
-			var parsedToken = tokenPattern.Match(context.str, context.position);
-			return new ParsedTokenResult(null, context, parsedToken);
-		}
-
-		/// <summary>
-		/// Parses the given input using the specified token pattern alias.
-		/// </summary>
-		/// <param name="tokenPatternAlias">The alias for the token pattern to use.</param>
-		/// <param name="context">The parser context to use for parsing.</param>
-		/// <param name="result">The parsed token containing the result of the parse.</param>
-		/// <returns>True if a token was matched, false otherwise.</returns>
-		public bool TryMatchToken(string tokenPatternAlias, ParserContext context, out ParsedTokenResult result)
-		{
-			if (!_tokenPatternsAliases.TryGetValue(tokenPatternAlias, out var tokenPatternId))
-				throw new ArgumentException("Invalid token pattern alias", nameof(tokenPatternAlias));
-
-			var tokenPattern = TokenPatterns[tokenPatternId];
-			var parsedToken = tokenPattern.Match(context.str, context.position);
-			result = new ParsedTokenResult(null, context, parsedToken);
-			return parsedToken.success;
-		}
-
-
-
-		/// <summary>
 		/// Parses the given input using the specified rule alias and input text.
 		/// </summary>
 		/// <param name="ruleAlias">The alias for the parser rule to use.</param>
@@ -390,7 +320,7 @@ namespace RCLargeLanguageModels.Parsing
 
 			var context = new ParserContext(this, input);
 			var parsedRule = ParseRule(ruleId, context);
-			return new ParsedRuleResult(null, context, parsedRule);
+			return new ParsedRuleResult(ParseTreeOptimization.None, null, context, parsedRule);
 		}
 
 		/// <summary>
@@ -407,7 +337,7 @@ namespace RCLargeLanguageModels.Parsing
 
 			var context = new ParserContext(this, input);
 			var parsedRule = TryParseRule(ruleId, context);
-			result = new ParsedRuleResult(null, context, parsedRule);
+			result = new ParsedRuleResult(ParseTreeOptimization.None, null, context, parsedRule);
 			return parsedRule.success;
 		}
 

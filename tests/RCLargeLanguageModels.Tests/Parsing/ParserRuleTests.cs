@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -155,9 +156,8 @@ namespace RCLargeLanguageModels.Tests.Parsing
 			// So we don't need to create another .OneOrMore(c => c.Choice(...))
 			builder.CreateRule("skip")
 				.Choice(
-					[b => b.Whitespaces(),
-					 b => b.Literal("//").TextUntil('\n', '\r')],
-					config: c => c.IgnoreErrors());
+					b => b.Whitespaces(),
+					b => b.Literal("//").TextUntil('\n', '\r'));
 
 			builder.CreateToken("string")
 				.Literal("\"")
@@ -234,6 +234,99 @@ namespace RCLargeLanguageModels.Tests.Parsing
 			var result = jsonParser.ParseRule("content", json.Replace("\t", "    ")).Value;
 			Assert.True(result is Dictionary<string, object>);
 			Assert.Throws<ParsingException>(() => jsonParser.ParseRule("content", invalidJson));
+		}
+
+		[Fact]
+		public void AdvancedExpressionParsing()
+		{
+			var builder = new ParserBuilder();
+
+			builder.Settings().Skip(r => r.Whitespaces());
+
+			// Values
+
+			builder.CreateToken("identifier")
+				.Identifier();
+
+			builder.CreateToken("methodName")
+				.Identifier();
+
+			builder.CreateToken("fieldName")
+				.Identifier();
+
+			builder.CreateToken("string")
+				.Literal('"')
+				.EscapedTextDoubleChars('"')
+				.Literal('"')
+				.Pass(v => v[1])
+				.Transform(v => v.IntermediateValue);
+
+			builder.CreateToken("number")
+				.Regex("-?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?",
+					v => double.Parse(v.Text, CultureInfo.InvariantCulture));
+
+			builder.CreateToken("boolean")
+				.LiteralChoice(["true", "false"],
+					v => v.Text == "true");
+
+			builder.CreateToken("null")
+				.Literal("null",
+					_ => null);
+
+			// Operators
+
+			builder.CreateRule("primary")
+				.Choice(
+					c => c.Token("number"),
+					c => c.Token("identifier"),
+					c => c.Token("string"),
+					c => c.Token("boolean"),
+					c => c.Token("null"),
+					c => c.Literal('(').Rule("expression").Literal(')'));
+
+			builder.CreateRule("postfix_member")
+				.Rule("primary")
+				.ZeroOrMore(b => b.Choice(
+					b => b.Literal('.') // Method call
+						  .Token("methodName")
+						  .Literal('(')
+						  .ZeroOrMoreSeparated(a => a.Rule("expression"), s => s.Literal(','))
+						  .Literal(')'),
+
+					b => b.Literal('.') // Field access
+						  .Token("fieldName"),
+
+					b => b.Literal('[') // Index access
+						  .Rule("expression")
+						  .Literal(']')
+					));
+
+			builder.CreateRule("postfix_operator")
+				.Rule("postfix_member")
+				.Optional(b => b.LiteralChoice("++", "--"));
+
+			builder.CreateRule("prefix")
+				.ZeroOrMore(b => b.LiteralChoice("++", "--", "+", "-", "!", "~"))
+				.Rule("postfix_operator");
+
+			builder.CreateRule("multiplicative_operator")
+				.OneOrMoreSeparated(b => b.Rule("prefix"), o => o.LiteralChoice("*", "/"), includeSeparatorsInResult: true);
+
+			builder.CreateRule("additive_operator")
+				.OneOrMoreSeparated(b => b.Rule("multiplicative_operator"), o => o.LiteralChoice("+", "-"), includeSeparatorsInResult: true);
+
+			builder.CreateRule("expression")
+				.Rule("additive_operator");
+
+			builder.CreateRule("content")
+				.Rule("expression")
+				.EOF();
+
+			var parser = builder.Build();
+
+			var result = parser.ParseRule(
+				"content",
+				@"!1 + abc.def(1 + ""string"""""", ++test.index[1 + 5]) * (3 - ~4 * a.b[0]) / 5");
 		}
 
 		[Fact]

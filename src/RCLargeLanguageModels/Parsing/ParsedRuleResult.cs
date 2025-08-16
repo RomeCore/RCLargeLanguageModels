@@ -5,14 +5,73 @@ using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
+using RCLargeLanguageModels.Parsing.TokenPatterns;
 
 namespace RCLargeLanguageModels.Parsing
 {
+	/// <summary>
+	/// Represents the flags that can be used to optimize the parse tree.
+	/// </summary>
+	[Flags]
+	public enum ParseTreeOptimization
+	{
+		/// <summary>
+		/// No optimization flags are set.
+		/// </summary>
+		None = 0,
+
+		/// <summary>
+		/// The default optimization flags are set. These include:
+		/// <list type="bullet">
+		/// <item>IgnorePureLiterals</item>
+		/// <item>RemoveEmptyOrWhitespaceNodes</item>
+		/// <item>MergeSingleChildRules</item>
+		/// <item>RecalculateSpans</item>
+		/// </list>
+		/// </summary>
+		Default = RemoveEmptyOrWhitespaceNodes | MergeSingleChildRules | TrimSpans,
+
+		/// <summary>
+		/// Removes pure literals (char and string) in the parse tree. Does not affects literal choices.
+		/// </summary>
+		RemovePureLiterals = 1,
+
+		/// <summary>
+		/// Removes empty nodes from the parse tree.
+		/// </summary>
+		RemoveEmptyNodes = 2,
+
+		/// <summary>
+		/// Removes whitespace nodes from the parse tree.
+		/// </summary>
+		RemoveWhitespaceNodes = 4,
+
+		/// <summary>
+		/// Removes whitespace and empty nodes from the parse tree.
+		/// </summary>
+		RemoveEmptyOrWhitespaceNodes = RemoveEmptyNodes | RemoveWhitespaceNodes,
+
+		/// <summary>
+		/// Merges single child rules into their parent recursively.
+		/// </summary>
+		MergeSingleChildRules = 8,
+
+		/// <summary>
+		/// Recalculates the start index and length of each node in the parse tree to remove the leading and trailing whitespace from each node's span.
+		/// </summary>
+		TrimSpans = 16,
+	}
+
 	/// <summary>
 	/// Represents the result of a parsed rule.
 	/// </summary>
 	public class ParsedRuleResult : IEnumerable<ParsedRuleResult>
 	{
+		/// <summary>
+		/// Gets the optimization flags that used to optimize the parse tree.
+		/// </summary>
+		public ParseTreeOptimization Optimization { get; }
+
 		/// <summary>
 		/// Gets the parent result of this rule, if any.
 		/// </summary>
@@ -105,30 +164,99 @@ namespace RCLargeLanguageModels.Parsing
 		/// Initializes a new instance of the <see cref="ParsedRuleResult"/> class.
 		/// </summary>
 		/// <param name="parent">The parent result of this rule, if any.</param>
+		/// <param name="treeOptimization">The optimization flags that used to optimize the parse tree.</param>
 		/// <param name="context">The parser context used for parsing.</param>
 		/// <param name="result">The parsed rule object containing the result of the parse.</param>
-		public ParsedRuleResult(ParsedRuleResult? parent, ParserContext context, ParsedRule result)
+		public ParsedRuleResult(ParseTreeOptimization treeOptimization,
+			ParsedRuleResult? parent, ParserContext context, ParsedRule result)
 		{
+			Optimization = treeOptimization;
 			Parent = parent;
 			Context = context;
-			Result = result;
+			Result = Optimized(result, context, Optimization);
 			Token = result.isToken ? new ParsedTokenResult(this, context, result.element) : null;
 
 			_textLazy = new Lazy<string>(() => Context.str.Substring(Result.startIndex, Result.length));
 			_valueLazy = new Lazy<object?>(() => Rule.ParsedValueFactory?.Invoke(this) ?? null);
+
 			_childrenLazy = new Lazy<ParsedRuleResult[]>(() =>
 			{
-				var children = new ParsedRuleResult[result.children?.Count ?? 0];
+				var children = new ParsedRuleResult[Result.children?.Count ?? 0];
 
-				if (result.children != null)
-				{
-					int i = 0;
-					foreach (var child in result.children)
-						children[i++] = new ParsedRuleResult(this, context, child);
-				}
+				for (int i = 0; i < children.Length; i++)
+					children[i] = new ParsedRuleResult(Optimization, this, Context, Result.children[i]);
 
 				return children;
 			});
+		}
+
+		private static ParsedRule Optimized(ParsedRule rule, ParserContext context, ParseTreeOptimization optimization)
+		{
+			if (rule.children == null || rule.children.Count == 0 || optimization == ParseTreeOptimization.None)
+				return rule;
+
+			IEnumerable<ParsedRule> rawChildren = rule.children;
+
+			if (optimization.HasFlag(ParseTreeOptimization.RemoveEmptyNodes))
+				rawChildren = rawChildren.Where(c => c.length != 0);
+
+			if (optimization.HasFlag(ParseTreeOptimization.RemoveWhitespaceNodes))
+				rawChildren = rawChildren.Where(c => !context.str.AsSpan(c.startIndex, c.length).IsWhiteSpace());
+
+			if (optimization.HasFlag(ParseTreeOptimization.RemovePureLiterals))
+				rawChildren = rawChildren.Where(c => !(c.isToken && (
+					context.parser.TokenPatterns[c.tokenId] is LiteralTokenPattern ||
+					context.parser.TokenPatterns[c.tokenId] is LiteralCharTokenPattern)));
+
+			if (optimization.HasFlag(ParseTreeOptimization.MergeSingleChildRules))
+			{
+				var children = rawChildren.ToList();
+				if (children.Count == 1)
+				{
+					return Optimized(children[0], context, optimization);
+				}
+			}
+
+			if (optimization.HasFlag(ParseTreeOptimization.TrimSpans))
+			{
+				var span = context.str.AsSpan(rule.startIndex, rule.length);
+				
+				int startIndex = 0;
+				int length = span.Length;
+
+				while (startIndex < span.Length && char.IsWhiteSpace(span[startIndex]))
+					startIndex++;
+
+				if (startIndex == span.Length)
+				{
+					rule.length = 0;
+				}
+				else
+				{
+					while (length > startIndex && char.IsWhiteSpace(span[length - 1]))
+						length--;
+
+					rule.startIndex += startIndex;
+					rule.length = length - startIndex;
+				}
+			}
+
+			rule.children = rawChildren.ToList();
+			return rule;
+		}
+
+		/// <summary>
+		/// Returns a optimized version of this parsed rule result.
+		/// </summary>
+		/// <remarks>
+		/// Optimizes the parse tree by applying the specified optimization flags.
+		/// Note that this may affect the parsed value calculation.
+		/// </remarks>
+		/// <param name="optimization">The optimization flags to apply.</param>
+		/// <returns>An optimized version of this parsed rule result.</returns>
+		public ParsedRuleResult Optimized(ParseTreeOptimization optimization)
+		{
+			return new ParsedRuleResult(optimization, Parent, Context, Result);
 		}
 
 		/// <summary>
@@ -262,7 +390,7 @@ namespace RCLargeLanguageModels.Parsing
 		{
 			StringBuilder sb = new StringBuilder();
 
-			sb.AppendLine($"Rule: {Rule.ToStringOverride(2)}");
+			sb.AppendLine($"Rule: {Rule.ToString(2)}");
 
 			string valueStr = string.Empty;
 			try

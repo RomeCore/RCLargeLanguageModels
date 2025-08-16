@@ -14,6 +14,11 @@ namespace RCLargeLanguageModels.Parsing.Building
 	/// </summary>
 	public class RuleBuilder : ParserElementBuilder<RuleBuilder>
 	{
+		private object? DefaultFactory_Optional(ParsedRuleResult r) => r.Children.Length > 0 ? r.Children[0].Value : null;
+		private object? DefaultFactory_Repeat(ParsedRuleResult r) => r.SelectArray();
+		private object? DefaultFactory_Choice(ParsedRuleResult r) => r.Children[0].Value;
+		private object? DefaultFactory_RepeatSeparated(ParsedRuleResult r) => r.SelectArray();
+
 		private Or<string, BuildableParserRule>? _rule;
 
 		/// <summary>
@@ -269,7 +274,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 			return AddRule(new BuildableOptionalParserRule
 			{
 				Child = builder.BuildingRule.Value
-			}, factory, config);
+			}, factory ?? DefaultFactory_Optional, config);
 		}
 
 		/// <summary>
@@ -296,7 +301,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 				MinCount = min,
 				MaxCount = max,
 				Child = builder.BuildingRule.Value
-			}, factory, config);
+			}, factory ?? DefaultFactory_Repeat, config);
 		}
 
 		/// <summary>
@@ -372,7 +377,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 
 			var choice = new BuildableChoiceParserRule();
 			choice.Choices.AddRange(builtValues);
-			return AddRule(choice, factory, config);
+			return AddRule(choice, factory ?? DefaultFactory_Choice, config);
 		}
 
 		/// <summary>
@@ -436,7 +441,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 				Separator = separatorBuilder.BuildingRule.Value,
 				AllowTrailingSeparator = allowTrailingSeparator,
 				IncludeSeparatorsInResult = includeSeparatorsInResult
-			}, factory, config);
+			}, factory ?? DefaultFactory_RepeatSeparated, config);
 		}
 
 		/// <summary>

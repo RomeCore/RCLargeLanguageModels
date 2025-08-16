@@ -23,5 +23,10 @@ namespace RCLargeLanguageModels.Prompting.Templates.ExpressionNodes
 		{
 			return context;
 		}
+
+		public override string ToString()
+		{
+			return "@entry";
+		}
 	}
 }

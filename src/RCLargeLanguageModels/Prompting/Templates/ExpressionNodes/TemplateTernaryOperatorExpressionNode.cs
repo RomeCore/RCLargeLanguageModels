@@ -46,5 +46,10 @@ namespace RCLargeLanguageModels.Prompting.Templates.ExpressionNodes
 			else
 				return Else.Evaluate(data);
 		}
+
+		public override string ToString()
+		{
+			return $"({Condition} ? {If} : {Else})";
+		}
 	}
 }

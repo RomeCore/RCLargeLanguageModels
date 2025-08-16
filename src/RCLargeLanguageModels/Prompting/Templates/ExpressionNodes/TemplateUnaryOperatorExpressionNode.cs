@@ -31,5 +31,20 @@ namespace RCLargeLanguageModels.Prompting.Templates.ExpressionNodes
 			var child = Child.Evaluate(context);
 			return child.Operator(Type);
 		}
+
+		private static string OperatorToString(UnaryOperatorType type)
+		{
+			return type switch
+			{
+				UnaryOperatorType.Negate => "-",
+				UnaryOperatorType.LogicalNot => "!",
+				_ => throw new ArgumentOutOfRangeException(nameof(type)),
+			};
+		}
+
+		public override string ToString()
+		{
+			return $"{OperatorToString(Type)}{Child}";
+		}
 	}
 }

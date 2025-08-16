@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using RCLargeLanguageModels.Prompting.Templates.DataAccessors;
+using RCLargeLanguageModels.Prompting.Templates.ExpressionNodes;
 
 namespace RCLargeLanguageModels.Prompting.Templates
 {
@@ -126,6 +127,15 @@ namespace RCLargeLanguageModels.Prompting.Templates
 		private bool isDisposed;
 		protected virtual void Dispose(bool disposing)
 		{
+		}
+
+		/// <summary>
+		/// Converts the template data to an expression node.
+		/// </summary>
+		/// <returns>An expression node representing the template data.</returns>
+		public TemplateExpressionNode AsExpression()
+		{
+			return new TemplateDataAccessorExpressionNode(this);
 		}
 
 		~TemplateDataAccessor()

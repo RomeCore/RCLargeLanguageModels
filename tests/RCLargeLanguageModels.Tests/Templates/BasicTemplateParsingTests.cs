@@ -3,12 +3,30 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using RCLargeLanguageModels.Parsing;
 using RCLargeLanguageModels.Prompting.Templates;
 
 namespace RCLargeLanguageModels.Tests.Templates
 {
 	public class BasicTemplateParsingTests
 	{
+		[Fact]
+		public void ExpressionsASTPasing()
+		{
+			var parser = LLTParser.Parser;
+
+			var value = parser.ParseRule("expression", "1 + 2 * 3 - 10").Value;
+			Assert.Equal("((1 + (2 * 3)) - 10)", value!.ToString()); // Expressions ASTs can be converted to string
+
+			value = parser.ParseRule("expression", "-1 + +2 * !3").Value;
+			Assert.Equal("(-1 + (2 * !3))", value!.ToString());
+
+			value = parser.ParseRule("expression", "a ? b : c ? d : e").Value;
+			Assert.Equal("(@ctx.a ? @ctx.b : (@ctx.c ? @ctx.d : @ctx.e))", value!.ToString());
+
+			value = parser.ParseRule("expression", "obj.method(1, 2).field[x]").Value;
+			Assert.Equal("@ctx.obj.method(1, 2).field[@ctx.x]", value!.ToString());
+		}
 
 		[Fact]
 		public void SimpleTemplateParsing()

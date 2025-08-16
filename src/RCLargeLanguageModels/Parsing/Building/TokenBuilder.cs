@@ -100,40 +100,32 @@ namespace RCLargeLanguageModels.Parsing.Building
 		}
 
 		/// <summary>
-		/// Sets the transformation function to the current sequence pattern.
+		/// Sets the default transformation function (parsed value factory) to the current pattern.
 		/// </summary>
-		/// <remarks>
-		/// This method should be called after adding at least two child elements to the sequence.
-		/// </remarks>
 		/// <param name="factory">The transformation function (parsed value factory) to set.</param>
 		/// <returns>Current instance for method chaining.</returns>
-		/// <exception cref="ParserBuildingException">Thrown if the current pattern is not a sequence or has fewer than two child elements.</exception>
+		/// <exception cref="ParserBuildingException">Thrown if the token pattern is not set or it is a direct reference to a named pattern.</exception>
 		public TokenBuilder Transform(Func<ParsedRuleResult, object?>? factory)
 		{
-			if (_pattern?.AsT2() is BuildableSequenceTokenPattern sequencePattern)
-				sequencePattern.DefaultParsedValueFactory = factory;
+			if (_pattern?.AsT2() is BuildableTokenPattern pattern)
+				pattern.DefaultParsedValueFactory = factory;
 			else
-				throw new ParserBuildingException("Parsed value factory can only be set on a sequence token pattern " +
-					"(must be added at least two child elements or must be converted to a sequence first).");
+				throw new ParserBuildingException("Token pattern is not set or it is a direct reference to a named pattern.");
 			return this;
 		}
 
 		/// <summary>
-		/// Configures the local settings for the current sequence pattern.
+		/// Sets the default configuration action for the current token pattern.
 		/// </summary>
-		/// <remarks>
-		/// This method should be called after adding at least two child elements to the sequence.
-		/// </remarks>
 		/// <param name="configAction">The configuration action.</param>
 		/// <returns>Current instance for method chaining.</returns>
-		/// <exception cref="ParserBuildingException">Thrown if the current pattern is not a sequence or has fewer than two child elements.</exception>
+		/// <exception cref="ParserBuildingException">Thrown if the token pattern is not set or it is a direct reference to a named pattern.</exception>
 		public TokenBuilder Configure(Action<ParserLocalSettingsBuilder> configAction)
 		{
-			if (_pattern?.AsT2() is BuildableSequenceTokenPattern sequenceRule)
-				sequenceRule.DefaultConfigurationAction = configAction;
+			if (_pattern?.AsT2() is BuildableTokenPattern pattern)
+				pattern.DefaultConfigurationAction = configAction;
 			else
-				throw new ParserBuildingException("Only a sequence token pattern can be configured " +
-					"(must be added at least two child elements or must be converted to a sequence first).");
+				throw new ParserBuildingException("Token pattern is not set or it is a direct reference to a named pattern.");
 			return this;
 		}
 

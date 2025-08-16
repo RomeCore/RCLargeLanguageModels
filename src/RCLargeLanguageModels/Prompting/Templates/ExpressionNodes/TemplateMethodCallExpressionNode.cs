@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Text;
 
 namespace RCLargeLanguageModels.Prompting.Templates.ExpressionNodes
 {
@@ -45,6 +44,11 @@ namespace RCLargeLanguageModels.Prompting.Templates.ExpressionNodes
 		{
 			var child = Child.Evaluate(context);
 			return child.Call(MethodName, Arguments.Select(arg => arg.Evaluate(context)).ToArray());
+		}
+
+		public override string ToString()
+		{
+			return $"{Child}.{MethodName}({string.Join(", ", Arguments.Select(arg => arg.ToString()))})";
 		}
 	}
 }

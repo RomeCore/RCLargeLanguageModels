@@ -25,5 +25,10 @@ namespace RCLargeLanguageModels.Prompting.Templates.ExpressionNodes
 		{
 			return Function.Call(Arguments.Select(arg => arg.Evaluate(context)).ToArray());
 		}
+
+		public override string ToString()
+		{
+			return $"{Function.Name}({string.Join(", ", Arguments.Select(arg => arg.ToString()))})";
+		}
 	}
 }

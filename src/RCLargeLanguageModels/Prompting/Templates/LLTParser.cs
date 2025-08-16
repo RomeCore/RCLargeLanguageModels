@@ -1,16 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using RCLargeLanguageModels.Parsing;
 using RCLargeLanguageModels.Parsing.Building;
 using RCLargeLanguageModels.Prompting.Templates.DataAccessors;
+using RCLargeLanguageModels.Prompting.Templates.ExpressionNodes;
 
 namespace RCLargeLanguageModels.Prompting.Templates
 {
 	public class LLTParser : ITemplateParser
 	{
 		private static readonly Parser _parser;
+
+		public static Parser Parser => _parser;
 
 		static LLTParser()
 		{
@@ -28,14 +33,22 @@ namespace RCLargeLanguageModels.Prompting.Templates
 
 			// ---- Values ---- //
 
+			builder.CreateToken("context_access")
+				.Identifier()
+				.Transform(v => new TemplatePropertyExpressionNode(
+					new TemplateContextAccessExpressionNode(), v.Text));
+
 			builder.CreateToken("identifier")
-				.Identifier();
+				.Identifier()
+				.Transform(v => v.Text);
 
-			builder.CreateToken("methodName")
-				.Identifier();
+			builder.CreateToken("method_name")
+				.Identifier()
+				.Transform(v => v.Text);
 
-			builder.CreateToken("fieldName")
-				.Identifier();
+			builder.CreateToken("field_name")
+				.Identifier()
+				.Transform(v => v.Text);
 
 			builder.CreateToken("number")
 				.Regex(@"\d+(?:\.\d+)?",
@@ -70,17 +83,24 @@ namespace RCLargeLanguageModels.Prompting.Templates
 			builder.CreateRule("constant_pair")
 				.Token("identifier")
 				.Literal(":")
-				.Rule("constant");
+				.Rule("constant")
+				.Transform(v => new KeyValuePair<string, TemplateDataAccessor>(v.GetValue<string>(0), v.GetValue<TemplateDataAccessor>(2)));
 
 			builder.CreateRule("constant_array")
 				.Literal("[")
 				.ZeroOrMoreSeparated(b => b.Rule("constant"), b => b.Literal(","), allowTrailingSeparator: true)
-				.Literal("]");
+				.Literal("]")
+				.Transform(v => new TemplateArrayAccessor(v.Children[1].SelectValues<TemplateDataAccessor>()));
 
 			builder.CreateRule("constant_object")
 				.Literal("{")
 				.ZeroOrMoreSeparated(b => b.Rule("constant_pair"), b => b.Literal(","), allowTrailingSeparator: true)
-				.Literal("}");
+				.Literal("}")
+				.Transform(v =>
+				{
+					var pairs = v.Children[1].SelectValues<KeyValuePair<string, TemplateDataAccessor>>();
+					return new TemplateDictionaryAccessor(pairs.ToDictionary(p => p.Key, p => p.Value));
+				});
 
 			// Expression values //
 
@@ -90,28 +110,19 @@ namespace RCLargeLanguageModels.Prompting.Templates
 					c => c.Token("string"),
 					c => c.Token("boolean"),
 					c => c.Token("null"),
-					c => c.Token("identifier"),
-					c => c.Rule("array"),
-					c => c.Rule("object"),
-					c => c.Literal('(').Rule("expression").Literal(')'));
+					c => c.Token("context_access"),
+					c => c.Literal('(').Rule("expression").Literal(')').Transform(v => v.GetValue(1)))
+				.Transform(v =>
+				{
+					var value = v.GetValue(0);
+
+					if (value is TemplateDataAccessor dataAccessor)
+						return dataAccessor.AsExpression();
+					return (TemplateExpressionNode)value;
+				});
 
 			builder.CreateRule("value")
 				.Rule("primary"); // Add alias for 'primary' rule
-
-			builder.CreateRule("pair")
-				.Token("identifier")
-				.Literal(':')
-				.Rule("value");
-
-			builder.CreateRule("array")
-				.Literal("[")
-				.ZeroOrMoreSeparated(b => b.Rule("value"), b => b.Literal(","), allowTrailingSeparator: true)
-				.Literal("]");
-
-			builder.CreateRule("object")
-				.Literal("{")
-				.ZeroOrMoreSeparated(b => b.Rule("pair"), b => b.Literal(","), allowTrailingSeparator: true)
-				.Literal("}");
 
 			// Expressions //
 
@@ -119,60 +130,177 @@ namespace RCLargeLanguageModels.Prompting.Templates
 				.Rule("primary")
 				.ZeroOrMore(b => b.Choice(
 					b => b.Literal('.') // Method call
-						  .Token("methodName")
+						  .Token("method_name")
 						  .Literal('(')
 						  .ZeroOrMoreSeparated(a => a.Rule("expression"), s => s.Literal(','))
 						  .Literal(')'),
 
 					b => b.Literal('.') // Field access
-						  .Token("fieldName"),
+						  .Token("field_name"),
 
 					b => b.Literal('[') // Index access
 						  .Rule("expression")
 						  .Literal(']')
-					));
+					))
+				.Transform(v =>
+				{
+					var target = v.GetValue<TemplateExpressionNode>(0);
+
+					foreach (var _member in v.Children[1])
+					{
+						var member = _member.Children[0];
+						switch (member.Result.occurency)
+						{
+							case 0:
+
+								target = new TemplateMethodCallExpressionNode(target,
+									member.GetValue<string>(1),
+									member.Children[3].SelectValues<TemplateExpressionNode>().ToImmutableArray());
+
+								break;
+
+							case 1:
+
+								target = new TemplatePropertyExpressionNode(target,
+									member.GetValue<string>(1));
+
+								break;
+
+							case 2:
+
+								target = new TemplateIndexExpressionNode(target,
+									member.GetValue<TemplateExpressionNode>(1));
+
+								break;
+						}
+					}
+
+					return target;
+				});
 
 			builder.CreateRule("prefix_operator")
 				.ZeroOrMore(b => b.LiteralChoice("+", "-", "!"))
-				.Rule("postfix_member");
+				.Rule("postfix_member")
+				.Transform(v =>
+				{
+					var target = v.GetValue<TemplateExpressionNode>(1);
+
+					foreach (var _operator in v.Children[0].Reverse())
+					{
+						var opStr = _operator.GetIntermediateValue<string>();
+
+						switch (_operator.GetIntermediateValue<string>())
+						{
+							case "+":
+								break;
+							case "-":
+								target = new TemplateUnaryOperatorExpressionNode(UnaryOperatorType.Negate, target);
+								break;
+							case "!":
+								target = new TemplateUnaryOperatorExpressionNode(UnaryOperatorType.LogicalNot, target);
+								break;
+						}
+					}
+
+					return target;
+				});
 
 			// Operators //
+
+			static object? OperatorFactory(ParsedRuleResult result)
+			{
+				var children = result.Children;
+				var target = children[0].GetValue<TemplateExpressionNode>();
+
+				for (int i = 1; i < children.Length; i += 2)
+				{
+					var right = children[i + 1].GetValue<TemplateExpressionNode>();
+					var opStr = children[i].GetIntermediateValue<string>();
+
+					var op = opStr switch
+					{
+						"*" => BinaryOperatorType.Multiply,
+						"/" => BinaryOperatorType.Divide,
+						"%" => BinaryOperatorType.Modulus,
+						"+" => BinaryOperatorType.Add,
+						"-" => BinaryOperatorType.Subtract,
+						"<" => BinaryOperatorType.LessThan,
+						"<=" => BinaryOperatorType.LessThanOrEqual,
+						">" => BinaryOperatorType.GreaterThan,
+						">=" => BinaryOperatorType.GreaterThanOrEqual,
+						"==" => BinaryOperatorType.Equal,
+						"!=" => BinaryOperatorType.NotEqual,
+						"&&" => BinaryOperatorType.LogicalAnd,
+						"||" => BinaryOperatorType.LogicalOr,
+						_ => throw new InvalidOperationException($"Unknown operator '{opStr}'"),
+					};
+
+					target = new TemplateBinaryOperatorExpressionNode(op, target, right);
+				}
+
+				return target;
+			}
 
 			builder.CreateRule("multiplicative_operator") // multiplicative
 				.OneOrMoreSeparated(b => b.Rule("prefix_operator"),
 					o => o.LiteralChoice("*", "/", "%"),
-					includeSeparatorsInResult: true);
+					includeSeparatorsInResult: true)
+				.Transform(OperatorFactory);
 
 			builder.CreateRule("additive_operator") // additive
 				.OneOrMoreSeparated(b => b.Rule("multiplicative_operator"),
 					o => o.LiteralChoice("+", "-"),
-					includeSeparatorsInResult: true);
+					includeSeparatorsInResult: true)
+				.Transform(OperatorFactory);
 
 			builder.CreateRule("relational_operator") // relational (<, <=, >, >=)
 				.OneOrMoreSeparated(b => b.Rule("additive_operator"),
 					o => o.LiteralChoice("<", "<=", ">", ">="),
-					includeSeparatorsInResult: true);
+					includeSeparatorsInResult: true)
+				.Transform(OperatorFactory);
 
 			builder.CreateRule("equality_operator") // equality (==, !=)
 				.OneOrMoreSeparated(b => b.Rule("relational_operator"),
 					o => o.LiteralChoice("==", "!="),
-					includeSeparatorsInResult: true);
+					includeSeparatorsInResult: true)
+				.Transform(OperatorFactory);
 
 			builder.CreateRule("logical_and_operator") // logical AND
 				.OneOrMoreSeparated(b => b.Rule("equality_operator"),
 					o => o.Literal("&&"),
-					includeSeparatorsInResult: true);
+					includeSeparatorsInResult: true)
+				.Transform(OperatorFactory);
 
 			builder.CreateRule("logical_or_operator") // logical OR
 				.OneOrMoreSeparated(b => b.Rule("logical_and_operator"),
 					o => o.Literal("||"),
-					includeSeparatorsInResult: true,
-					config: c => c.SkippingStrategy(ParserSkippingStrategy.SkipBeforeParsing));
+					includeSeparatorsInResult: true)
+				.Transform(OperatorFactory);
+
+			builder.CreateRule("ternary_operator") // ternary (? :)
+				.Rule("logical_or_operator")
+				.Optional(b => b
+					.Literal('?')
+					.Rule("expression")
+					.Literal(':')
+					.Rule("expression"))
+				.Transform(v =>
+				{
+					var condition = v.GetValue<TemplateExpressionNode>(0);
+					var additional = v.Children[1];
+					if (additional.Children.Length == 0)
+						return condition;
+
+					var trueExpr = additional.Children[0].GetValue<TemplateExpressionNode>(1);
+					var falseExpr = additional.Children[0].GetValue<TemplateExpressionNode>(3);
+
+					return new TemplateTernaryOperatorExpressionNode(condition, trueExpr, falseExpr);
+				});
 
 			// Final expression = lowest precedence
 
 			builder.CreateRule("expression")
-				.Rule("logical_or_operator");
+				.Rule("ternary_operator");
 
 			// ---- Templates ---- //
 
@@ -184,7 +312,8 @@ namespace RCLargeLanguageModels.Prompting.Templates
 			builder.CreateRule("metadata_block")
 				.Literal('@')
 				.Literal("metadata")
-				.Rule("constant_object");
+				.Rule("constant_object")
+				.Transform(v => v.GetValue(2));
 
 			// Messages templates //
 

@@ -37,5 +37,10 @@ namespace RCLargeLanguageModels.Prompting.Templates.ExpressionNodes
 			var index = Index.Evaluate(data);
 			return child.Index(index);
 		}
+
+		public override string ToString()
+		{
+			return $"{Child}[{Index}]";
+		}
 	}
 }

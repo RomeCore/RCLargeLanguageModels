@@ -40,5 +40,31 @@ namespace RCLargeLanguageModels.Prompting.Templates.ExpressionNodes
 			var right = Right.Evaluate(context);
 			return left.Operator(right, Type);
 		}
+
+		private static string OperatorToString(BinaryOperatorType type)
+		{
+			return type switch
+			{
+				BinaryOperatorType.Add => "+",
+				BinaryOperatorType.Subtract => "-",
+				BinaryOperatorType.Multiply => "*",
+				BinaryOperatorType.Divide => "/",
+				BinaryOperatorType.Modulus => "%",
+				BinaryOperatorType.LessThan => "<",
+				BinaryOperatorType.LessThanOrEqual => "<=",
+				BinaryOperatorType.GreaterThan => ">",
+				BinaryOperatorType.GreaterThanOrEqual => ">=",
+				BinaryOperatorType.Equal => "==",
+				BinaryOperatorType.NotEqual => "!=",
+				BinaryOperatorType.LogicalAnd => "&&",
+				BinaryOperatorType.LogicalOr => "||",
+				_ => throw new ArgumentException("Invalid expression type.", nameof(type))
+			};
+		}
+
+		public override string ToString()
+		{
+			return $"({Left} {OperatorToString(Type)} {Right})";
+		}
 	}
 }

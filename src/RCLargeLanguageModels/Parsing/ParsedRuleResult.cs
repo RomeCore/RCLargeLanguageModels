@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using RCLargeLanguageModels.Parsing.TokenPatterns;
 
@@ -267,6 +268,13 @@ namespace RCLargeLanguageModels.Parsing
 		public T GetIntermediateValue<T>() => (T)IntermediateValue;
 
 		/// <summary>
+		/// Gets the intermediate value associated with child rule at the specific index as an instance of type <typeparamref name="T"/>.
+		/// </summary>
+		/// <typeparam name="T">The type of value to retrieve.</typeparam>
+		/// <returns>The intermediate value associated with child rule.</returns>
+		public T GetIntermediateValue<T>(int index) => (T)Children[index].IntermediateValue;
+
+		/// <summary>
 		/// Tries to get the intermediate value associated with this rule as an instance of type <typeparamref name="T"/>.
 		/// </summary>
 		/// <typeparam name="T">The type of value to retrieve.</typeparam>
@@ -274,10 +282,24 @@ namespace RCLargeLanguageModels.Parsing
 		public T? TryGetIntermediateValue<T>() where T : class => IntermediateValue as T;
 
 		/// <summary>
+		/// Tries to get the intermediate value associated with child rule at the specific index as an instance of type <typeparamref name="T"/>.
+		/// </summary>
+		/// <typeparam name="T">The type of value to retrieve.</typeparam>
+		/// <returns>The intermediate value associated with child rule.</returns>
+		public T? TryGetIntermediateValue<T>(int index) where T : class
+			=> Children.Length > index ? Children[index].IntermediateValue as T : null;
+
+		/// <summary>
 		/// Gets the value associated with this rule as not-null object. If the value is null, throws an exception.
 		/// </summary>
 		/// <returns>The value associated with this rule.</returns>
 		public object GetValue() => Value ?? throw new InvalidOperationException("ParsedRuleResult.Value is null");
+
+		/// <summary>
+		/// Gets the value associated with child rule at the specific index as not-null object. If the value is null, throws an exception.
+		/// </summary>
+		/// <returns>The value associated with child rule.</returns>
+		public object GetValue(int index) => Children[index].Value ?? throw new InvalidOperationException("ParsedRuleResult.Value is null");
 
 		/// <summary>
 		/// Gets the value associated with this rule as an instance of type <typeparamref name="T"/>.
@@ -287,11 +309,26 @@ namespace RCLargeLanguageModels.Parsing
 		public T GetValue<T>() => (T)Value;
 
 		/// <summary>
+		/// Gets the value associated with child rule at the specific index as an instance of type <typeparamref name="T"/>.
+		/// </summary>
+		/// <typeparam name="T">The type of value to retrieve.</typeparam>
+		/// <returns>The value associated with child rule.</returns>
+		public T GetValue<T>(int index) => (T)Children[index].Value;
+
+		/// <summary>
 		/// Tries to get the value associated with this rule as an instance of type <typeparamref name="T"/>.
 		/// </summary>
 		/// <typeparam name="T">The type of value to retrieve.</typeparam>
 		/// <returns>The value associated with this rule.</returns>
 		public T? TryGetValue<T>() where T : class => Value as T;
+
+		/// <summary>
+		/// Tries to get the value associated with child rule at the specific index as an instance of type <typeparamref name="T"/>.
+		/// </summary>
+		/// <typeparam name="T">The type of value to retrieve.</typeparam>
+		/// <returns>The value associated with child rule.</returns>
+		public T? TryGetValue<T>(int index) where T : class
+			=> Children.Length > index ? Children[index].Value as T : null;
 
 		/// <summary>
 		/// Selects the children values of this rule.

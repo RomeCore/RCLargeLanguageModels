@@ -13,5 +13,10 @@ namespace RCLargeLanguageModels.Prompting.Templates.ExpressionNodes
 		{
 			return context.Context;
 		}
+
+		public override string ToString()
+		{
+			return "@ctx";
+		}
 	}
 }

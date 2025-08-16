@@ -219,38 +219,30 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// <summary>
 		/// Sets the transformation function to the current sequence rule.
 		/// </summary>
-		/// <remarks>
-		/// This method should be called after adding at least two child elements to the sequence.
-		/// </remarks>
 		/// <param name="factory">The transformation function (parsed value factory) to set.</param>
 		/// <returns>Current instance for method chaining.</returns>
-		/// <exception cref="ParserBuildingException">Thrown if the current rule is not a sequence or has fewer than two child elements.</exception>
+		/// <exception cref="ParserBuildingException">Thrown if the parser rule is not set or it is a direct reference to a named rule.</exception>
 		public RuleBuilder Transform(Func<ParsedRuleResult, object?>? factory)
 		{
-			if (_rule?.AsT2() is BuildableSequenceParserRule sequenceRule)
-				sequenceRule.ParsedValueFactory = factory;
+			if (_rule?.AsT2() is BuildableParserRule rule)
+				rule.ParsedValueFactory = factory;
 			else
-				throw new ParserBuildingException("Parsed value factory can only be set on a sequence rule " +
-					"(must be added at least two child elements or must be converted to a sequence first).");
+				throw new ParserBuildingException("Parser rule is not set or it is a direct reference to named rule.");
 			return this;
 		}
 
 		/// <summary>
 		/// Configures the local settings for the current sequence rule.
 		/// </summary>
-		/// <remarks>
-		/// This method should be called after adding at least two child elements to the sequence.
-		/// </remarks>
 		/// <param name="configAction">The configuration action.</param>
 		/// <returns>Current instance for method chaining.</returns>
-		/// <exception cref="ParserBuildingException">Thrown if the current rule is not a sequence or has fewer than two child elements.</exception>
+		/// <exception cref="ParserBuildingException">Thrown if the parser rule is not set or it is a direct reference to a named rule.</exception>
 		public RuleBuilder Configure(Action<ParserLocalSettingsBuilder> configAction)
 		{
-			if (_rule?.AsT2() is BuildableSequenceParserRule sequenceRule)
-				configAction(sequenceRule.Settings);
+			if (_rule?.AsT2() is BuildableParserRule rule)
+				configAction(rule.Settings);
 			else
-				throw new ParserBuildingException("Only a sequence rule can be configured " +
-					"(must be added at least two child elements or must be converted to a sequence first).");
+				throw new ParserBuildingException("Parser rule is not set or it is a direct reference to named rule.");
 			return this;
 		}
 

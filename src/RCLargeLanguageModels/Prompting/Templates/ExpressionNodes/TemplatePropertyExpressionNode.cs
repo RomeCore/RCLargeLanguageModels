@@ -37,5 +37,10 @@ namespace RCLargeLanguageModels.Prompting.Templates.ExpressionNodes
 			var child = Child.Evaluate(context);
 			return child.Property(PropertyName);
 		}
+
+		public override string ToString()
+		{
+			return $"{Child}.{PropertyName}";
+		}
 	}
 }

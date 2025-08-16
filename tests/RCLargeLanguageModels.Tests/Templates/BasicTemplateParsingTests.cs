@@ -22,13 +22,13 @@ namespace RCLargeLanguageModels.Tests.Templates
 			    Hello, @user.name!
 			
 			    @// Display a number.
-			    Value: @number.
+			    Value: @number
 			
 			    @// Method call with parameters.
-			    Method test: @data.getItem(1, "arg").fieldName.
+			    Method test: @data.getItem(1, "arg").fieldName
 			
 			    @// Simple arithmetic and logical operations.
-			    Result: @(a * (b + c) - 42 / value % 3 > 0 && !flag || isAdmin).
+			    Result: @(a * (b + c) - 42 / value % 3 > 0 && !flag || isAdmin)
 
 			    @if user.age >= 18 {
 			        Adult content

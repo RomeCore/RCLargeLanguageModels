@@ -175,8 +175,7 @@ namespace RCLargeLanguageModels.Parsing
 			int skipRuleId = context.settings.skipRule;
 			int startIndex = context.position;
 
-			if (skipRuleId != -1 && context.position < context.str.Length &&
-				!context.skippedPositions[context.position])
+			if (skipRuleId != -1 && context.position < context.str.Length)
 			{
 				var skipRule = Rules[skipRuleId];
 
@@ -200,8 +199,6 @@ namespace RCLargeLanguageModels.Parsing
 						context.position = childContext.position = ctx.position = childCtx.position = newPosition;
 						context.skippedRules.Add(parsedSkipRule);
 					}
-
-					context.skippedPositions[context.position] = true;
 				}
 				while (skipRuleLength > 0);
 			}

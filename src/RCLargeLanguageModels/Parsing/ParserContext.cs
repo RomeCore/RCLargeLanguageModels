@@ -56,11 +56,6 @@ namespace RCLargeLanguageModels.Parsing
 		public readonly List<ParsingError> errors;
 
 		/// <summary>
-		/// A set of positions that were skipped.
-		/// </summary>
-		public readonly BitArray skippedPositions;
-
-		/// <summary>
 		/// A list to store any rules that were skipped during the parsing process.
 		/// </summary>
 		public readonly List<ParsedRule> skippedRules;
@@ -108,7 +103,6 @@ namespace RCLargeLanguageModels.Parsing
 			this.cache = new ParserCache();
 			this.successPositions = new BitArray(str.Length);
 			this.errors = new List<ParsingError>();
-			this.skippedPositions = new BitArray(str.Length);
 			this.skippedRules = new List<ParsedRule>();
 		}
 

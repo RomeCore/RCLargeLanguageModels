@@ -11,12 +11,12 @@ namespace RCLargeLanguageModels.Prompting.Templates.ExpressionNodes
 	{
 		public override TemplateDataAccessor Evaluate(TemplateContextAccessor context)
 		{
-			return context.Context;
+			return context;
 		}
 
 		public override string ToString()
 		{
-			return "@ctx";
+			return "ctx";
 		}
 	}
 }

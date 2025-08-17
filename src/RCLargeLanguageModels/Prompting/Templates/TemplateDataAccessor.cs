@@ -155,5 +155,16 @@ namespace RCLargeLanguageModels.Prompting.Templates
 				GC.SuppressFinalize(this);
 			}
 		}
+
+		/// <summary>
+		/// Creates a new template data accessor based on the provided object.
+		/// </summary>
+		/// <param name="value">The object to create a template data accessor for.</param>
+		/// <param name="options">The options to use when creating the template data accessor.</param>
+		/// <returns>A new instance of <see cref="TemplateDataAccessor"/>.</returns>
+		public static TemplateDataAccessor Create(object? value, DataAccessorCreationOptions options = DataAccessorCreationOptions.None)
+		{
+			return DataAccessorFactory.Create(value, options);
+		}
 	}
 }

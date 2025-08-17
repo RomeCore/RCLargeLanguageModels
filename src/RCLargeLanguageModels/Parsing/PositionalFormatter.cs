@@ -22,7 +22,7 @@ namespace RCLargeLanguageModels.Parsing
 		public static void Decompose(string str, int position,
 			out int lineStart, out int lineLength, out int lineNumber, out int column)
 		{
-			if (position < 0 || position >= str.Length)
+			if (position < 0 || position > str.Length)
 				throw new ArgumentOutOfRangeException(nameof(position), "Position must be within the bounds of the string.");
 
 			int currentLineNumber = 1;

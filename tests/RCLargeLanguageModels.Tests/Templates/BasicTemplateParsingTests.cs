@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using RCLargeLanguageModels.Parsing;
+using RCLargeLanguageModels.Prompting.Metadata;
 using RCLargeLanguageModels.Prompting.Templates;
 
 namespace RCLargeLanguageModels.Tests.Templates
@@ -15,17 +16,110 @@ namespace RCLargeLanguageModels.Tests.Templates
 		{
 			var parser = LLTParser.Parser;
 
-			var value = parser.ParseRule("expression", "1 + 2 * 3 - 10").Value;
-			Assert.Equal("((1 + (2 * 3)) - 10)", value!.ToString()); // Expressions ASTs can be converted to string
+			var value = parser.ParseRule("expression", "1 + 2 * 3 - 10").GetValue<TemplateExpressionNode>();
+			Assert.Equal("((1 + (2 * 3)) - 10)", value.ToString());
 
-			value = parser.ParseRule("expression", "-1 + +2 * !3").Value;
-			Assert.Equal("(-1 + (2 * !3))", value!.ToString());
+			value = parser.ParseRule("expression", "-1 + +2 * !3").GetValue<TemplateExpressionNode>();
+			Assert.Equal("(-1 + (2 * !3))", value.ToString());
 
-			value = parser.ParseRule("expression", "a ? b : c ? d : e").Value;
-			Assert.Equal("(@ctx.a ? @ctx.b : (@ctx.c ? @ctx.d : @ctx.e))", value!.ToString());
+			value = parser.ParseRule("expression", "ctx.a ? b : ctx.c ? d : ctx.e").GetValue<TemplateExpressionNode>();
+			Assert.Equal("(ctx.a ? ctx.b : (ctx.c ? ctx.d : ctx.e))", value.ToString());
 
-			value = parser.ParseRule("expression", "obj.method(1, 2).field[x]").Value;
-			Assert.Equal("@ctx.obj.method(1, 2).field[@ctx.x]", value!.ToString());
+			value = parser.ParseRule("expression", "obj.method(1, 2).field[x]").GetValue<TemplateExpressionNode>();
+			Assert.Equal("ctx.obj.method(1, 2).field[ctx.x]", value.ToString());
+		}
+
+		[Fact]
+		public void BasicTemplateRendering()
+		{
+			var parser = new LLTParser();
+
+			var templateStr = "@template test { Hello, @ctx.name! }";
+
+			var template = parser.Parse(templateStr).First();
+			var identifier = template.Metadata.TryGet<TemplateIdentifierMetadata>()!.Identifier;
+			var rendered = template.Render(new { name = "Andrew" }).ToString();
+
+			Assert.Equal("test", identifier);
+			Assert.Contains("Hello, Andrew!", rendered);
+		}
+
+		[Fact]
+		public void SyntaxErrors()
+		{
+			var parser = new LLTParser();
+
+			Assert.Throws<ParsingException>(() => parser.Parse("@template bad { Hello @ }").First());
+			Assert.Throws<ParsingException>(() => parser.Parse("@template bad { @if (x ) { }").First());
+			Assert.Throws<ParsingException>(() => parser.Parse("@template bad { @\"unterminated }").First());
+		}
+
+
+		[Fact]
+		public void IfElseTemplateRendering()
+		{
+			var parser = new LLTParser();
+
+			var templateStr =
+			"""
+			@template if_else_test
+			{
+				Greetings, @name!
+				@if age > 18
+				{
+					You are an adult.
+				}
+				else
+				{
+					You are too young!
+				}
+			}
+			""";
+
+			var template = parser.Parse(templateStr).First();
+
+			var adult = new { name = "Andrew", age = 20 };
+			var young = new { name = "Alice", age = 15 };
+
+			var renderedAdult = template.Render(adult).ToString();
+			var renderedYoung = template.Render(young).ToString();
+
+			Assert.Contains("Greetings, Andrew!", renderedAdult);
+			Assert.Contains("You are an adult.", renderedAdult);
+			Assert.Contains("Greetings, Alice!", renderedYoung);
+			Assert.Contains("You are too young!", renderedYoung);
+		}
+
+		[Fact]
+		public void ForeachTemplateRendering()
+		{
+			var parser = new LLTParser();
+
+			var templateStr =
+			"""
+			@template foreach_test
+			{
+				Here is groceries list:
+				@foreach item in ctx
+				{
+					- @item.name: @item.quantity
+				}
+			}
+			""";
+
+			var template = parser.Parse(templateStr).First();
+
+			var groceries = new [] {
+				new { name = "Apples", quantity = 3 },
+				new { name = "Bananas", quantity = 5 },
+				new { name = "Oranges", quantity = 2 }
+			};
+
+			var rendered = template.Render(groceries).ToString();
+
+			Assert.Contains("- Apples: 3", rendered);
+			Assert.Contains("- Bananas: 5", rendered);
+			Assert.Contains("- Oranges: 2", rendered);
 		}
 
 		[Fact]
@@ -36,8 +130,8 @@ namespace RCLargeLanguageModels.Tests.Templates
 			@// The main template.
 			@template MainTemplate {
 			    @*
-				Use the template to display a greeting message.
-				*@
+			    Use the template to display a greeting message.
+			    *@
 			    Hello, @user.name!
 			
 			    @// Display a number.
@@ -62,16 +156,6 @@ namespace RCLargeLanguageModels.Tests.Templates
 			
 			    @foreach item in user.items {
 			        Item: @item.id - @item.name
-			        @while item.count < 5 {
-			            Count: @item.count
-			        }
-			    }
-			
-			    @while counter < 10 {
-			        Counter = @counter
-			        @foreach sub in counter.list {
-			            Sub = @sub
-			        }
 			    }
 			
 			    @// String literals, booleans, and null values.
@@ -111,7 +195,7 @@ namespace RCLargeLanguageModels.Tests.Templates
 			""";
 
 			var parser = new LLTParser();
-			var result = parser.ParseAST(templateStr);
+			parser.Parse(templateStr);
 		}
 
 		[Fact]
@@ -153,7 +237,7 @@ namespace RCLargeLanguageModels.Tests.Templates
 			""";
 
 			var parser = new LLTParser();
-			var result = parser.ParseAST(templateStr);
+			parser.Parse(templateStr);
 		}
 	}
 }

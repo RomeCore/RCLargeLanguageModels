@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text;
+using RCLargeLanguageModels.Prompting.Templates.DataAccessors;
 
 namespace RCLargeLanguageModels.Prompting.Templates
 {
@@ -80,7 +82,7 @@ namespace RCLargeLanguageModels.Prompting.Templates
 	/// <summary>
 	/// The accessor for template context variables.
 	/// </summary>
-	public class TemplateContextAccessor : TemplateDataAccessor
+	public class TemplateContextAccessor : TemplateDataAccessor, IEnumerableTemplateDataAccessor
 	{
 		private readonly Stack<TemplateContextFrame> _frames;
 
@@ -180,7 +182,20 @@ namespace RCLargeLanguageModels.Prompting.Templates
 
 		public override string ToString(string? format = null)
 		{
-			throw new NotImplementedException();
+			return Context.ToString(format);
+		}
+
+		public IEnumerator<TemplateDataAccessor> GetEnumerator()
+		{
+			if (Context is IEnumerableTemplateDataAccessor enumerableContext)
+				return enumerableContext.GetEnumerator();
+			
+			throw new TemplateRuntimeException("Cannot enumerate over non-enumerable context.", dataAccessor: this);
+		}
+
+		IEnumerator IEnumerable.GetEnumerator()
+		{
+			return GetEnumerator();
 		}
 	}
 }

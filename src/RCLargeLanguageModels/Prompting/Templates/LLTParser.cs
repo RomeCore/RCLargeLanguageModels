@@ -4,10 +4,13 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using RCLargeLanguageModels.Metadata;
 using RCLargeLanguageModels.Parsing;
 using RCLargeLanguageModels.Parsing.Building;
+using RCLargeLanguageModels.Prompting.Metadata;
 using RCLargeLanguageModels.Prompting.Templates.DataAccessors;
 using RCLargeLanguageModels.Prompting.Templates.ExpressionNodes;
+using RCLargeLanguageModels.Prompting.Templates.TemplateNodes;
 
 namespace RCLargeLanguageModels.Prompting.Templates
 {
@@ -32,11 +35,6 @@ namespace RCLargeLanguageModels.Prompting.Templates
 				.CacheAll(); // If caching is disabled, prepare to wait for a long time (seconds) when encountering an error :P (you will also get a million of errors, seriously)
 
 			// ---- Values ---- //
-
-			builder.CreateToken("context_access")
-				.Identifier()
-				.Transform(v => new TemplatePropertyExpressionNode(
-					new TemplateContextAccessExpressionNode(), v.Text));
 
 			builder.CreateToken("identifier")
 				.Identifier()
@@ -104,13 +102,23 @@ namespace RCLargeLanguageModels.Prompting.Templates
 
 			// Expression values //
 
+			builder.CreateRule("context_access")
+				.Choice(
+					b => b
+						.Literal("ctx")
+							.Transform(_ => new TemplateContextAccessExpressionNode()),
+					b => b
+						.Identifier()
+							.Transform(v => new TemplatePropertyExpressionNode(
+								new TemplateContextAccessExpressionNode(), v.Text)));
+
 			builder.CreateRule("primary")
 				.Choice(
 					c => c.Token("number"),
 					c => c.Token("string"),
 					c => c.Token("boolean"),
 					c => c.Token("null"),
-					c => c.Token("context_access"),
+					c => c.Rule("context_access"),
 					c => c.Literal('(').Rule("expression").Literal(')').Transform(v => v.GetValue(1)))
 				.Transform(v =>
 				{
@@ -313,7 +321,29 @@ namespace RCLargeLanguageModels.Prompting.Templates
 				.Literal('@')
 				.Literal("metadata")
 				.Rule("constant_object")
-				.Transform(v => v.GetValue(2));
+				.Transform(v =>
+				{
+					var obj = v.GetValue<TemplateDictionaryAccessor>(2);
+					var metadata = new List<IMetadata>();
+
+					foreach (var pair in obj.Dictionary)
+					{
+						switch (pair.Key)
+						{
+							case "lang":
+								metadata.Add(new LanguageMetadata(new Locale.LanguageCode(pair.Value.ToString())));
+								break;
+							case "model":
+								metadata.Add(new TargetModelMetadata(pair.Value.ToString()));
+								break;
+							case "model_family":
+								metadata.Add(new TargetModelFamilyMetadata(pair.Value.ToString()));
+								break;
+						}
+					}
+
+					return new MetadataCollection(metadata);
+				});
 
 			// Messages templates //
 
@@ -323,20 +353,31 @@ namespace RCLargeLanguageModels.Prompting.Templates
 				.Whitespaces()
 				.Literal("template")
 				.Whitespaces()
-				.Token("identifier")
-				.Rule("messages_template_main_block");
-
-			builder.CreateRule("messages_template_main_block")
+				.Token("identifier") // 5
 				.Literal('{')
-				.Optional(b =>
+				.Optional(b => // 7
 					b.Rule("metadata_block"))
-				.Rule("message_statements")
-				.Literal('}');
+				.Rule("message_statements") // 8
+				.Literal('}')
+				.Transform(v =>
+				{
+					var identifier = v.GetValue<string>(5);
+					var identifierMetadata = new TemplateIdentifierMetadata(identifier);
+
+					var metadata = identifierMetadata.WrapIntoEnumerable<IMetadata>();
+					if (v.TryGetValue<MetadataCollection>(7) is MetadataCollection collection)
+						metadata = metadata.Concat(collection);
+
+					var node = v.GetValue<MessagesTemplateNode>(8);
+
+					return new MessagesTemplate(node, new MetadataCollection(metadata));
+				});
 
 			builder.CreateRule("messages_template_block")
 				.Literal('{')
 				.Rule("message_statements")
-				.Literal('}');
+				.Literal('}')
+				.Transform(v => v.GetValue(1));
 
 			builder.CreateRule("message_statements")
 				.ZeroOrMore(b => b
@@ -345,7 +386,17 @@ namespace RCLargeLanguageModels.Prompting.Templates
 						c => c.Rule("message_block"),
 						c => c.Rule("messages_if"),
 						c => c.Rule("messages_foreach"),
-						c => c.Rule("messages_while")));
+						c => c.Rule("messages_while"))
+					.Transform(v => v.GetValue(1)))
+				.Transform(v =>
+				{
+					var nodes = v.SelectArray<MessagesTemplateNode>();
+
+					if (nodes.Length == 1)
+						return nodes[0];
+
+					return new MessagesTemplateSequentialNode(nodes);
+				});
 
 			builder.CreateRule("message_block")
 				.Choice(
@@ -356,19 +407,24 @@ namespace RCLargeLanguageModels.Prompting.Templates
 				.LiteralChoice("system", "user", "assistant", "tool")
 				.Whitespaces()
 				.Literal("message")
-				.Rule("text_template_block");
+				.Rule("text_template_block")
+				.Transform(v =>
+				{
+					var role = new TemplateStringAccessor(v.GetIntermediateValue<string>(0));
+					return new MessagesTemplateEntryNode(role.AsExpression(), v.GetValue<PromptTemplateNode>(3));
+				});
 
 			builder.CreateRule("message_block_variable_role")
 				.Literal("message")
-				.Rule("message_variable_role_block");
-
-			builder.CreateRule("message_variable_role_block")
 				.Literal('{')
-				.Literal('@')
-				.Literal("role")
-				.Rule("text_expression")
-				.Rule("text_statements")
-				.Literal('}');
+				.Literal('@').Literal("role").Whitespaces().Rule("text_expression") // 5
+				.Rule("text_statements") // 6
+				.Literal('}')
+				.Transform(v =>
+				{
+					var role = v.GetValue<TemplateExpressionNode>(5);
+					return new MessagesTemplateEntryNode(role, v.GetValue<PromptTemplateNode>(6));
+				});
 
 			builder.CreateRule("messages_if")
 				.Literal("if")
@@ -376,19 +432,37 @@ namespace RCLargeLanguageModels.Prompting.Templates
 				.Rule("expression")
 				.Rule("messages_template_block")
 				.Optional(
-					b => b.Literal("else").Choice(
-						b => b.Rule("messages_if"),
-						b => b.Rule("messages_template_block")));
+					b => b
+						.Literal("else")
+						.Choice(
+							b => b.Rule("messages_if"),
+							b => b.Rule("messages_template_block"))
+						.Transform(v => v.GetValue(1)))
+				.Transform(v =>
+				{
+					var condition = v.GetValue<TemplateExpressionNode>(2);
+					var ifBlock = v.GetValue<MessagesTemplateNode>(3);
+					var elseBlock = v.TryGetValue<MessagesTemplateNode>(4);
+					return new MessagesTemplateIfElseNode(condition, ifBlock, elseBlock);
+				});
 
 			builder.CreateRule("messages_foreach")
 				.Literal("foreach")
 				.Whitespaces()
-				.Token("identifier")
+				.Token("identifier") // 2
 				.Literal("in")
 				.Whitespaces()
-				.Rule("expression")
-				.Rule("messages_template_block");
+				.Rule("expression") // 5
+				.Rule("messages_template_block") // 6
+				.Transform(v =>
+				{
+					var variable = v.GetValue<string>(2);
+					var collection = v.GetValue<TemplateExpressionNode>(5);
+					var block = v.GetValue<MessagesTemplateNode>(6);
+					return new MessagesTemplateForeachNode(collection, block, variable);
+				});
 
+			// TEMPORARY EXCLUDED: messages while loop
 			builder.CreateRule("messages_while")
 				.Literal("while")
 				.Rule("expression")
@@ -400,39 +474,63 @@ namespace RCLargeLanguageModels.Prompting.Templates
 				.Literal('@')
 				.Literal("template")
 				.Whitespaces()
-				.Token("identifier")
-				.Rule("text_template_main_block");
+				.Token("identifier") // 3
+				.Literal('{')
+				.Optional(b => b.Rule("metadata_block")) // 5
+				.Rule("text_statements") // 6
+				.Literal('}')
+				.Transform(v =>
+				{
+					var identifier = v.GetValue<string>(3);
+					var identifierMetadata = new TemplateIdentifierMetadata(identifier);
+
+					var metadata = identifierMetadata.WrapIntoEnumerable<IMetadata>();
+					if (v.TryGetValue<MetadataCollection>(5) is MetadataCollection collection)
+						metadata = metadata.Concat(collection);
+
+					var node = v.GetValue<PromptTemplateNode>(6);
+
+					return new PromptTemplate(node, new MetadataCollection(metadata));
+				});
 
 			builder.CreateRule("text_content")
-				.EscapedTextDoubleChars("@{}", allowsEmpty: false);
+				.EscapedTextDoubleChars("@{}", allowsEmpty: false)
+				.Transform(v => new PromptTemplatePlainTextNode(v.GetIntermediateValue<string>()));
 
 			builder.CreateRule("text_statements")
 				.ZeroOrMore(b => b.Choice(
 					c => c.Rule("text_content"),
-					c => c.Rule("text_statement")));
+					c => c.Rule("text_statement")))
+				.Transform(v =>
+				{
+					var nodes = v.SelectArray<PromptTemplateNode>();
 
-			builder.CreateRule("text_template_main_block")
-				.Literal('{')
-				.Optional(b => b.Rule("metadata_block"))
-				.Rule("text_statements")
-				.Literal('}');
+					if (nodes.Length == 1)
+						return nodes[0];
+
+					return new PromptTemplateSequentialNode(nodes);
+				});
 
 			builder.CreateRule("text_template_block")
 				.Literal('{')
 				.Rule("text_statements")
-				.Literal('}');
+				.Literal('}')
+				.Transform(v => v.GetValue(1));
 
 			builder.CreateRule("text_statement")
 				.Literal('@')
 				.Choice(
 					b => b.Rule("text_if"),
 					b => b.Rule("text_foreach"),
-					b => b.Rule("text_while"),
+					// b => b.Rule("text_while"),
 					b => b.Rule("text_expression")
-					);
+					)
+				.Transform(v => v.GetValue(1));
 
 			builder.CreateRule("text_expression")
-				.Rule("prefix_operator"); // We don't want to use binary expressions in text statements
+				.Rule("prefix_operator") // We don't want to use binary expressions in text statements
+				.ToSequence()
+				.Transform(v => new PromptTemplateExpressionNode(v.GetValue<TemplateExpressionNode>(0)));
 
 			builder.CreateRule("text_if")
 				.Literal("if")
@@ -440,19 +538,37 @@ namespace RCLargeLanguageModels.Prompting.Templates
 				.Rule("expression")
 				.Rule("text_template_block")
 				.Optional(
-					b => b.Literal("else").Choice(
-						b => b.Rule("text_if"),
-						b => b.Rule("text_template_block")));
+					b => b
+						.Literal("else")
+						.Choice(
+							b => b.Rule("text_if"),
+							b => b.Rule("text_template_block"))
+						.Transform(v => v.GetValue(1)))
+				.Transform(v =>
+				{
+					var condition = v.GetValue<TemplateExpressionNode>(2);
+					var ifBlock = v.GetValue<PromptTemplateNode>(3);
+					var elseBlock = v.TryGetValue<PromptTemplateNode>(4);
+					return new PromptTemplateIfElseNode(condition, ifBlock, elseBlock);
+				});
 
 			builder.CreateRule("text_foreach")
 				.Literal("foreach")
 				.Whitespaces()
-				.Token("identifier")
+				.Token("identifier") // 2
 				.Literal("in")
 				.Whitespaces()
-				.Rule("expression")
-				.Rule("text_template_block");
+				.Rule("expression") // 5
+				.Rule("text_template_block") // 6
+				.Transform(v =>
+				{
+					var variable = v.GetValue<string>(2);
+					var collection = v.GetValue<TemplateExpressionNode>(5);
+					var block = v.GetValue<PromptTemplateNode>(6);
+					return new PromptTemplateForeachNode(collection, block, variable);
+				});
 
+			// TEMPORARY EXCLUDED: text while loop
 			builder.CreateRule("text_while")
 				.Literal("while")
 				.Rule("expression")
@@ -463,7 +579,7 @@ namespace RCLargeLanguageModels.Prompting.Templates
 			builder.CreateRule("file_content")
 				.ZeroOrMore(b => b.Rule("template"))
 				.EOF()
-				.Transform(v => v.Children[0].Value);
+				.Transform(v => v.Children[0].SelectArray<ITemplate>());
 
 			_parser = builder.Build();
 		}

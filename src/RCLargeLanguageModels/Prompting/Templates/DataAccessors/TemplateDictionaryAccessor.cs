@@ -14,6 +14,10 @@ namespace RCLargeLanguageModels.Prompting.Templates.DataAccessors
 	{
 		private ImmutableDictionary<string, TemplateDataAccessor> _dictionary;
 
+		/// <summary>
+		/// Gets the dictionary of template data accessors.
+		/// </summary>
+		public ImmutableDictionary<string, TemplateDataAccessor> Dictionary => _dictionary;
 		public override int Length => _dictionary.Count;
 
 		/// <summary>

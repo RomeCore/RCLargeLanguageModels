@@ -49,5 +49,25 @@ namespace RCLargeLanguageModels.Prompting.Templates.TemplateNodes
 
 			return null;
 		}
+
+		public override void Refine(int depth)
+		{
+			IfBranch.Refine(depth + 1);
+
+			if (ElseBranch == null)
+				return;
+
+			if (ElseBranch is PromptTemplateIfElseNode)
+				ElseBranch?.Refine(depth); // Same depth for nested if-else
+			else
+				ElseBranch?.Refine(depth + 1);
+		}
+
+		public override string ToString()
+		{
+			if (ElseBranch == null)
+				return $"@if {Condition} \n {{\n{IfBranch}\n}} \n";
+			return $"@if {Condition} \n {{\n{IfBranch}\n}} \n else \n {{\n{ElseBranch}\n}}";
+		}
 	}
 }

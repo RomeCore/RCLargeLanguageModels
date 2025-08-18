@@ -5,8 +5,14 @@ using System.Text;
 namespace RCLargeLanguageModels.Parsing
 {
 	/// <summary>
-	/// Represents a Trie data structure for efficient string lookup.
+	/// A highly optimized and memory-efficient trie data structure for string lookup and data retrieval.
 	/// </summary>
+	/// <remarks>
+	/// Uses 3 node types to optimize memory usage and performance: <br/>
+	/// - Direct character nodes with up to 3 children <br/>
+	/// - Array nodes with up to 256 ASCII children <br/>
+	/// - Dictionary nodes with support of custom comparers and Unicode characters
+	/// </remarks>
 	public partial class Trie
 	{
 		private readonly TrieNode root;
@@ -368,7 +374,7 @@ namespace RCLargeLanguageModels.Parsing
 
 				case TrieNodeType.Array:
 					// array is used only for ASCII (0..255) indices in node implementation
-					if (c <= 255 && node.array != null)
+					if (c <= 255)
 					{
 						var idx = (byte)c;
 						child = node.array[idx];
@@ -377,12 +383,7 @@ namespace RCLargeLanguageModels.Parsing
 					return false;
 
 				case TrieNodeType.Dictionary:
-					// dictionary may be null if node is in transitional state (defensive)
-					if (node.dictionary != null)
-					{
-						return node.dictionary.TryGetValue(c, out child);
-					}
-					return false;
+					return node.dictionary.TryGetValue(c, out child);
 
 				default:
 					return false;

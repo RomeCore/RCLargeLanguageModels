@@ -53,11 +53,18 @@ namespace RCLargeLanguageModels.Prompting.Templates
 				m => new TemplateNumberAccessor(double.Parse(m.Text.Replace('.', ','))));
 
 			builder.CreateToken("string")
-				.Literal('"')
-				.EscapedTextDoubleChars('"')
-				.Literal('"')
+				.Literal('\'')
+				.EscapedTextDoubleChars('\'')
+				.Literal('\'')
 				.Pass(v => v[1])
 				.Transform(v => new TemplateStringAccessor(v.GetIntermediateValue<string>()));
+
+			builder.CreateToken("raw_string")
+				.Literal('\'')
+				.EscapedTextDoubleChars('\'')
+				.Literal('\'')
+				.Pass(v => v[1])
+				.Transform(v => v.GetIntermediateValue<string>());
 
 			builder.CreateToken("boolean")
 				.LiteralChoice(new []{ "true", "false" },
@@ -369,6 +376,7 @@ namespace RCLargeLanguageModels.Prompting.Templates
 						metadata = metadata.Concat(collection);
 
 					var node = v.GetValue<MessagesTemplateNode>(8);
+					node.Refine(depth: 1);
 
 					return new MessagesTemplate(node, new MetadataCollection(metadata));
 				});
@@ -489,6 +497,7 @@ namespace RCLargeLanguageModels.Prompting.Templates
 						metadata = metadata.Concat(collection);
 
 					var node = v.GetValue<PromptTemplateNode>(6);
+					node.Refine(depth: 1);
 
 					return new PromptTemplate(node, new MetadataCollection(metadata));
 				});
@@ -529,8 +538,14 @@ namespace RCLargeLanguageModels.Prompting.Templates
 
 			builder.CreateRule("text_expression")
 				.Rule("prefix_operator") // We don't want to use binary expressions in text statements
-				.ToSequence()
-				.Transform(v => new PromptTemplateExpressionNode(v.GetValue<TemplateExpressionNode>(0)));
+				.Optional(b => b
+					.Literal(':')
+					.Token("raw_string"))
+				.Transform(v =>
+				{
+					var format = v.Children[1].Children.Length > 0 ? v.Children[1].Children[0].GetValue<string>(1) : null;
+					return new PromptTemplateExpressionNode(v.GetValue<TemplateExpressionNode>(0), format);
+				});
 
 			builder.CreateRule("text_if")
 				.Literal("if")

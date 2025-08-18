@@ -16,5 +16,13 @@ namespace RCLargeLanguageModels.Prompting.Templates
 		/// <param name="context">The context accessor containing the data to render.</param>
 		/// <returns>A collection of messages representing the rendered template node.</returns>
 		public abstract IEnumerable<IMessage> Render(TemplateContextAccessor context);
+
+		/// <summary>
+		/// Refines the template after parsing an AST to remove indents and unnecessary leading/trailing whitespaces.
+		/// </summary>
+		/// <param name="depth">The current depth of refinement. Used for indentation purposes.</param>
+		public virtual void Refine(int depth)
+		{
+		}
 	}
 }

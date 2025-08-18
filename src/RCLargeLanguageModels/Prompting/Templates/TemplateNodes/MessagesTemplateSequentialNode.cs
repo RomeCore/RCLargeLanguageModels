@@ -44,5 +44,21 @@ namespace RCLargeLanguageModels.Prompting.Templates.TemplateNodes
 			}
 			return messages;
 		}
+
+		public override void Refine(int depth)
+		{
+			foreach (var child in Children)
+				child.Refine(depth + 1);
+		}
+
+		public override string ToString()
+		{
+			StringBuilder sb = new StringBuilder();
+
+			foreach (var child in Children)
+				sb.Append(child);
+
+			return sb.ToString();
+		}
 	}
 }

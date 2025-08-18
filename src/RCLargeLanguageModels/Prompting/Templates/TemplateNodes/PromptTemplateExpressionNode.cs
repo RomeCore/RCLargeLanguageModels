@@ -36,5 +36,10 @@ namespace RCLargeLanguageModels.Prompting.Templates.TemplateNodes
 			var result = Expression.Evaluate(context);
 			return result.ToString(Format);
 		}
+
+		public override string ToString()
+		{
+			return $"@{Expression}";
+		}
 	}
 }

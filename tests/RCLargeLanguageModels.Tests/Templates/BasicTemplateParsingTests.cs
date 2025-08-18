@@ -69,7 +69,7 @@ namespace RCLargeLanguageModels.Tests.Templates
 				{
 					You are an adult.
 				}
-				else
+				else if age 
 				{
 					You are too young!
 				}
@@ -123,6 +123,164 @@ namespace RCLargeLanguageModels.Tests.Templates
 		}
 
 		[Fact]
+		public void IfElseTemplateFormatting()
+		{
+			var parser = new LLTParser();
+
+			var templateStr =
+			"""
+			@template if_else_format
+			{
+				Greetings, @name!
+				@if age > 18
+				{
+					You are an adult.
+				}
+				else
+				{
+					You are too young!
+				}
+
+				Have a nice day.
+			}
+			""";
+
+			var template = parser.Parse(templateStr).First();
+
+			var adult = new { name = "Andrew", age = 20 };
+			var young = new { name = "Alice", age = 15 };
+
+			var renderedAdult = template.Render(adult).ToString();
+			var renderedYoung = template.Render(young).ToString();
+
+			var expectedAdult =
+			"""
+			Greetings, Andrew!
+			You are an adult.
+
+			Have a nice day.
+			""";
+
+				var expectedYoung =
+					"""
+			Greetings, Alice!
+			You are too young!
+
+			Have a nice day.
+			""";
+
+			Assert.Equal(expectedAdult, renderedAdult);
+			Assert.Equal(expectedYoung, renderedYoung);
+		}
+
+		[Fact]
+		public void ForeachTemplateFormatting()
+		{
+			var parser = new LLTParser();
+
+			var templateStr =
+			"""
+			@template foreach_format
+			{
+				Grocery list:
+
+				@foreach item in ctx
+				{
+					- @item.name: @item.quantity
+				}
+
+				End of list.
+			}
+			""";
+
+			var template = parser.Parse(templateStr).First();
+
+			var groceries = new[] {
+				new { name = "Apples", quantity = 3 },
+				new { name = "Bananas", quantity = 5 },
+				new { name = "Oranges", quantity = 2 }
+			};
+
+			var rendered = template.Render(groceries).ToString();
+
+			var expected =
+			"""
+			Grocery list:
+
+			- Apples: 3
+			- Bananas: 5
+			- Oranges: 2
+
+			End of list.
+			""";
+
+			Assert.Equal(expected, rendered);
+		}
+
+		[Fact]
+		public void NestedIfFormatting()
+		{
+			var parser = new LLTParser();
+
+			var templateStr =
+			"""
+			@template nested_if
+			{
+				Greetings, @name!
+				@if age > 18
+				{
+					@if is_admin
+					{
+						You are an adult admin.
+					}
+					else
+					{
+						You are an adult user.
+					}
+				}
+				else
+				{
+					You are too young!
+				}
+			}
+			""";
+
+			var template = parser.Parse(templateStr).First();
+
+			var admin = new { name = "Andrew", age = 25, is_admin = true };
+			var user = new { name = "Alice", age = 30, is_admin = false };
+			var young = new { name = "Bob", age = 15, is_admin = false };
+
+			var renderedAdmin = template.Render(admin).ToString();
+			var renderedUser = template.Render(user).ToString();
+			var renderedYoung = template.Render(young).ToString();
+
+			var expectedAdmin =
+			"""
+			Greetings, Andrew!
+			You are an adult admin.
+			""";
+
+			var expectedUser =
+			"""
+			Greetings, Alice!
+			You are an adult user.
+			""";
+
+			var expectedYoung =
+			"""
+			Greetings, Bob!
+			You are too young!
+			""";
+
+			Assert.Equal(expectedAdmin, renderedAdmin);
+			Assert.Equal(expectedUser, renderedUser);
+			Assert.Equal(expectedYoung, renderedYoung);
+		}
+
+
+
+		[Fact]
 		public void SimpleTemplateParsing()
 		{
 			string templateStr =
@@ -159,7 +317,7 @@ namespace RCLargeLanguageModels.Tests.Templates
 			    }
 			
 			    @// String literals, booleans, and null values.
-			    String literal: @"hello ""world"" "
+			    String literal: @'hello ''world'''
 			    Boolean true: @true
 			    Boolean false: @false
 			    Null test: @null
@@ -205,7 +363,7 @@ namespace RCLargeLanguageModels.Tests.Templates
 			"""
 			@messages template ChatBot {
 			    @metadata {
-			        language: "ru",
+			        language: 'ru',
 			        version: 1
 			    }
 

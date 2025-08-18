@@ -13,7 +13,7 @@ namespace RCLargeLanguageModels.Prompting.Templates.TemplateNodes
 		/// <summary>
 		/// The children nodes of this sequential node.
 		/// </summary>
-		public ImmutableArray<PromptTemplateNode> Children { get; }
+		public ImmutableArray<PromptTemplateNode> Children { get; set; }
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="PromptTemplateSequentialNode"/> class.
@@ -47,6 +47,67 @@ namespace RCLargeLanguageModels.Prompting.Templates.TemplateNodes
 			}
 
 			return result.ToString();
+		}
+
+		public override void Refine(int depth)
+		{
+			for (int i = 0; i < Children.Length; i++)
+			{
+				var child = Children[i];
+
+				if (child is PromptTemplatePlainTextNode plainTextChild)
+				{
+					var lines = plainTextChild.Text.SplitLines();
+
+					int startLine = (i == 0 && lines.Length > 1 && string.IsNullOrWhiteSpace(lines[0])) ? 1 : 0;
+					int endLine = (i == Children.Length - 1 && lines.Length > 1 && string.IsNullOrWhiteSpace(lines[lines.Length - 1]))
+						? lines.Length - 1
+						: lines.Length;
+
+					var sb = new StringBuilder();
+					int maxIndent = depth * 4;
+
+					for (int li = startLine; li < endLine; li++)
+					{
+						var line = lines[li];
+						int startIndex = 0;
+						int indent = 0;
+
+						while (startIndex < line.Length && indent < maxIndent)
+						{
+							if (line[startIndex] == '\t')
+								indent += 4;
+							else if (line[startIndex] == ' ')
+								indent++;
+							else
+								break;
+							startIndex++;
+						}
+
+						if (li == endLine - 1)
+							sb.Append(line.Substring(startIndex));
+						else
+							sb.AppendLine(line.Substring(startIndex));
+					}
+
+					plainTextChild.Text = sb.ToString();
+				}
+				else
+				{
+					child.Refine(depth);
+				}
+			}
+		}
+
+
+		public override string ToString()
+		{
+			StringBuilder sb = new StringBuilder();
+
+			foreach (var child in Children)
+				sb.Append(child);
+
+			return sb.ToString();
 		}
 	}
 }

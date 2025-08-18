@@ -57,11 +57,23 @@ namespace RCLargeLanguageModels.Prompting.Templates.TemplateNodes
 
 				var childResult = Child.Render(context);
 				if (!string.IsNullOrEmpty(childResult))
-					result.Append(childResult);
+					result.AppendLine(childResult);
 			}
+			if (result.Length > 0)
+				result.Length -= Environment.NewLine.Length; // Remove the last newline character
 			context.PopFrame();
 
 			return result.ToString();
+		}
+
+		public override void Refine(int depth)
+		{
+			Child.Refine(depth + 1);
+		}
+
+		public override string ToString()
+		{
+			return $"@foreach {IterableName} in {Source} {{\n{Child}\n}}";
 		}
 	}
 }

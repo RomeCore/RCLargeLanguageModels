@@ -48,5 +48,15 @@ namespace RCLargeLanguageModels.Prompting.Templates.TemplateNodes
 			};
 			return message.WrapIntoArray();
 		}
+
+		public override void Refine(int depth)
+		{
+			Child.Refine(depth + 1);
+		}
+
+		public override string ToString()
+		{
+			return $"Message, Role: {Role}, Contents: \n{Child}\n";
+		}
 	}
 }

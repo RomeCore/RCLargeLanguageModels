@@ -1,7 +1,11 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Collections.ObjectModel;
 using System.Text;
+using RCLargeLanguageModels.Messages;
+using RCLargeLanguageModels.Metadata;
 using RCLargeLanguageModels.Prompting.Templates.DataAccessors;
 
 namespace RCLargeLanguageModels.Prompting.Templates
@@ -92,21 +96,39 @@ namespace RCLargeLanguageModels.Prompting.Templates
 		public TemplateDataAccessor Context { get; }
 
 		/// <summary>
+		/// Gets the metadata of the host template that created this context accessor.
+		/// </summary>
+		public IMetadataCollection HostTemplateMetadata { get; }
+
+		/// <summary>
 		/// Gets the functions that can be used in the template.
 		/// </summary>
 		public TemplateFunctionSet Functions { get; }
 
 		/// <summary>
+		/// Gets the library that can be used in the template for rendering inner templates.
+		/// </summary>
+		public TemplateLibrary Library { get; }
+
+		/// <summary>
 		/// Creates a new instance of the <see cref="TemplateContextAccessor"/> class.
 		/// </summary>
 		/// <param name="context">The accessor for the template context.</param>
+		/// <param name="hostTemplateMetadata">The metadata of the host template that created this context accessor.</param>
+		/// <param name="functions">The set of functions that can be used in the template.</param>
+		/// <param name="library">The library that can be used in the template for rendering inner templates.</param>
 		/// <exception cref="ArgumentNullException"></exception>
-		public TemplateContextAccessor(TemplateDataAccessor context)
+		public TemplateContextAccessor(TemplateDataAccessor context, IMetadataCollection hostTemplateMetadata,
+			TemplateFunctionSet? functions = null, TemplateLibrary? library = null)
 		{
 			var baseFrame = new TemplateContextFrame();
 			_frames = new Stack<TemplateContextFrame>();
 			_frames.Push(baseFrame);
+
 			Context = context ?? throw new ArgumentNullException(nameof(context));
+			HostTemplateMetadata = hostTemplateMetadata ?? throw new ArgumentNullException(nameof(hostTemplateMetadata));
+			Functions = functions ?? TemplateFunctionSet.Default;
+			Library = library ?? new TemplateLibrary();
 		}
 
 		/// <summary>
@@ -167,7 +189,7 @@ namespace RCLargeLanguageModels.Prompting.Templates
 
 		public override TemplateDataAccessor Call(string methodName, TemplateDataAccessor[] arguments)
 		{
-			return Functions.CallFunction(methodName, arguments);
+			return Functions.CallFunction(methodName, this, arguments);
 		}
 
 		public override bool AsBoolean()
@@ -177,12 +199,60 @@ namespace RCLargeLanguageModels.Prompting.Templates
 
 		public override object GetValue()
 		{
-			throw new NotImplementedException();
+			return Context.GetValue();
 		}
 
 		public override string ToString(string? format = null)
 		{
 			return Context.ToString(format);
+		}
+
+		/// <summary>
+		/// Renders a template with the specified identifier and optional new context.
+		/// </summary>
+		/// <remarks>
+		/// Tries to find the specified template in the local library. If not found, tries to find it in the shared library.
+		/// </remarks>
+		/// <param name="identifier">The identifier of the template to render.</param>
+		/// <param name="newContext">The new context to use for rendering the template. If null, uses the current context.</param>
+		/// <returns>The rendered template as a string.</returns>
+		public string RenderTemplate(string identifier, TemplateDataAccessor? newContext)
+		{
+			var template = Library.TryRetrieve(identifier);
+			if (template == null)
+				template = TemplateLibrary.Shared.TryRetrieve(identifier); // try to get from shared library
+			if (template == null)
+				throw new TemplateRuntimeException($"Template '{identifier}' not found.");
+
+			if (template is not PromptTemplate && template is not PlaintextTemplate)
+				throw new TemplateRuntimeException($"Template '{identifier}' is not a text template.");
+
+			var context = newContext ?? this;
+			return template.Render(context).ToString();
+		}
+
+		/// <summary>
+		/// Renders a messages template with the specified identifier and optional new context.
+		/// </summary>
+		/// <remarks>
+		/// Tries to find the specified template in the local library. If not found, tries to find it in the shared library.
+		/// </remarks>
+		/// <param name="identifier">The identifier of the messages template to render.</param>
+		/// <param name="newContext">The new context to use for rendering the template. If null, uses the current context.</param>
+		/// <returns>The rendered template as a collection of messages.</returns>
+		public IEnumerable<IMessage> RenderMessagesTemplate(string identifier, TemplateDataAccessor? newContext)
+		{
+			var template = Library.TryRetrieve(identifier);
+			if (template == null)
+				template = TemplateLibrary.Shared.TryRetrieve(identifier);
+			if (template == null)
+				throw new TemplateRuntimeException($"Template '{identifier}' not found.");
+
+			if (template is not MessagesTemplate messagesTemplate)
+				throw new TemplateRuntimeException($"Template '{identifier}' is not a messages template.");
+
+			var context = newContext ?? this;
+			return messagesTemplate.Render(context);
 		}
 
 		public IEnumerator<TemplateDataAccessor> GetEnumerator()

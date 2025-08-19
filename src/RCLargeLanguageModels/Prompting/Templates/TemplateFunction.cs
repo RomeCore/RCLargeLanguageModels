@@ -29,6 +29,18 @@ namespace RCLargeLanguageModels.Prompting.Templates
 		/// <summary>
 		/// Initializes a new instance of the <see cref="TemplateFunction"/> class.
 		/// </summary>
+		/// <param name="function">The function to be called.</param>
+		/// <exception cref="ArgumentNullException"></exception>
+		public TemplateFunction(Func<TemplateDataAccessor, TemplateDataAccessor[], object> function)
+		{
+			Name = null;
+			if (function == null) throw new ArgumentNullException(nameof(function));
+			_function = (self, args) => TemplateDataAccessor.Create(function(self, args));
+		}
+
+		/// <summary>
+		/// Initializes a new instance of the <see cref="TemplateFunction"/> class.
+		/// </summary>
 		/// <param name="name">The name of the function.</param>
 		/// <param name="function">The function to be called.</param>
 		/// <exception cref="ArgumentNullException"></exception>
@@ -36,6 +48,19 @@ namespace RCLargeLanguageModels.Prompting.Templates
 		{
 			Name = name;
 			_function = function ?? throw new ArgumentNullException(nameof(function));
+		}
+
+		/// <summary>
+		/// Initializes a new instance of the <see cref="TemplateFunction"/> class.
+		/// </summary>
+		/// <param name="name">The name of the function.</param>
+		/// <param name="function">The function to be called.</param>
+		/// <exception cref="ArgumentNullException"></exception>
+		public TemplateFunction(string? name, Func<TemplateDataAccessor, TemplateDataAccessor[], object> function)
+		{
+			Name = name;
+			if (function == null) throw new ArgumentNullException(nameof(function));
+			_function = (self, args) => TemplateDataAccessor.Create(function(self, args));
 		}
 
 		/// <summary>

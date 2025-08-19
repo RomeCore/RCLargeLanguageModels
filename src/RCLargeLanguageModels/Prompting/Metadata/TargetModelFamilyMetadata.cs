@@ -20,5 +20,17 @@ namespace RCLargeLanguageModels.Prompting.Metadata
 		{
 			FamilyName = familyName;
 		}
+
+		public override bool Equals(object? obj)
+		{
+			return obj is TargetModelFamilyMetadata other && FamilyName == other.FamilyName;
+		}
+
+		public override int GetHashCode()
+		{
+			int hash = 17;
+			hash *= 397 + FamilyName.GetHashCode();
+			return hash;
+		}
 	}
 }

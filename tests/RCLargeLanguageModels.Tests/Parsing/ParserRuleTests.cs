@@ -150,7 +150,7 @@ namespace RCLargeLanguageModels.Tests.Parsing
 			var builder = new ParserBuilder();
 
 			builder.Settings()
-				.Skip(r => r.Rule("skip"));
+				.Skip(r => r.Rule("skip"), ParserSkippingStrategy.SkipBeforeParsingGreedy);
 
 			// Parser will always try to skip the skip-rules until they are not capturing anything
 			// So we don't need to create another .OneOrMore(c => c.Choice(...))

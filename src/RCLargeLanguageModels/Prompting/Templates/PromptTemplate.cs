@@ -17,31 +17,38 @@ namespace RCLargeLanguageModels.Prompting.Templates
 		public IMetadataCollection Metadata { get; }
 
 		/// <summary>
+		/// Gets the local library associated with this prompt template.
+		/// </summary>
+		public TemplateLibrary LocalLibrary { get; }
+
+		/// <summary>
 		/// Initializes a new instance of the <see cref="PromptTemplate"/> class.
 		/// </summary>
 		/// <param name="mainNode">The main node of the template.</param>
 		/// <param name="metadata">The metadata associated with this template.</param>
+		/// <param name="localLibrary">The local library associated with this prompt template.</param>
 		/// <exception cref="ArgumentNullException"></exception>
-		public PromptTemplate(PromptTemplateNode mainNode, IMetadataCollection metadata)
+		public PromptTemplate(PromptTemplateNode mainNode, IMetadataCollection metadata, TemplateLibrary localLibrary)
 		{
 			_node = mainNode ?? throw new ArgumentNullException(nameof(mainNode));
 			Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
+			LocalLibrary = localLibrary ?? throw new ArgumentNullException(nameof(localLibrary));
 		}
 
 		/// <summary>
-		/// Renders the prompt using the provided data accessor.
+		/// Renders the prompt template using the provided data accessor.
 		/// </summary>
 		/// <param name="context">The context accessor to use for rendering.</param>
 		/// <returns>The rendered prompt as a string.</returns>
-		public string Render(TemplateContextAccessor context)
+		public string Render(object? context = null)
 		{
-			return _node.Render(context);
+			var ctx = new TemplateContextAccessor(TemplateDataAccessor.Create(context), Metadata, library: LocalLibrary);
+			return _node.Render(ctx);
 		}
 
-		public object Render(object? context = null)
+		object ITemplate.Render(object? context)
 		{
-			var ctx = context as TemplateContextAccessor ??
-				new TemplateContextAccessor(TemplateDataAccessor.Create(context));
+			var ctx = new TemplateContextAccessor(TemplateDataAccessor.Create(context), Metadata, library: LocalLibrary);
 			return _node.Render(ctx);
 		}
 	}

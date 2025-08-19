@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Text;
 
 namespace RCLargeLanguageModels.Prompting.Templates
@@ -11,6 +12,26 @@ namespace RCLargeLanguageModels.Prompting.Templates
 	public class TemplateFunctionSet
 	{
 		private ImmutableDictionary<string, TemplateFunction> _functions;
+
+		/// <summary>
+		/// Initializes a new instance of the <see cref="TemplateFunctionSet"/> class.
+		/// </summary>
+		/// <param name="functions">A collection of template functions. Functions must have unique not-<see langword="null"/> names.</param>
+		/// <exception cref="ArgumentNullException">Thrown when the <paramref name="functions"/> parameter is null.</exception>
+		public TemplateFunctionSet(IEnumerable<TemplateFunction> functions)
+		{
+			_functions = functions?.ToImmutableDictionary(k => k.Name, v => v) ?? throw new ArgumentNullException(nameof(functions));
+		}
+
+		/// <summary>
+		/// Initializes a new instance of the <see cref="TemplateFunctionSet"/> class.
+		/// </summary>
+		/// <param name="functions">A collection of template functions. Functions must have unique not-<see langword="null"/> names.</param>
+		/// <exception cref="ArgumentNullException">Thrown when the <paramref name="functions"/> parameter is null.</exception>
+		public TemplateFunctionSet(params TemplateFunction[] functions)
+		{
+			_functions = functions?.ToImmutableDictionary(k => k.Name, v => v) ?? throw new ArgumentNullException(nameof(functions));
+		}
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="TemplateFunctionSet"/> class.
@@ -79,6 +100,20 @@ namespace RCLargeLanguageModels.Prompting.Templates
 		{
 			var function = GetFunction(functionName);
 			return function.Call(self, args);
+		}
+
+		/// <summary>
+		/// Gets the default set of functions.
+		/// </summary>
+		public static TemplateFunctionSet Default { get; }
+
+		static TemplateFunctionSet()
+		{
+			Default = new TemplateFunctionSet(
+				new TemplateFunction("length", (self, args) => self.Length),
+				new TemplateFunction("strcat", (self, args) => string.Join("", args.Select(a => a.GetValue().ToString()))),
+				new TemplateFunction("substr", (self, args) => args[0].GetValue().ToString().Substring((int)args[1].GetValue(), (int)args[2].GetValue()))
+			);
 		}
 	}
 }

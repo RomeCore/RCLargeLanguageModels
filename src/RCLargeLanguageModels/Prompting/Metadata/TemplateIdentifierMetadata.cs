@@ -23,5 +23,17 @@ namespace RCLargeLanguageModels.Prompting.Metadata
 		{
 			Identifier = identifier;
 		}
+
+		public override bool Equals(object? obj)
+		{
+			return obj is TemplateIdentifierMetadata other && Identifier == other.Identifier;
+		}
+
+		public override int GetHashCode()
+		{
+			int hash = 17;
+			hash *= 397 + Identifier.GetHashCode();
+			return hash;
+		}
 	}
 }

@@ -28,6 +28,7 @@
 
 	<ItemGroup>
 	  <None Remove="Parsing\ParserRules\TokenParserRule.cs~RF20d729e3.TMP" />
+	  <None Remove="Prompting\TemplateLibrary.cs~RF80b6ab1.TMP" />
 	</ItemGroup>
 
 	<ItemGroup>

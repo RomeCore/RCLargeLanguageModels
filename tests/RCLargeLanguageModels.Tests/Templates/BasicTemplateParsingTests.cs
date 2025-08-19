@@ -161,8 +161,8 @@ namespace RCLargeLanguageModels.Tests.Templates
 			Have a nice day.
 			""";
 
-				var expectedYoung =
-					"""
+			var expectedYoung =
+			"""
 			Greetings, Alice!
 			You are too young!
 
@@ -183,7 +183,7 @@ namespace RCLargeLanguageModels.Tests.Templates
 			@template foreach_format
 			{
 				Grocery list:
-
+			
 				@foreach item in ctx
 				{
 					- @item.name: @item.quantity

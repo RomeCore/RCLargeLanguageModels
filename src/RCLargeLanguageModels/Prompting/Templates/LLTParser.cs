@@ -14,28 +14,22 @@ using RCLargeLanguageModels.Prompting.Templates.TemplateNodes;
 
 namespace RCLargeLanguageModels.Prompting.Templates
 {
+	/// <summary>
+	/// The parser for LLT templates.
+	/// </summary>
 	public class LLTParser : ITemplateParser
 	{
+		private class LLTParsingContext
+		{
+			public TemplateLibrary LocalLibrary { get; set; }
+		}
+
 		private static readonly Parser _parser;
 
 		public static Parser Parser => _parser;
 
-		static LLTParser()
+		private static void DeclareValues(ParserBuilder builder)
 		{
-			var builder = new ParserBuilder();
-
-			// Settings //
-
-			builder.Settings()
-				.Skip(s => s.Choice(
-					c => c.Whitespaces(),
-					c => c.Literal("@//").TextUntil('\n', '\r'), // @// C#-like comments
-					c => c.Literal("@*").TextUntil("*@").Literal("*@")), // @*...*@ comments
-					ParserSkippingStrategy.TryParseThenSkip) // Allows rules to capture skip-rules contents if can, such as whitespaces
-				.CacheAll(); // If caching is disabled, prepare to wait for a long time (seconds) when encountering an error :P (you will also get a million of errors, seriously)
-
-			// ---- Values ---- //
-
 			builder.CreateToken("identifier")
 				.Identifier()
 				.Transform(v => v.Text);
@@ -67,7 +61,7 @@ namespace RCLargeLanguageModels.Prompting.Templates
 				.Transform(v => v.GetIntermediateValue<string>());
 
 			builder.CreateToken("boolean")
-				.LiteralChoice(new []{ "true", "false" },
+				.LiteralChoice(new[] { "true", "false" },
 				m => new TemplateBooleanAccessor(m.GetIntermediateValue<string>() == "true"));
 
 			builder.CreateToken("null")
@@ -109,6 +103,20 @@ namespace RCLargeLanguageModels.Prompting.Templates
 
 			// Expression values //
 
+			builder.CreateRule("function_access")
+				.Identifier()
+				.Literal('(')
+				.ZeroOrMoreSeparated(b => b
+					.Rule("expression"), b => b.Literal(','))
+				.Literal(')')
+				.Transform(v =>
+				{
+					var functionName = v.Children[0].Text;
+					var arguments = v.Children[2].SelectValues<TemplateExpressionNode>();
+					return new TemplateMethodCallExpressionNode(new TemplateContextAccessExpressionNode(),
+						functionName, arguments.ToImmutableArray());
+				});
+
 			builder.CreateRule("context_access")
 				.Choice(
 					b => b
@@ -121,10 +129,8 @@ namespace RCLargeLanguageModels.Prompting.Templates
 
 			builder.CreateRule("primary")
 				.Choice(
-					c => c.Token("number"),
-					c => c.Token("string"),
-					c => c.Token("boolean"),
-					c => c.Token("null"),
+					c => c.Rule("constant"),
+					c => c.Rule("function_access"),
 					c => c.Rule("context_access"),
 					c => c.Literal('(').Rule("expression").Literal(')').Transform(v => v.GetValue(1)))
 				.Transform(v =>
@@ -138,9 +144,10 @@ namespace RCLargeLanguageModels.Prompting.Templates
 
 			builder.CreateRule("value")
 				.Rule("primary"); // Add alias for 'primary' rule
+		}
 
-			// Expressions //
-
+		private static void DeclareExpressions(ParserBuilder builder)
+		{
 			builder.CreateRule("postfix_member")
 				.Rule("primary")
 				.ZeroOrMore(b => b.Choice(
@@ -219,6 +226,9 @@ namespace RCLargeLanguageModels.Prompting.Templates
 
 					return target;
 				});
+
+			builder.CreateRule("nop_expression")
+				.Rule("prefix_operator");
 
 			// Operators //
 
@@ -316,51 +326,17 @@ namespace RCLargeLanguageModels.Prompting.Templates
 
 			builder.CreateRule("expression")
 				.Rule("ternary_operator");
+		}
 
-			// ---- Templates ---- //
-
-			builder.CreateRule("template")
-				.Choice(
-					b => b.Rule("text_template"),
-					b => b.Rule("messages_template"));
-
-			builder.CreateRule("metadata_block")
-				.Literal('@')
-				.Literal("metadata")
-				.Rule("constant_object")
-				.Transform(v =>
-				{
-					var obj = v.GetValue<TemplateDictionaryAccessor>(2);
-					var metadata = new List<IMetadata>();
-
-					foreach (var pair in obj.Dictionary)
-					{
-						switch (pair.Key)
-						{
-							case "lang":
-								metadata.Add(new LanguageMetadata(new Locale.LanguageCode(pair.Value.ToString())));
-								break;
-							case "model":
-								metadata.Add(new TargetModelMetadata(pair.Value.ToString()));
-								break;
-							case "model_family":
-								metadata.Add(new TargetModelFamilyMetadata(pair.Value.ToString()));
-								break;
-						}
-					}
-
-					return new MetadataCollection(metadata);
-				});
-
-			// Messages templates //
-
+		private static void DeclareMessagesTemplates(ParserBuilder builder)
+		{
 			builder.CreateRule("messages_template")
 				.Literal('@')
 				.Literal("messages")
 				.Whitespaces()
 				.Literal("template")
 				.Whitespaces()
-				.Token("identifier") // 5
+				.Optional(b => b.Token("identifier")) // 5
 				.Literal('{')
 				.Optional(b => // 7
 					b.Rule("metadata_block"))
@@ -368,17 +344,25 @@ namespace RCLargeLanguageModels.Prompting.Templates
 				.Literal('}')
 				.Transform(v =>
 				{
-					var identifier = v.GetValue<string>(5);
-					var identifierMetadata = new TemplateIdentifierMetadata(identifier);
+					var metadata = Enumerable.Empty<IMetadata>();
 
-					var metadata = identifierMetadata.WrapIntoEnumerable<IMetadata>();
+					if (v.TryGetValue<string>(5) is string identifier)
+					{
+						var identifierMetadata = new TemplateIdentifierMetadata(identifier);
+						metadata = metadata.Append(identifierMetadata);
+					}
+
 					if (v.TryGetValue<MetadataCollection>(7) is MetadataCollection collection)
 						metadata = metadata.Concat(collection);
 
 					var node = v.GetValue<MessagesTemplateNode>(8);
 					node.Refine(depth: 1);
 
-					return new MessagesTemplate(node, new MetadataCollection(metadata));
+
+					var library = v.GetParsingParameter<LLTParsingContext>().LocalLibrary;
+					var template = new MessagesTemplate(node, new MetadataCollection(metadata), library);
+					library.Add(template);
+					return template;
 				});
 
 			builder.CreateRule("messages_template_block")
@@ -394,7 +378,9 @@ namespace RCLargeLanguageModels.Prompting.Templates
 						c => c.Rule("message_block"),
 						c => c.Rule("messages_if"),
 						c => c.Rule("messages_foreach"),
-						c => c.Rule("messages_while"))
+						// c => c.Rule("messages_while"),
+						c => c.Rule("messages_render"),
+						c => c.Rule("messages_var_assignment"))
 					.Transform(v => v.GetValue(1)))
 				.Transform(v =>
 				{
@@ -425,7 +411,7 @@ namespace RCLargeLanguageModels.Prompting.Templates
 			builder.CreateRule("message_block_variable_role")
 				.Literal("message")
 				.Literal('{')
-				.Literal('@').Literal("role").Whitespaces().Rule("text_expression") // 5
+				.Literal('@').Literal("role").Whitespaces().Rule("nop_expression") // 5
 				.Rule("text_statements") // 6
 				.Literal('}')
 				.Transform(v =>
@@ -476,30 +462,76 @@ namespace RCLargeLanguageModels.Prompting.Templates
 				.Rule("expression")
 				.Rule("messages_template_block");
 
-			// Text templates //
+			builder.CreateRule("messages_render")
+				.Literal("render")
+				.Whitespaces()
+				.Rule("nop_expression") // 2
+				.Optional(b => b
+					.Literal("with")
+					.Rule("nop_expression")
+					.Transform(v => v.GetValue(1)))
+				.Transform(v =>
+				{
+					var identifier = v.GetValue<TemplateExpressionNode>(2);
+					var ctx = v.TryGetValue<TemplateExpressionNode>(3);
+					return new MessagesTemplateRenderNode(identifier, ctx);
+				});
 
+			builder.CreateRule("messages_var_assignment")
+				.Choice(b => b
+					.Literal("let")
+					.Whitespaces()
+					.Token("identifier")
+					.Literal("=")
+					.Rule("expression")
+					.Transform(v =>
+					{
+						var name = v.GetValue<string>(2);
+						var expr = v.GetValue<TemplateExpressionNode>(4);
+						return new MessagesTemplateVariableAssignNode(name, expr, assignsToExisting: false);
+					}), b => b
+					.Token("identifier")
+					.Literal("=")
+					.Rule("expression")
+					.Transform(v =>
+					{
+						var name = v.GetValue<string>(0);
+						var expr = v.GetValue<TemplateExpressionNode>(2);
+						return new MessagesTemplateVariableAssignNode(name, expr, assignsToExisting: true);
+					}));
+		}
+
+		private static void DeclareTextTemplates(ParserBuilder builder)
+		{
 			builder.CreateRule("text_template")
 				.Literal('@')
 				.Literal("template")
 				.Whitespaces()
-				.Token("identifier") // 3
+				.Optional(b => b.Token("identifier")) // 3
 				.Literal('{')
 				.Optional(b => b.Rule("metadata_block")) // 5
 				.Rule("text_statements") // 6
 				.Literal('}')
 				.Transform(v =>
 				{
-					var identifier = v.GetValue<string>(3);
-					var identifierMetadata = new TemplateIdentifierMetadata(identifier);
+					var metadata = Enumerable.Empty<IMetadata>();
 
-					var metadata = identifierMetadata.WrapIntoEnumerable<IMetadata>();
+					if (v.TryGetValue<string>(3) is string identifier)
+					{
+						var identifierMetadata = new TemplateIdentifierMetadata(identifier);
+						metadata = metadata.Append(identifierMetadata);
+					}
+
 					if (v.TryGetValue<MetadataCollection>(5) is MetadataCollection collection)
 						metadata = metadata.Concat(collection);
 
 					var node = v.GetValue<PromptTemplateNode>(6);
 					node.Refine(depth: 1);
 
-					return new PromptTemplate(node, new MetadataCollection(metadata));
+					var library = v.GetParsingParameter<LLTParsingContext>().LocalLibrary;
+					var template = new PromptTemplate(node, new MetadataCollection(metadata), library);
+					library.Add(template);
+					return template;
 				});
 
 			builder.CreateRule("text_content")
@@ -531,13 +563,15 @@ namespace RCLargeLanguageModels.Prompting.Templates
 				.Choice(
 					b => b.Rule("text_if"),
 					b => b.Rule("text_foreach"),
+					b => b.Rule("text_render"),
 					// b => b.Rule("text_while"),
+					b => b.Rule("text_var_assignment"),
 					b => b.Rule("text_expression")
 					)
 				.Transform(v => v.GetValue(1));
 
 			builder.CreateRule("text_expression")
-				.Rule("prefix_operator") // We don't want to use binary expressions in text statements
+				.Rule("nop_expression") // We don't want to use binary expressions in text statements
 				.Optional(b => b
 					.Literal(':')
 					.Token("raw_string"))
@@ -589,24 +623,128 @@ namespace RCLargeLanguageModels.Prompting.Templates
 				.Rule("expression")
 				.Rule("text_template_block");
 
-			// Main rule
+			builder.CreateRule("text_render")
+				.Literal("render")
+				.Whitespaces()
+				.Rule("prefix_operator") // 2
+				.Optional(b => b
+					.Literal("with")
+					.Rule("prefix_operator")
+					.Transform(v => v.GetValue(1)))
+				.Transform(v =>
+				{
+					var identifier = v.GetValue<TemplateExpressionNode>(2);
+					var ctx = v.TryGetValue<TemplateExpressionNode>(3);
+					return new PromptTemplateRenderNode(identifier, ctx);
+				});
+
+			builder.CreateRule("text_var_assignment")
+				.Choice(b => b
+					.Literal("let")
+					.Whitespaces()
+					.Token("identifier")
+					.Literal("=")
+					.Rule("nop_expression")
+					.Transform(v =>
+					{
+						var name = v.GetValue<string>(2);
+						var expr = v.GetValue<TemplateExpressionNode>(4);
+						return new PromptTemplateVariableAssignNode(name, expr, assignsToExisting: false);
+					}), b => b
+					.Token("identifier")
+					.Literal("=")
+					.Rule("nop_expression")
+					.Transform(v =>
+					{
+						var name = v.GetValue<string>(0);
+						var expr = v.GetValue<TemplateExpressionNode>(2);
+						return new PromptTemplateVariableAssignNode(name, expr, assignsToExisting: true);
+					}));
+		}
+
+		private static void DeclareMainRules(ParserBuilder builder)
+		{
+			builder.CreateRule("template")
+				.Choice(
+					b => b.Rule("text_template"),
+					b => b.Rule("messages_template"));
+
+			builder.CreateRule("metadata_block")
+				.Literal('@')
+				.Literal("metadata")
+				.Rule("constant_object")
+				.Transform(v =>
+				{
+					var obj = v.GetValue<TemplateDictionaryAccessor>(2);
+					var metadata = new List<IMetadata>();
+
+					foreach (var pair in obj.Dictionary)
+					{
+						switch (pair.Key)
+						{
+							case "lang":
+								metadata.Add(new LanguageMetadata(new Locale.LanguageCode(pair.Value.ToString())));
+								break;
+							case "model":
+								metadata.Add(new TargetModelMetadata(pair.Value.ToString()));
+								break;
+							case "model_family":
+								metadata.Add(new TargetModelFamilyMetadata(pair.Value.ToString()));
+								break;
+						}
+					}
+
+					return new MetadataCollection(metadata);
+				});
 
 			builder.CreateRule("file_content")
 				.ZeroOrMore(b => b.Rule("template"))
 				.EOF()
 				.Transform(v => v.Children[0].SelectArray<ITemplate>());
+		}
+
+		static LLTParser()
+		{
+			var builder = new ParserBuilder();
+
+			// Settings //
+
+			builder.Settings()
+				.Skip(s => s.Choice(
+					c => c.Whitespaces(),
+					c => c.Literal("@//").TextUntil('\n', '\r'), // @// C#-like comments
+					c => c.Literal("@*").TextUntil("*@").Literal("*@")), // @*...*@ comments
+					ParserSkippingStrategy.TryParseThenSkipLazy) // Allows rules to capture skip-rules contents if can, such as whitespaces
+				.CacheAll(); // If caching is disabled, prepare to wait for a long time (seconds) when encountering an error :P (you will also get a million of errors, seriously)
+
+			// ---- Values ---- //
+			DeclareValues(builder);
+
+			// ---- Expressions ---- //
+			DeclareExpressions(builder);
+
+			// ---- Messages templates ---- //
+			DeclareMessagesTemplates(builder);
+
+			// ---- Text templates ---- //
+			DeclareTextTemplates(builder);
+
+			// ---- Main rules ---- //
+			DeclareMainRules(builder);
 
 			_parser = builder.Build();
 		}
 
 		public ParsedRuleResult ParseAST(string templateString)
 		{
-			return _parser.ParseRule("file_content", templateString).Optimized(ParseTreeOptimization.Default);
+			var ctx = new LLTParsingContext { LocalLibrary = new TemplateLibrary() };
+			return _parser.ParseRule("file_content", templateString, ctx).Optimized(ParseTreeOptimization.Default);
 		}
 
 		public IEnumerable<ITemplate> Parse(string templateString)
 		{
-			return _parser.ParseRule("file_content", templateString).Value as IEnumerable<ITemplate>;
+			var ctx = new LLTParsingContext { LocalLibrary = new TemplateLibrary() };
+			return _parser.ParseRule("file_content", templateString, ctx).GetValue<IEnumerable<ITemplate>>();
 		}
 	}
 }

@@ -24,5 +24,17 @@ namespace RCLargeLanguageModels.Prompting.Metadata
 		{
 			LanguageCode = languageCode;
 		}
+
+		public override bool Equals(object? obj)
+		{
+			return obj is LanguageMetadata other && LanguageCode == other.LanguageCode;
+		}
+
+		public override int GetHashCode()
+		{
+			int hash = 17;
+			hash *= 397 + LanguageCode.GetHashCode();
+			return hash;
+		}
 	}
 }

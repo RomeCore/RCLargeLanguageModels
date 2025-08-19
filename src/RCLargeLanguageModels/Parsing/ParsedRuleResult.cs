@@ -138,6 +138,11 @@ namespace RCLargeLanguageModels.Parsing
 		/// </summary>
 		public object? IntermediateValue => Result.intermediateValue;
 
+		/// <summary>
+		/// Gets the parsing parameter object that was passed to the parser during parsing. May be null if no parameter is passed.
+		/// </summary>
+		public object? ParsingParameter { get; }
+
 		private readonly Lazy<string> _textLazy;
 		/// <summary>
 		/// Gets the parsed input text that was captured.
@@ -168,14 +173,16 @@ namespace RCLargeLanguageModels.Parsing
 		/// <param name="treeOptimization">The optimization flags that used to optimize the parse tree.</param>
 		/// <param name="context">The parser context used for parsing.</param>
 		/// <param name="result">The parsed rule object containing the result of the parse.</param>
+		/// <param name="parsingParameter">The parsing parameter object that was passed to the parser during parsing. May be null if no parameter is passed.</param>
 		public ParsedRuleResult(ParseTreeOptimization treeOptimization,
-			ParsedRuleResult? parent, ParserContext context, ParsedRule result)
+			ParsedRuleResult? parent, ParserContext context, ParsedRule result, object? parsingParameter)
 		{
 			Optimization = treeOptimization;
 			Parent = parent;
 			Context = context;
 			Result = Optimized(result, context, Optimization);
 			Token = result.isToken ? new ParsedTokenResult(this, context, result.element) : null;
+			ParsingParameter = parsingParameter;
 
 			_textLazy = new Lazy<string>(() => Context.str.Substring(Result.startIndex, Result.length));
 			_valueLazy = new Lazy<object?>(() => Rule.ParsedValueFactory?.Invoke(this) ?? null);
@@ -185,7 +192,7 @@ namespace RCLargeLanguageModels.Parsing
 				var children = new ParsedRuleResult[Result.children?.Count ?? 0];
 
 				for (int i = 0; i < children.Length; i++)
-					children[i] = new ParsedRuleResult(Optimization, this, Context, Result.children[i]);
+					children[i] = new ParsedRuleResult(Optimization, this, Context, Result.children[i], ParsingParameter);
 
 				return children;
 			});
@@ -257,7 +264,7 @@ namespace RCLargeLanguageModels.Parsing
 		/// <returns>An optimized version of this parsed rule result.</returns>
 		public ParsedRuleResult Optimized(ParseTreeOptimization optimization)
 		{
-			return new ParsedRuleResult(optimization, Parent, Context, Result);
+			return new ParsedRuleResult(optimization, Parent, Context, Result, ParsingParameter);
 		}
 
 		/// <summary>
@@ -329,6 +336,20 @@ namespace RCLargeLanguageModels.Parsing
 		/// <returns>The value associated with child rule.</returns>
 		public T? TryGetValue<T>(int index) where T : class
 			=> Children.Length > index ? Children[index].Value as T : null;
+
+		/// <summary>
+		/// Gets the parsing parameter associated with this rule as an instance of type <typeparamref name="T"/>.
+		/// </summary>
+		/// <typeparam name="T">The type of parsing parameter to retrieve.</typeparam>
+		/// <returns>The parsing parameter associated with this rule.</returns>
+		public T GetParsingParameter<T>() => (T)ParsingParameter;
+
+		/// <summary>
+		/// Tries to get the parsing parameter associated with this rule as an instance of type <typeparamref name="T"/>.
+		/// </summary>
+		/// <typeparam name="T">The type of parsing parameter to retrieve.</typeparam>
+		/// <returns>The parsing parameter associated with this rule.</returns>
+		public T? TryGetParsingParameter<T>() where T : class => ParsingParameter as T;
 
 		/// <summary>
 		/// Selects the children values of this rule.

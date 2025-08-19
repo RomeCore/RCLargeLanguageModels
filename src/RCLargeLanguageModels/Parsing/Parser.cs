@@ -122,7 +122,7 @@ namespace RCLargeLanguageModels.Parsing
 		/// Tries to parse rule based on the caching settings.
 		/// </summary>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private ParsedRule ParseNonValidated(ParserRule rule, int ruleId,
+		private ParsedRule ParseNonSkipped(ParserRule rule, int ruleId,
 			ref ParserContext context, ref ParserContext childContext)
 		{
 			switch (context.settings.caching)
@@ -165,44 +165,6 @@ namespace RCLargeLanguageModels.Parsing
 				default:
 					throw new InvalidOperationException("Invalid caching mode.");
 			}
-		}
-
-		/// <summary>
-		/// Tries to skip the skip-rule specified in settings.
-		/// </summary>
-		private bool TrySkip(ref ParserContext context, ref ParserContext childContext)
-		{
-			int skipRuleId = context.settings.skipRule;
-			int startIndex = context.position;
-
-			if (skipRuleId != -1 && context.position < context.str.Length)
-			{
-				var skipRule = Rules[skipRuleId];
-
-				var ctx = context;
-				skipRule.AdvanceContext(ref ctx, out var childCtx);
-
-				ctx.settings.skipRule = -1;
-				childCtx.settings.skipRule = -1;
-
-				int skipRuleLength;
-				do
-				{
-					var parsedSkipRule = ParseNonValidated(skipRule, skipRuleId,
-						ref ctx, ref childCtx);
-
-					skipRuleLength = parsedSkipRule.length;
-					if (parsedSkipRule.success)
-					{
-						int newPosition = parsedSkipRule.startIndex + parsedSkipRule.length;
-						context.position = childContext.position = ctx.position = childCtx.position = newPosition;
-						context.skippedRules.Add(parsedSkipRule);
-					}
-				}
-				while (skipRuleLength > 0);
-			}
-
-			return startIndex != context.position;
 		}
 
 		/// <summary>
@@ -251,40 +213,117 @@ namespace RCLargeLanguageModels.Parsing
 			var rule = Rules[ruleId];
 			rule.AdvanceContext(ref context, out var childContext);
 
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			ParsedRule Parse()
+			{
+				var parsedRule = ParseNonSkipped(rule, ruleId, ref context, ref childContext);
+				if (parsedRule.success && parsedRule.startIndex < context.str.Length)
+					context.successPositions[parsedRule.startIndex] = true;
+				return parsedRule;
+			}
+
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			bool TryParse(out ParsedRule result)
+			{
+				var parsedRule = ParseNonSkipped(rule, ruleId, ref context, ref childContext);
+				if (parsedRule.success && parsedRule.startIndex < context.str.Length)
+					context.successPositions[parsedRule.startIndex] = true;
+				result = parsedRule;
+				return parsedRule.success;
+			}
+
+			if (context.settings.skipRule == -1 || context.settings.skippingStrategy == ParserSkippingStrategy.Default)
+				return Parse();
+
+			// Skip rule preparation
+
+			int skipRuleId = context.settings.skipRule;
+			var skipRule = Rules[skipRuleId];
+			var skipContext = context;
+			skipRule.AdvanceContext(ref skipContext, out var childSkipContext);
+			skipContext.settings.skipRule = -1;
+			childSkipContext.settings.skipRule = -1;
+
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			bool TrySkip()
+			{
+				var parsedSkipRule = ParseNonSkipped(skipRule, skipRuleId,
+					ref skipContext, ref childSkipContext);
+				int newPosition = parsedSkipRule.startIndex + parsedSkipRule.length;
+
+				if (parsedSkipRule.success && newPosition != context.position)
+				{
+					context.position = childContext.position = skipContext.position =
+						childSkipContext.position = newPosition;
+					context.skippedRules.Add(parsedSkipRule);
+					return true;
+				}
+				return false;
+			}
+
 			switch (context.settings.skippingStrategy)
 			{
-				case ParserSkippingStrategy.Default:
-
-					var parsedRule = ParseNonValidated(rule, ruleId, ref context, ref childContext);
-					if (parsedRule.success)
-						context.successPositions[parsedRule.startIndex] = true;
-					return parsedRule;
-
 				case ParserSkippingStrategy.SkipBeforeParsing:
 
-					TrySkip(ref context, ref childContext);
+					TrySkip();
+					return Parse();
 
-					parsedRule = ParseNonValidated(rule, ruleId, ref context, ref childContext);
-					if (parsedRule.success && parsedRule.startIndex < context.str.Length)
-						context.successPositions[parsedRule.startIndex] = true;
-					return parsedRule;
+				case ParserSkippingStrategy.SkipBeforeParsingLazy:
+
+					// Alternate: Skip -> TryParse -> Skip -> TryParse ... until TryParse succeeds
+					while (true)
+					{
+						if (TrySkip())
+						{
+							if (TryParse(out var res))
+								return res;
+							continue;
+						}
+						return Parse();
+					}
+
+				case ParserSkippingStrategy.SkipBeforeParsingGreedy:
+
+					while (TrySkip()) { }
+					return Parse();
 
 				case ParserSkippingStrategy.TryParseThenSkip:
 
-					parsedRule = ParseNonValidated(rule, ruleId, ref context, ref childContext);
-					if (parsedRule.success)
+					if (TryParse(out var result))
+						return result;
+
+					if (!TrySkip())
+						return ParsedRule.Fail;
+
+					return Parse();
+
+				case ParserSkippingStrategy.TryParseThenSkipLazy:
+
+					// First try parse (handled above in TryParseThenSkip pattern),
+					// then alternate Skip -> TryParse -> Skip -> TryParse ... until success or nothing consumes
+					if (TryParse(out var firstResult))
+						return firstResult;
+
+					while (true)
 					{
-						if (parsedRule.startIndex < context.str.Length)
-							context.successPositions[parsedRule.startIndex] = true;
-						return parsedRule;
+						if (TrySkip())
+						{
+							if (TryParse(out var res))
+								return res;
+							continue;
+						}
+						return ParsedRule.Fail;
 					}
 
-					TrySkip(ref context, ref childContext);
+				case ParserSkippingStrategy.TryParseThenSkipGreedy:
 
-					parsedRule = ParseNonValidated(rule, ruleId, ref context, ref childContext);
-					if (parsedRule.success && parsedRule.startIndex < context.str.Length)
-						context.successPositions[parsedRule.startIndex] = true;
-					return parsedRule;
+					// Try parse; if failed, greedily skip then parse once
+					if (TryParse(out var firstRes))
+						return firstRes;
+
+					while (TrySkip()) { }
+
+					return Parse();
 
 				default:
 					throw new ParsingException(context, "Invalid skipping strategy.");
@@ -308,15 +347,16 @@ namespace RCLargeLanguageModels.Parsing
 		/// </summary>
 		/// <param name="ruleAlias">The alias for the parser rule to use.</param>
 		/// <param name="input">The input text to parse.</param>
+		/// <param name="paratemeter">Optional parameter to pass to the parser. Can be used to pass additional information to the transformation functions.</param>
 		/// <returns>A parsed rule containing the result of the parse.</returns>
-		public ParsedRuleResult ParseRule(string ruleAlias, string input)
+		public ParsedRuleResult ParseRule(string ruleAlias, string input, object? paratemeter = null)
 		{
 			if (!_rulesAliases.TryGetValue(ruleAlias, out var ruleId))
 				throw new ArgumentException("Invalid rule alias", nameof(ruleAlias));
 
 			var context = new ParserContext(this, input);
 			var parsedRule = ParseRule(ruleId, context);
-			return new ParsedRuleResult(ParseTreeOptimization.None, null, context, parsedRule);
+			return new ParsedRuleResult(ParseTreeOptimization.None, null, context, parsedRule, paratemeter);
 		}
 
 		/// <summary>
@@ -333,7 +373,26 @@ namespace RCLargeLanguageModels.Parsing
 
 			var context = new ParserContext(this, input);
 			var parsedRule = TryParseRule(ruleId, context);
-			result = new ParsedRuleResult(ParseTreeOptimization.None, null, context, parsedRule);
+			result = new ParsedRuleResult(ParseTreeOptimization.None, null, context, parsedRule, null);
+			return parsedRule.success;
+		}
+
+		/// <summary>
+		/// Tries to parse a rule using the specified rule alias and input text.
+		/// </summary>
+		/// <param name="ruleAlias">The alias for the parser rule to use.</param>
+		/// <param name="input">The input text to parse.</param>
+		/// <param name="result">The parsed rule containing the result of the parse.</param>
+		/// <param name="paratemeter">Optional parameter to pass to the parser. Can be used to pass additional information to the transformation functions.</param>
+		/// <returns>True if a rule was parsed successfully, false otherwise.</returns>
+		public bool TryParseRule(string ruleAlias, string input, object? paratemeter, out ParsedRuleResult result)
+		{
+			if (!_rulesAliases.TryGetValue(ruleAlias, out var ruleId))
+				throw new ArgumentException("Invalid rule alias", nameof(ruleAlias));
+
+			var context = new ParserContext(this, input);
+			var parsedRule = TryParseRule(ruleId, context);
+			result = new ParsedRuleResult(ParseTreeOptimization.None, null, context, parsedRule, paratemeter);
 			return parsedRule.success;
 		}
 

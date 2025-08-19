@@ -10,6 +10,8 @@ namespace RCLargeLanguageModels.Prompting.Templates.TemplateNodes
 	/// </summary>
 	public class PromptTemplateVariableAssignNode : PromptTemplateNode
 	{
+		public override bool Renderable => false;
+
 		/// <summary>
 		/// The name of the variable to assign.
 		/// </summary>

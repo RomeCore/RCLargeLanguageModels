@@ -10,6 +10,11 @@ namespace RCLargeLanguageModels.Prompting.Templates
 	public abstract class PromptTemplateNode
 	{
 		/// <summary>
+		/// Gets the value indicating whether this node can be rendered.
+		/// </summary>
+		public virtual bool Renderable => true;
+
+		/// <summary>
 		/// Renders the prompt template node using the provided data accessor.
 		/// </summary>
 		/// <param name="context">The context accessor to use for rendering.</param>

@@ -141,6 +141,9 @@ namespace RCLargeLanguageModels.Tests.Templates
 					You are too young!
 				}
 
+				@// A
+				@// B
+				@// C
 				Have a nice day.
 			}
 			""";
@@ -184,9 +187,12 @@ namespace RCLargeLanguageModels.Tests.Templates
 			{
 				Grocery list:
 			
+				@// Comment for formatting purposes.
+				@let a = '???'
 				@foreach item in ctx
 				{
-					- @item.name: @item.quantity
+					@a = item.name
+					- @a: @item.quantity
 				}
 
 				End of list.

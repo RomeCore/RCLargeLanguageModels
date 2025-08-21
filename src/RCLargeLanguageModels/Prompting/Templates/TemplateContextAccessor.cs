@@ -147,7 +147,7 @@ namespace RCLargeLanguageModels.Prompting.Templates
 		public void PopFrame()
 		{
 			if (_frames.Count == 1)
-				throw new InvalidOperationException("Stack underflow. No frames to pop.");
+				throw new TemplateRuntimeException("Stack underflow. No frames to pop.");
 			_frames.Pop();
 		}
 

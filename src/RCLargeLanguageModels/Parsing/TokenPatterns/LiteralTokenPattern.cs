@@ -35,6 +35,9 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			Comparison = comparison;
 		}
 
+		protected override HashSet<char>? FirstCharsCore => Comparison != StringComparison.Ordinal ? null :
+			new(Literal[0].WrapIntoEnumerable());
+
 
 
 		public override ParsedElement Match(string input, int position)

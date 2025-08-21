@@ -18,7 +18,7 @@ namespace RCLargeLanguageModels.Prompting.Templates.TemplateNodes
 		/// <summary>
 		/// Gets the child node of this template node.
 		/// </summary>
-		public PromptTemplateNode Child { get; }
+		public TextTemplateNode Child { get; }
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="MessagesTemplateEntryNode"/> class.
@@ -26,7 +26,7 @@ namespace RCLargeLanguageModels.Prompting.Templates.TemplateNodes
 		/// <param name="role">The expression node for role of the message.</param>
 		/// <param name="child">The child node of this template node.</param>
 		/// <exception cref="ArgumentNullException">Throw if either argument is <see langword="null"/>.".</exception>
-		public MessagesTemplateEntryNode(TemplateExpressionNode role, PromptTemplateNode child)
+		public MessagesTemplateEntryNode(TemplateExpressionNode role, TextTemplateNode child)
 		{
 			Role = role ?? throw new ArgumentNullException(nameof(role));
 			Child = child ?? throw new ArgumentNullException(nameof(child));

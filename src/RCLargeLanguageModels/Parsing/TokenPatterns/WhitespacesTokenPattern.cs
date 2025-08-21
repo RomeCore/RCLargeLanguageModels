@@ -16,9 +16,11 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 		{
 		}
 
+		protected override HashSet<char>? FirstCharsCore => new (new [] { ' ', '\t', '\n', '\r' });
+
 		public override string ToStringOverride(int remainingDepth)
 		{
-			return "[WS]";
+			return "whitespaces";
 		}
 	}
 }

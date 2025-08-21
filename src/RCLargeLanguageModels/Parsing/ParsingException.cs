@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using Newtonsoft.Json.Linq;
+using RCLargeLanguageModels.Parsing.ParserRules;
 
 namespace RCLargeLanguageModels.Parsing
 {
@@ -108,16 +109,30 @@ namespace RCLargeLanguageModels.Parsing
 			{
 				var groupedError = groupedErrors[i];
 
-				var expected = groupedError
+				var position = groupedError.Key;
+				var groupErrors = groupedError.ToList();
+
+				if (groupErrors.Count > 7)
+				{
+					groupErrors.RemoveAll(e =>
+					{
+						ParserElement element = e.isToken
+							? context.parser.TokenPatterns[e.elementId]
+							: context.parser.Rules[e.elementId];
+						return element is not TokenPattern && element is not TokenParserRule;
+					});
+				}
+
+				var expected = groupErrors
 					.Where(e => e.elementId >= 0)
 					.Select(e => e.isToken
 						? context.parser.TokenPatterns[e.elementId].ToString()
 						: context.parser.Rules[e.elementId].ToString())
 					.Distinct()
-					.Reverse()
+					.OrderBy(m => m)
 					.ToList();
 
-				var msg = groupedError
+				var msg = groupErrors
 					.Select(e => e.message)
 					.Where(m => !string.IsNullOrEmpty(m))
 					.Distinct()
@@ -133,7 +148,7 @@ namespace RCLargeLanguageModels.Parsing
 				{
 					sb.AppendLine();
 					string oneOf = msg.Count > 1 ? " one of" : "";
-					if (expected.Any(e => e.Contains('\n') || e.Contains('\r')))
+					if (expected.Any(e => e.Contains('\n') || e.Contains('\r')) || expected.Sum(s => s.Length) > 30)
 						sb.AppendLine($"Expected{oneOf}:\n" + string.Join("\n", expected).Indent("  "));
 					else
 						sb.AppendLine($"Expected{oneOf}: " + string.Join(", ", expected));

@@ -74,6 +74,9 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 			IncludeSeparatorsInResult = includeSeparatorsInResult;
 		}
 
+		protected override HashSet<char>? FirstCharsCore => MinCount == 0 ? null :
+			GetRule(Rule).FirstChars;
+
 
 
 		public override ParsedRule Parse(ParserContext context, ParserContext childContext)

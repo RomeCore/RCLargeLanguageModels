@@ -52,6 +52,9 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			_root = new Trie(literals.Select(l => new KeyValuePair<string, object?>(l, l)), _comparerWasSet ? CharComparer : null);
 		}
 
+		protected override HashSet<char>? FirstCharsCore => _comparerWasSet ? null :
+			new (Literals.Select(l => l[0]).Distinct());
+
 
 
 		public override ParsedElement Match(string input, int position)

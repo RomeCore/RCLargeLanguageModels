@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace RCLargeLanguageModels.Parsing.TokenPatterns
@@ -43,6 +44,12 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 
 			CharacterPredicate = characterPredicate ?? throw new ArgumentNullException(nameof(characterPredicate));
 		}
+
+		protected override HashSet<char>? FirstCharsCore => MinCount == 0 ? null :
+			new(Enumerable.Range(0, char.MaxValue)
+			.Where(i => CharacterPredicate((char)i)).Select(i => (char)i));
+
+
 
 		public override ParsedElement Match(string input, int position)
 		{

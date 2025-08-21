@@ -51,7 +51,7 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 
 		public override string ToStringOverride(int remainingDepth)
 		{
-			return $"token {GetTokenPattern(TokenPattern).ToString(remainingDepth)}";
+			return GetTokenPattern(TokenPattern).ToString(remainingDepth);
 		}
 
 		public override bool Equals(object? obj)

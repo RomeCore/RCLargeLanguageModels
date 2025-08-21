@@ -72,6 +72,8 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			_forbidden = new Trie(forbidden,comparer != null ? CharComparer : null);
 		}
 
+		protected override HashSet<char>? FirstCharsCore => null;
+
 
 
 		/// <summary>

@@ -27,23 +27,87 @@ namespace RCLargeLanguageModels.Parsing
 		/// </summary>
 		public Parser Parser { get; internal set; } = null!;
 
+
+
 		/// <summary>
-		/// Initializes this parser element. This method is called by the parser when it adds all elements (rules and tokens) to itself.
+		/// Gets the core implementation of <see cref="FirstChars"/>, which
+		/// returns a set of characters that are allowed as the first character of this parser element.
+		/// </summary>
+		protected virtual HashSet<char>? FirstCharsCore => null;
+
+		/// <summary>
+		/// Gets a value indicating whether the first character of this parser element is deterministic.
 		/// </summary>
 		/// <remarks>
-		/// May be used to perform some optimizations or other initialization tasks.
+		/// Deterministic means that the character at the current position can be used to strongly
+		/// determine which rule or token will be matched next. <br/>
+		/// </remarks>
+		public bool IsFirstCharDeterministic => FirstChars != null;
+
+		private readonly Lazy<HashSet<char>?> _firstCharsLazy;
+		/// <summary>
+		/// Gets a set of characters that can appear at the beginning of this parser element. If null,
+		/// it means that the first character is not deterministic.
+		/// </summary>
+		public HashSet<char>? FirstChars => _firstCharsLazy.Value;
+
+		/// <summary>
+		/// Initializes a new instance of the <see cref="ParserElement"/> class.
+		/// </summary>
+		public ParserElement()
+		{
+			_firstCharsLazy = new(() => FirstCharsCore);
+		}
+
+		/// <summary>
+		/// Initializes this parser element. This method is called by the parser when it adds all elements (rules and tokens)
+		/// to itself.
+		/// </summary>
+		/// <remarks>
+		/// May be used to perform initialization tasks.
 		/// </remarks>
 		protected virtual void Initialize()
 		{
 		}
 
 		/// <summary>
+		/// Optimizes this parser element. This method is called by the parser when it adds all elements (rules and tokens)
+		/// to itself and it has 'optimized' flag set to true. This method is called after the 'Initialize' method.
+		/// </summary>
+		/// <remarks>
+		/// May be used to perform some optimizations.
+		/// </remarks>
+		protected virtual void Optimize()
+		{
+		}
+
+		/// <summary>
+		/// Post-initializes this parser element. This method is called by the parser when it adds all elements (rules and tokens)
+		/// to itself after all elements have been initialized and optimized.
+		/// </summary>
+		/// <remarks>
+		/// May be used to perform initialization tasks.
+		/// </remarks>
+		protected virtual void PostInitialize()
+		{
+		}
+
+		/// <summary>
 		/// Initializes this parser element internally.
 		/// </summary>
-		internal void InitializeInternal()
-		{
-			Initialize();
-		}
+		internal void InitializeInternal() => Initialize();
+
+		/// <summary>
+		/// Optimizes this parser element internally.
+		/// </summary>
+		internal void OptimizeInternal() => Optimize();
+
+		/// <summary>
+		/// Post-initializes this parser element internally.
+		/// </summary>
+		internal void PostInitializeInternal() => PostInitialize();
+
+
 
 		/// <summary>
 		/// Gets the rule by index within the current parser.

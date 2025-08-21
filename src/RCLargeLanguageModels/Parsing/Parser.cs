@@ -38,7 +38,13 @@ namespace RCLargeLanguageModels.Parsing
 		/// <param name="tokenPatterns">The token patterns to use. </param>
 		/// <param name="rules">The rules to use.</param>
 		/// <param name="settings">The settings to use.</param>
-		public Parser(ImmutableArray<TokenPattern> tokenPatterns, ImmutableArray<ParserRule> rules, ParserSettings settings)
+		/// <param name="optimize">
+		/// Whether to optimize the parser rules and token patterns.
+		/// May cause significant performance improvements but may also cause issues with certain patterns/rules
+		/// and use more memory. Most of parsing errors may be lost.
+		/// </param>
+		public Parser(ImmutableArray<TokenPattern> tokenPatterns, ImmutableArray<ParserRule> rules,
+			ParserSettings settings, bool optimize = false)
 		{
 			Rules = rules;
 			TokenPatterns = tokenPatterns;
@@ -72,11 +78,23 @@ namespace RCLargeLanguageModels.Parsing
 				}
 			}
 
+			foreach (var pattern in tokenPatterns)
+				pattern.InitializeInternal();
 			foreach (var rule in rules)
 				rule.InitializeInternal();
 
+			if (optimize)
+			{
+				foreach (var pattern in tokenPatterns)
+					pattern.OptimizeInternal();
+				foreach (var rule in rules)
+					rule.OptimizeInternal();
+			}
+
 			foreach (var pattern in tokenPatterns)
-				pattern.InitializeInternal();
+				pattern.PostInitializeInternal();
+			foreach (var rule in rules)
+				rule.PostInitializeInternal();
 		}
 
 		/// <summary>

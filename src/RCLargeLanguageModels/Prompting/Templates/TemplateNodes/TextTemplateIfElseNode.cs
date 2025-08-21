@@ -1,15 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using RCLargeLanguageModels.Messages;
 
 namespace RCLargeLanguageModels.Prompting.Templates.TemplateNodes
 {
 	/// <summary>
-	/// Represents a conditional node in a messages template.
+	/// Represents a conditional node in a prompt template.
 	/// </summary>
-	public class MessagesTemplateIfElseNode : MessagesTemplateNode
+	public class TextTemplateIfElseNode : TextTemplateNode
 	{
 		/// <summary>
 		/// The condition to evaluate.
@@ -19,30 +17,30 @@ namespace RCLargeLanguageModels.Prompting.Templates.TemplateNodes
 		/// <summary>
 		/// The node to execute if the condition is true.
 		/// </summary>
-		public MessagesTemplateNode IfBranch { get; }
+		public TextTemplateNode IfBranch { get; }
 
 		/// <summary>
 		/// The node to execute if the condition is false.
 		/// </summary>
-		public MessagesTemplateNode? ElseBranch { get; }
+		public TextTemplateNode? ElseBranch { get; }
 
 		/// <summary>
-		/// Creates a new instance of the <see cref="MessagesTemplateIfElseNode"/> class.
+		/// Creates a new instance of the <see cref="TextTemplateIfElseNode"/> class.
 		/// </summary>
 		/// <param name="condition">The condition to evaluate.</param>
 		/// <param name="ifBranch">The node to execute if the condition is true.</param>
 		/// <param name="elseBranch">The node to execute if the condition is false. Can be null.</param>
 		/// <exception cref="ArgumentNullException">Thrown when any of the parameters are null, except for <paramref name="elseBranch"/>.</exception>
-		public MessagesTemplateIfElseNode(TemplateExpressionNode condition, MessagesTemplateNode ifBranch, MessagesTemplateNode? elseBranch)
+		public TextTemplateIfElseNode(TemplateExpressionNode condition, TextTemplateNode ifBranch, TextTemplateNode? elseBranch)
 		{
 			Condition = condition ?? throw new ArgumentNullException(nameof(condition));
 			IfBranch = ifBranch ?? throw new ArgumentNullException(nameof(ifBranch));
 			ElseBranch = elseBranch;
 		}
 
-		public override IEnumerable<IMessage> Render(TemplateContextAccessor context)
+		public override string Render(TemplateContextAccessor context)
 		{
-			IEnumerable<IMessage>? result = null;
+			string? result = null;
 
 			var conditionResult = Condition.Evaluate(context);
 
@@ -55,7 +53,7 @@ namespace RCLargeLanguageModels.Prompting.Templates.TemplateNodes
 
 			context.PopFrame();
 
-			return result ?? Enumerable.Empty<IMessage>();
+			return result;
 		}
 
 		public override void Refine(int depth)
@@ -65,7 +63,7 @@ namespace RCLargeLanguageModels.Prompting.Templates.TemplateNodes
 			if (ElseBranch == null)
 				return;
 
-			if (ElseBranch is MessagesTemplateIfElseNode)
+			if (ElseBranch is TextTemplateIfElseNode)
 				ElseBranch?.Refine(depth); // Same depth for nested if-else
 			else
 				ElseBranch?.Refine(depth + 1);
@@ -74,8 +72,8 @@ namespace RCLargeLanguageModels.Prompting.Templates.TemplateNodes
 		public override string ToString()
 		{
 			if (ElseBranch == null)
-				return $"@messages if {Condition} \n {{\n{IfBranch}\n}} \n";
-			return $"@messages if {Condition} \n {{\n{IfBranch}\n}} \n else \n {{\n{ElseBranch}\n}}";
+				return $"@if {Condition} \n {{\n{IfBranch}\n}} \n";
+			return $"@if {Condition} \n {{\n{IfBranch}\n}} \n else \n {{\n{ElseBranch}\n}}";
 		}
 	}
 }

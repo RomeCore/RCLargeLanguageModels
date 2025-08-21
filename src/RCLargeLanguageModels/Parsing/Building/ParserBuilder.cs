@@ -98,8 +98,13 @@ namespace RCLargeLanguageModels.Parsing.Building
 		/// <summary>
 		/// Builds the parser from the registered token patterns and rules.
 		/// </summary>
+		/// <param name="optimize">
+		/// Whether to optimize the parser rules and token patterns.
+		/// May cause significant performance improvements but may also cause issues with certain patterns/rules
+		/// and use more memory. Most of parsing errors may be lost.
+		/// </param>
 		/// <returns>A <see cref="Parser"/> instance representing the built parser.</returns>
-		public Parser Build()
+		public Parser Build(bool optimize = false)
 		{
 			// Counters for assigning unique IDs to rules and tokens
 			int ruleCounter = 0;
@@ -386,7 +391,7 @@ namespace RCLargeLanguageModels.Parsing.Building
 			}
 
 			// Return the fully built parser instance with rules and token patterns
-			return new Parser(resultTokenPatterns.ToImmutableArray(), resultRules.ToImmutableArray(), settings);
+			return new Parser(resultTokenPatterns.ToImmutableArray(), resultRules.ToImmutableArray(), settings, optimize);
 		}
 	}
 }

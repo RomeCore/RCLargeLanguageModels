@@ -28,6 +28,15 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 				throw new ArgumentException("At least one token pattern must be provided.", nameof(tokenPatternIds));
 		}
 
+		protected override HashSet<char>? FirstCharsCore { get
+			{
+				var childFirstChars = Choices.Select(id => GetTokenPattern(id).FirstChars).ToArray();
+				if (childFirstChars.Any(fcs => fcs == null))
+					return null;
+				return new (childFirstChars.SelectMany(fcs => fcs).Distinct());
+			}
+		}
+
 
 
 		public override ParsedElement Match(string input, int position)

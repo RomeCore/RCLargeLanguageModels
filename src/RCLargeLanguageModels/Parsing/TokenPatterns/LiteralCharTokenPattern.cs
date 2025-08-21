@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace RCLargeLanguageModels.Parsing.TokenPatterns
@@ -35,6 +36,8 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			Comparison = comparison;
 			charPool[0] = literal;
 		}
+
+		protected override HashSet<char>? FirstCharsCore => new(Literal.WrapIntoEnumerable());
 
 
 

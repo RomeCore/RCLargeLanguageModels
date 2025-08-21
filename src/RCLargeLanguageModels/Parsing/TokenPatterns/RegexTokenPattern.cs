@@ -36,6 +36,8 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			Regex = new Regex($"\\G{RegexPattern}", options);
 		}
 
+		protected override HashSet<char>? FirstCharsCore => null;
+
 
 
 		public override ParsedElement Match(string input, int position)

@@ -28,6 +28,8 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 				throw new ArgumentException("Sequence must have at least one rule");
 		}
 
+		protected override HashSet<char>? FirstCharsCore => GetRule(Rules[0]).FirstChars;
+
 
 
 		public override ParsedRule Parse(ParserContext context, ParserContext childContext)

@@ -405,7 +405,7 @@ namespace RCLargeLanguageModels.Prompting.Templates
 				.Transform(v =>
 				{
 					var role = new TemplateStringAccessor(v.GetIntermediateValue<string>(0));
-					return new MessagesTemplateEntryNode(role.AsExpression(), v.GetValue<PromptTemplateNode>(3));
+					return new MessagesTemplateEntryNode(role.AsExpression(), v.GetValue<TextTemplateNode>(3));
 				});
 
 			builder.CreateRule("message_block_variable_role")
@@ -417,7 +417,7 @@ namespace RCLargeLanguageModels.Prompting.Templates
 				.Transform(v =>
 				{
 					var role = v.GetValue<TemplateExpressionNode>(5);
-					return new MessagesTemplateEntryNode(role, v.GetValue<PromptTemplateNode>(6));
+					return new MessagesTemplateEntryNode(role, v.GetValue<TextTemplateNode>(6));
 				});
 
 			builder.CreateRule("messages_if")
@@ -525,7 +525,7 @@ namespace RCLargeLanguageModels.Prompting.Templates
 					if (v.TryGetValue<MetadataCollection>(5) is MetadataCollection collection)
 						metadata = metadata.Concat(collection);
 
-					var node = v.GetValue<PromptTemplateNode>(6);
+					var node = v.GetValue<TextTemplateNode>(6);
 					node.Refine(depth: 1);
 
 					var library = v.GetParsingParameter<LLTParsingContext>().LocalLibrary;
@@ -536,7 +536,7 @@ namespace RCLargeLanguageModels.Prompting.Templates
 
 			builder.CreateRule("text_content")
 				.EscapedTextDoubleChars("@{}", allowsEmpty: false)
-				.Transform(v => new PromptTemplatePlainTextNode(v.GetIntermediateValue<string>()));
+				.Transform(v => new TextTemplatePlainTextNode(v.GetIntermediateValue<string>()));
 
 			builder.CreateRule("text_statements")
 				.ZeroOrMore(b => b.Choice(
@@ -544,12 +544,12 @@ namespace RCLargeLanguageModels.Prompting.Templates
 					c => c.Rule("text_statement")))
 				.Transform(v =>
 				{
-					var nodes = v.SelectArray<PromptTemplateNode>();
+					var nodes = v.SelectArray<TextTemplateNode>();
 
 					if (nodes.Length == 1)
 						return nodes[0];
 
-					return new PromptTemplateSequentialNode(nodes);
+					return new TextTemplateSequentialNode(nodes);
 				});
 
 			builder.CreateRule("text_template_block")
@@ -578,7 +578,7 @@ namespace RCLargeLanguageModels.Prompting.Templates
 				.Transform(v =>
 				{
 					var format = v.Children[1].Children.Length > 0 ? v.Children[1].Children[0].GetValue<string>(1) : null;
-					return new PromptTemplateExpressionNode(v.GetValue<TemplateExpressionNode>(0), format);
+					return new TextTemplateExpressionNode(v.GetValue<TemplateExpressionNode>(0), format);
 				});
 
 			builder.CreateRule("text_if")
@@ -596,9 +596,9 @@ namespace RCLargeLanguageModels.Prompting.Templates
 				.Transform(v =>
 				{
 					var condition = v.GetValue<TemplateExpressionNode>(2);
-					var ifBlock = v.GetValue<PromptTemplateNode>(3);
-					var elseBlock = v.TryGetValue<PromptTemplateNode>(4);
-					return new PromptTemplateIfElseNode(condition, ifBlock, elseBlock);
+					var ifBlock = v.GetValue<TextTemplateNode>(3);
+					var elseBlock = v.TryGetValue<TextTemplateNode>(4);
+					return new TextTemplateIfElseNode(condition, ifBlock, elseBlock);
 				});
 
 			builder.CreateRule("text_foreach")
@@ -613,8 +613,8 @@ namespace RCLargeLanguageModels.Prompting.Templates
 				{
 					var variable = v.GetValue<string>(2);
 					var collection = v.GetValue<TemplateExpressionNode>(5);
-					var block = v.GetValue<PromptTemplateNode>(6);
-					return new PromptTemplateForeachNode(collection, block, variable);
+					var block = v.GetValue<TextTemplateNode>(6);
+					return new TextTemplateForeachNode(collection, block, variable);
 				});
 
 			// TEMPORARY EXCLUDED: text while loop
@@ -635,7 +635,7 @@ namespace RCLargeLanguageModels.Prompting.Templates
 				{
 					var identifier = v.GetValue<TemplateExpressionNode>(2);
 					var ctx = v.TryGetValue<TemplateExpressionNode>(3);
-					return new PromptTemplateRenderNode(identifier, ctx);
+					return new TextTemplateRenderNode(identifier, ctx);
 				});
 
 			builder.CreateRule("text_var_assignment")
@@ -649,7 +649,7 @@ namespace RCLargeLanguageModels.Prompting.Templates
 					{
 						var name = v.GetValue<string>(2);
 						var expr = v.GetValue<TemplateExpressionNode>(4);
-						return new PromptTemplateVariableAssignNode(name, expr, assignsToExisting: false);
+						return new TextTemplateVariableAssignNode(name, expr, assignsToExisting: false);
 					}), b => b
 					.Token("identifier")
 					.Literal("=")
@@ -658,7 +658,7 @@ namespace RCLargeLanguageModels.Prompting.Templates
 					{
 						var name = v.GetValue<string>(0);
 						var expr = v.GetValue<TemplateExpressionNode>(2);
-						return new PromptTemplateVariableAssignNode(name, expr, assignsToExisting: true);
+						return new TextTemplateVariableAssignNode(name, expr, assignsToExisting: true);
 					}));
 		}
 
@@ -713,7 +713,8 @@ namespace RCLargeLanguageModels.Prompting.Templates
 				.Skip(s => s.Choice(
 					c => c.Whitespaces(),
 					c => c.Literal("@//").TextUntil('\n', '\r'), // @// C#-like comments
-					c => c.Literal("@*").TextUntil("*@").Literal("*@")), // @*...*@ comments
+					c => c.Literal("@*").TextUntil("*@").Literal("*@")) // @*...*@ comments
+					.Configure(c => c.IgnoreErrors()), // Ignore all errors when parsing comments and unnecessary whitespace
 					ParserSkippingStrategy.TryParseThenSkipLazy) // Allows rules to capture skip-rules contents if can, such as whitespaces
 				.CacheAll(); // If caching is disabled, prepare to wait for a long time (seconds) when encountering an error :P (you will also get a million of errors, seriously)
 
@@ -732,7 +733,7 @@ namespace RCLargeLanguageModels.Prompting.Templates
 			// ---- Main rules ---- //
 			DeclareMainRules(builder);
 
-			_parser = builder.Build();
+			_parser = builder.Build(optimize: true);
 		}
 
 		public ParsedRuleResult ParseAST(string templateString)

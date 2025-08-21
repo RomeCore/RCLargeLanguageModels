@@ -12,7 +12,7 @@ namespace RCLargeLanguageModels.Prompting.Templates
 	/// </summary>
 	public class PromptTemplate : ITemplate
 	{
-		private readonly PromptTemplateNode _node;
+		private readonly TextTemplateNode _node;
 
 		public IMetadataCollection Metadata { get; }
 
@@ -28,7 +28,7 @@ namespace RCLargeLanguageModels.Prompting.Templates
 		/// <param name="metadata">The metadata associated with this template.</param>
 		/// <param name="localLibrary">The local library associated with this prompt template.</param>
 		/// <exception cref="ArgumentNullException"></exception>
-		public PromptTemplate(PromptTemplateNode mainNode, IMetadataCollection metadata, TemplateLibrary localLibrary)
+		public PromptTemplate(TextTemplateNode mainNode, IMetadataCollection metadata, TemplateLibrary localLibrary)
 		{
 			_node = mainNode ?? throw new ArgumentNullException(nameof(mainNode));
 			Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));

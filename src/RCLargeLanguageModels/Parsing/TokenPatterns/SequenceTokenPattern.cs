@@ -37,6 +37,8 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			PassageFunction = passageFunction;
 		}
 
+		protected override HashSet<char>? FirstCharsCore => GetTokenPattern(TokenPatterns[0]).FirstChars;
+
 
 
 		public override ParsedElement Match(string input, int position)

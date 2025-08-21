@@ -24,6 +24,8 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			TokenPattern = tokenPatternId;
 		}
 
+		protected override HashSet<char>? FirstCharsCore => null;
+
 
 
 		public override ParsedElement Match(string input, int position)

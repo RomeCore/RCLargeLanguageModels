@@ -46,6 +46,9 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 			MaxCount = maxCount;
 		}
 
+		protected override HashSet<char>? FirstCharsCore => MinCount == 0 ? null :
+			GetTokenPattern(TokenPattern).FirstChars;
+
 
 
 		public override ParsedElement Match(string input, int position)

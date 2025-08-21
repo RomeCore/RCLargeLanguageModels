@@ -22,7 +22,7 @@ namespace RCLargeLanguageModels.Prompting.Templates
 		/// <summary>
 		/// The prompt template that was being executed when the exception occurred. Can be null if no specific template node was involved.
 		/// </summary>
-		public PromptTemplateNode? PromptTemplateNode { get; }
+		public TextTemplateNode? PromptTemplateNode { get; }
 
 		/// <summary>
 		/// The messages template node that was being executed when the exception occurred. Can be null if no specific node was involved.
@@ -58,7 +58,7 @@ namespace RCLargeLanguageModels.Prompting.Templates
 			string? message,
 			TemplateDataAccessor? dataAccessor = null,
 			TemplateExpressionNode? expressionNode = null,
-			PromptTemplateNode? promptTemplateNode = null,
+			TextTemplateNode? promptTemplateNode = null,
 			MessagesTemplateNode? messagesTemplateNode = null
 			) : base(message)
 		{
@@ -82,7 +82,7 @@ namespace RCLargeLanguageModels.Prompting.Templates
 			Exception? innerException,
 			TemplateDataAccessor? dataAccessor = null,
 			TemplateExpressionNode? expressionNode = null,
-			PromptTemplateNode? promptTemplateNode = null,
+			TextTemplateNode? promptTemplateNode = null,
 			MessagesTemplateNode? messagesTemplateNode = null
 			) : base(message, innerException)
 		{

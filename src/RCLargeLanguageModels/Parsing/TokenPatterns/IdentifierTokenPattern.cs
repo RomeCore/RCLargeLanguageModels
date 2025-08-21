@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace RCLargeLanguageModels.Parsing.TokenPatterns
@@ -72,6 +73,12 @@ namespace RCLargeLanguageModels.Parsing.TokenPatterns
 				c => char.IsLetterOrDigit(c) || c == '_',
 				minLength, maxLength);
 		}
+
+		protected override HashSet<char>? FirstCharsCore =>
+			new(Enumerable.Range(0, char.MaxValue)
+			.Where(i => StartPredicate((char)i)).Select(i => (char)i));
+
+
 
 		public override ParsedElement Match(string input, int position)
 		{

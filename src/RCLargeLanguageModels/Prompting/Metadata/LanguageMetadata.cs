@@ -20,9 +20,23 @@ namespace RCLargeLanguageModels.Prompting.Metadata
 		/// Initializes a new instance of the <see cref="LanguageMetadata"/> class with the specified language code.
 		/// </summary>
 		/// <param name="languageCode">The language code associated with this metadata.</param>
+		public LanguageMetadata(string languageCode)
+		{
+			LanguageCode = new LanguageCode(languageCode);
+		}
+
+		/// <summary>
+		/// Initializes a new instance of the <see cref="LanguageMetadata"/> class with the specified language code.
+		/// </summary>
+		/// <param name="languageCode">The language code associated with this metadata.</param>
 		public LanguageMetadata(LanguageCode languageCode)
 		{
 			LanguageCode = languageCode;
+		}
+
+		public override string ToString()
+		{
+			return $"Language: '{LanguageCode}'";
 		}
 
 		public override bool Equals(object? obj)

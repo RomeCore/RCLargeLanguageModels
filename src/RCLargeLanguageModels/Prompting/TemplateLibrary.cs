@@ -2,11 +2,14 @@
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using RCLargeLanguageModels.Locale;
 using RCLargeLanguageModels.Metadata;
+using RCLargeLanguageModels.Parsing;
 using RCLargeLanguageModels.Prompting.Metadata;
 using RCLargeLanguageModels.Prompting.Templates;
 
@@ -15,8 +18,31 @@ namespace RCLargeLanguageModels.Prompting
 	/// <summary>
 	/// Represents a library of templates that can be used to generate prompts and collections of messages.
 	/// </summary>
-	public class TemplateLibrary : IEnumerable<ITemplate>
+	public partial class TemplateLibrary : IEnumerable<ITemplate>
 	{
+		private static readonly ConcurrentDictionary<string, ITemplateParser> _templateParsers = new();
+
+		static TemplateLibrary()
+		{
+			_templateParsers.TryAdd("llt", new LLTParser());
+		}
+
+		/// <summary>
+		/// Registers a template parser for the specified language.
+		/// </summary>
+		/// <param name="languageCode">The language code of the template language.</param>
+		/// <param name="parser">The template parser to register.</param>
+		/// <exception cref="ArgumentException">Thrown when a parser is already registered for the specified language code.</exception>
+		public static void RegisterParser(string languageCode, ITemplateParser parser)
+		{
+			languageCode = languageCode.ToLowerInvariant();
+			if (_templateParsers.ContainsKey(languageCode))
+				throw new ArgumentException($"Parser already registered for language: '{languageCode}'");
+			_templateParsers.TryAdd(languageCode, parser);
+		}
+
+
+
 		private readonly MultiValueDictionary<IMetadata, ITemplate> _templates = new();
 		private readonly HashSet<ITemplate> _allTemplates = new();
 
@@ -35,7 +61,15 @@ namespace RCLargeLanguageModels.Prompting
 		/// </summary>
 		public TemplateLibrary()
 		{
-			SetLanguageFallbackScheme(new MajorLanguageFallbackScheme());
+		}
+
+		/// <summary>
+		/// Initializes a new instance of the <see cref="TemplateLibrary"/> class.
+		/// </summary>
+		/// <param name="templates">The templates to add to the library.</param>
+		public TemplateLibrary(IEnumerable<ITemplate> templates)
+		{
+			TryAddRange(templates);
 		}
 
 		/// <summary>
@@ -52,7 +86,7 @@ namespace RCLargeLanguageModels.Prompting
 		/// </summary>
 		/// <param name="template">The template to add. Cannot be <see langword="null"/>.</param>
 		/// <exception cref="ArgumentNullException">Thrown if <paramref name="template"/> is <see langword="null"/>.</exception>
-		/// <exception cref="ArgumentException">Thrown if a template with the same metadata already exists in the library.</exception>
+		/// <exception cref="ArgumentException">Thrown if a template exists in the library.</exception>
 		public void Add(ITemplate template)
 		{
 			if (template == null)
@@ -74,6 +108,97 @@ namespace RCLargeLanguageModels.Prompting
 
 				_templates.Add(metadata, template);
 			}
+		}
+
+		/// <summary>
+		/// Tries to add a template to the library and associates it with its metadata.
+		/// </summary>
+		/// <param name="template">The template to add. Cannot be <see langword="null"/>.</param>
+		/// <returns><see langword="true"/> if the template was added; otherwise, <see langword="false"/>.</returns>
+		/// <exception cref="ArgumentNullException">Thrown if <paramref name="template"/> is <see langword="null"/>.</exception>
+		public bool TryAdd(ITemplate template)
+		{
+			if (template == null)
+				throw new ArgumentNullException(nameof(template));
+
+			lock (_lockObject)
+				if (!_allTemplates.Add(template))
+					return false;
+
+			foreach (var metadata in template.Metadata)
+			{
+				lock (_lockObject)
+				{
+					var metadataType = metadata.GetType();
+					if (!_fallbackMetadatas.TryGetValue(metadataType, out var fallbackMetadatas))
+						_fallbackMetadatas[metadataType] = fallbackMetadatas = new HashSet<IMetadata>();
+					fallbackMetadatas.Add(metadata);
+				}
+
+				_templates.Add(metadata, template);
+			}
+
+			return true;
+		}
+
+
+
+		/// <summary>
+		/// Adds a template to the library and associates it with its metadata.
+		/// </summary>
+		/// <param name="templates">The templates to add. Cannot be <see langword="null"/>.</param>
+		/// <exception cref="ArgumentNullException">Thrown if <paramref name="templates"/> is <see langword="null"/>.</exception>
+		/// <exception cref="ArgumentException">Thrown if a template exists in the library.</exception>
+		public void AddRange(IEnumerable<ITemplate> templates)
+		{
+			if (templates == null)
+				throw new ArgumentNullException(nameof(templates));
+
+			lock (_lockObject)
+				foreach (var template in templates)
+				{
+					if (!_allTemplates.Add(template))
+						throw new ArgumentException("Template already exists in the library.", nameof(template));
+
+					foreach (var metadata in template.Metadata)
+					{
+						var metadataType = metadata.GetType();
+						if (!_fallbackMetadatas.TryGetValue(metadataType, out var fallbackMetadatas))
+							_fallbackMetadatas[metadataType] = fallbackMetadatas = new HashSet<IMetadata>();
+						fallbackMetadatas.Add(metadata);
+
+						_templates.Add(metadata, template);
+					}
+				}
+		}
+
+		/// <summary>
+		/// Tries to add a range of templates to the library and associates them with their metadata.
+		/// </summary>
+		/// <param name="templates">The templates to add. Cannot be <see langword="null"/>.</param>
+		/// <exception cref="ArgumentNullException">Thrown if <paramref name="templates"/> is <see langword="null"/>.</exception>
+		/// <exception cref="ArgumentException">Thrown if a template exists in the library.</exception>
+		public void TryAddRange(IEnumerable<ITemplate> templates)
+		{
+			if (templates == null)
+				throw new ArgumentNullException(nameof(templates));
+
+			lock (_lockObject)
+				foreach (var template in templates)
+				{
+					if (!_allTemplates.Add(template))
+						continue;
+
+					foreach (var metadata in template.Metadata)
+					{
+						var metadataType = metadata.GetType();
+						if (!_fallbackMetadatas.TryGetValue(metadataType, out var fallbackMetadatas))
+							_fallbackMetadatas[metadataType] = fallbackMetadatas = new HashSet<IMetadata>();
+						fallbackMetadatas.Add(metadata);
+
+						_templates.Add(metadata, template);
+					}
+				}
 		}
 
 		/// <summary>
@@ -118,259 +243,7 @@ namespace RCLargeLanguageModels.Prompting
 				scheme ?? throw new ArgumentNullException(nameof(scheme));
 		}
 
-		private bool TryRetrieve(IMetadata metadata, out ICollection<ITemplate> templates)
-		{
-			lock (_lockObject)
-			{
-				if (_templates.TryGetValue(metadata, out templates))
-					return true;
 
-				var metadataType = metadata.GetType();
-				if (_fallbackSchemes.TryGetValue(metadataType, out var scheme))
-				{
-					if (!_fallbackMetadatas.TryGetValue(metadataType, out var fallbackMetadatas))
-						return false;
-
-					var fallbackMetadata = scheme.GetFallbackMetadata(metadata, fallbackMetadatas);
-					return _templates.TryGetValue(fallbackMetadata, out templates);
-				}
-			}
-
-			return false;
-		}
-
-		/// <summary>
-		/// Retrieves a first matching template based on the given metadata.
-		/// </summary>
-		/// <remarks>
-		/// Returns the first template that matches (or contains in <see cref="ITemplate.Metadata"/>)
-		/// the every given metadata object. If not, throws a <see cref="KeyNotFoundException"/>.
-		/// </remarks>
-		/// <param name="metadatas">
-		/// The metadata to use for retrieving the template.
-		/// Can be an array of metadata objects or a single metadata object.
-		/// If multiple metadata objects are provided, they must all match exactly.
-		/// </param>
-		/// <returns>The template that matches all the given metadata.</returns>
-		/// <exception cref="ArgumentNullException">Thrown if <paramref name="metadatas"/> is <see langword="null"/>.</exception>
-		/// <exception cref="ArgumentException">Thrown if <paramref name="metadatas"/> is an empty array.</exception>
-		/// <exception cref="KeyNotFoundException">Thrown if no template matches all the given metadata.</exception>
-		public ITemplate Retrieve(params IMetadata[] metadatas)
-		{
-			if (metadatas == null)
-				throw new ArgumentNullException(nameof(metadatas));
-			if (metadatas.Length == 0)
-				throw new ArgumentException("At least one metadata must be provided for retrieval.", nameof(metadatas));
-
-			HashSet<ITemplate>? result = null;
-
-			foreach (var metadata in metadatas)
-			{
-				if (TryRetrieve(metadata, out var templates))
-				{
-					if (result == null)
-					{
-						result = new (templates);
-					}
-					else
-					{
-						lock (_lockObject)
-							result.IntersectWith(templates);
-						if (result.Count == 0)
-							throw new KeyNotFoundException($"No templates found for metadata {metadata}.");
-					}
-				}
-				else
-				{
-					throw new KeyNotFoundException($"No templates found for metadata {metadata}.");
-				}
-			}
-
-			return result?.FirstOrDefault() ?? throw new KeyNotFoundException("No template found with the given metadata.");
-		}
-
-		/// <inheritdoc cref="Retrieve(IMetadata[])"/>
-		/// <param name="identifier">The identifier of the template to retrieve.</param>
-		/// <param name="metadatas"></param>
-		public ITemplate Retrieve(string identifier, params IMetadata[] metadatas)
-		{
-			return Retrieve(metadatas.Prepend(new TemplateIdentifierMetadata(identifier)).ToArray());
-		}
-
-		/// <inheritdoc cref="Retrieve(IMetadata[])"/>
-		/// <param name="identifier">The identifier of the template to retrieve.</param>
-		public ITemplate Retrieve(string identifier)
-		{
-			return Retrieve(new TemplateIdentifierMetadata(identifier));
-		}
-
-		/// <summary>
-		/// Retrieves a first matching template based on the given metadata.
-		/// </summary>
-		/// <remarks>
-		/// Returns the first template that matches (or contains in <see cref="ITemplate.Metadata"/>)
-		/// the every given metadata object. If not, returns <see langword="null"/>.
-		/// </remarks>
-		/// <param name="metadatas">
-		/// The metadata to use for retrieving the template.
-		/// Can be an array of metadata objects or a single metadata object.
-		/// If multiple metadata objects are provided, they must all match exactly.
-		/// </param>
-		/// <returns>The template that matches all the given metadata or <see langword="null"/> if no template matches.</returns>
-		/// <exception cref="ArgumentNullException">Thrown if <paramref name="metadatas"/> is <see langword="null"/>.</exception>
-		/// <exception cref="ArgumentException">Thrown if <paramref name="metadatas"/> is an empty array.</exception>
-		public ITemplate? TryRetrieve(params IMetadata[] metadatas)
-		{
-			if (metadatas == null)
-				throw new ArgumentNullException(nameof(metadatas));
-			if (metadatas.Length == 0)
-				throw new ArgumentException("At least one metadata must be provided for retrieval.", nameof(metadatas));
-
-			HashSet<ITemplate>? result = null;
-
-			foreach (var metadata in metadatas)
-			{
-				if (TryRetrieve(metadata, out var templates))
-				{
-					if (result == null)
-					{
-						result = new (templates);
-					}
-					else
-					{
-						lock (_lockObject)
-							result.IntersectWith(templates);
-						if (result.Count == 0)
-							return null;
-					}
-				}
-				else
-				{
-					return null;
-				}
-			}
-
-			return result?.FirstOrDefault();
-		}
-
-		/// <inheritdoc cref="TryRetrieve(IMetadata[])"/>
-		/// <param name="identifier">The identifier of the template to retrieve.</param>
-		/// <param name="metadatas"></param>
-		public ITemplate? TryRetrieve(string identifier, params IMetadata[] metadatas)
-		{
-			return TryRetrieve(metadatas.Prepend(new TemplateIdentifierMetadata(identifier)).ToArray());
-		}
-
-		/// <inheritdoc cref="TryRetrieve(IMetadata[])"/>
-		/// <param name="identifier">The identifier of the template to retrieve.</param>
-		public ITemplate? TryRetrieve(string identifier)
-		{
-			return TryRetrieve(new TemplateIdentifierMetadata(identifier));
-		}
-
-		/// <summary>
-		/// Retrieves a first matching template based on the given metadata.
-		/// If no exact match is found, returns the last successfully matched result.
-		/// </summary>
-		/// <remarks>
-		/// This method performs a sequential matching of the provided metadata array. <br/>
-		/// Order of metadata matters. <para/>
-		/// 
-		/// Algorithm: <br/>
-		/// 1. Start with the first metadata in the array. <br/>
-		/// 2. If there are templates for it, keep them as the current candidate set. <br/>
-		/// 3. For the next metadata: <br/>
-		///    - If intersection with the candidate set is non-empty, continue. <br/>
-		///    - If intersection becomes empty, return the last candidate (best available). <br/>
-		/// 4. If at some step no templates exist for a metadata key, stop and return the last candidate. <br/>
-		/// 5. If the loop completes, return the final intersected template (or null if none). <para/>
-		///
-		/// Examples: <para/>
-		/// 
-		/// Input: [ID: sample_template, LANG: en_US] <br/>
-		/// Available templates: <br/>
-		/// - [ID: sample_template, LANG: zh_CN] <br/>
-		/// Result: <br/>
-		/// - Matches "ID: sample_template" first → candidate found. <br/>
-		/// - Next metadata "LANG: en_US" → no intersection. <br/>
-		/// - Returns last candidate → [ID: sample_template, LANG: zh_CN]. <para/>
-		///
-		/// Input: [LANG: en_US, ID: sample_template] <br/>
-		/// Available templates: <br/>
-		/// - [ID: sample_template, LANG: zh_CN] <br/>
-		/// Result: <br/>
-		/// - First metadata "LANG: en_US" → no candidates found. <br/>
-		/// - Immediately returns null. <para/>
-		/// 
-		/// Input: [ID: order, TYPE: invoice, LANG: en] <br/>
-		/// Available templates: <br/>
-		/// - [ID: order, TYPE: invoice, LANG: fr] <br/>
-		/// - [ID: order, TYPE: receipt, LANG: en] <br/>
-		/// Result: <br/>
-		/// - First metadata "ID: order" → 2 candidates. <br/>
-		/// - Next metadata "TYPE: invoice" → narrows to [ID: order, TYPE: invoice, LANG: fr]. <br/>
-		/// - Next metadata "LANG: en" → intersection empty. <br/>
-		/// - Returns last candidate → [ID: order, TYPE: invoice, LANG: fr]. <para/>
-		/// 
-		/// This approach guarantees that at least some "best-effort" template is returned
-		/// if the beginning of the metadata chain was matched, but later elements failed.
-		/// </remarks>
-		/// <param name="metadatas">The metadata to use for retrieving the template. Order matters.</param>
-		/// <returns>
-		/// The best-effort matching template, or <see langword="null"/> if no initial metadata matches.
-		/// </returns>
-		/// <exception cref="ArgumentNullException">Thrown if <paramref name="metadatas"/> is <see langword="null"/>.</exception>
-		/// <exception cref="ArgumentException">Thrown if <paramref name="metadatas"/> is an empty array.</exception>
-		public ITemplate? TryRetrieveBest(params IMetadata[] metadatas)
-		{
-			if (metadatas == null)
-				throw new ArgumentNullException(nameof(metadatas));
-			if (metadatas.Length == 0)
-				throw new ArgumentException("At least one metadata must be provided for retrieval.", nameof(metadatas));
-
-			HashSet<ITemplate>? result = null;
-
-			foreach (var metadata in metadatas)
-			{
-				if (TryRetrieve(metadata, out var templates))
-				{
-					if (result == null)
-					{
-						result = new (templates);
-					}
-					else
-					{
-						// If we've got a `templates`, it guaranteed to be not empty
-						var res = result.First();
-						lock (_lockObject)
-							result.IntersectWith(templates);
-						if (result.Count == 0)
-							return res;
-					}
-				}
-				else
-				{
-					break;
-				}
-			}
-
-			return result?.FirstOrDefault();
-		}
-
-		/// <inheritdoc cref="TryRetrieveBest(IMetadata[])"/>
-		/// <param name="identifier">The identifier of the template to retrieve.</param>
-		/// <param name="metadatas"></param>
-		public ITemplate? TryRetrieveBest(string identifier, params IMetadata[] metadatas)
-		{
-			return TryRetrieveBest(metadatas.Prepend(new TemplateIdentifierMetadata(identifier)).ToArray());
-		}
-
-		/// <inheritdoc cref="TryRetrieveBest(IMetadata[])"/>
-		/// <param name="identifier">The identifier of the template to retrieve.</param>
-		public ITemplate? TryRetrieveBest(string identifier)
-		{
-			return TryRetrieveBest(new TemplateIdentifierMetadata(identifier));
-		}
 
 		public IEnumerator<ITemplate> GetEnumerator()
 		{
@@ -380,6 +253,196 @@ namespace RCLargeLanguageModels.Prompting
 		IEnumerator IEnumerable.GetEnumerator()
 		{
 			return GetEnumerator();
+		}
+
+
+
+		/// <summary>
+		/// Imports a set of templates from the specified string contents.
+		/// </summary>
+		/// <param name="templateContents">The string contents containing the templates to import.</param>
+		/// <param name="languageCode">The language code of the template language. Default is "llt", Large Language Template.</param>
+		/// <exception cref="ArgumentException">Thrown when no parser is registered for the specified language code.</exception>
+		/// <exception cref="ParsingException">Thrown when the template contents cannot be parsed.</exception>
+		public void ImportFromString(string templateContents, string languageCode = "llt")
+		{
+			if (!_templateParsers.TryGetValue(languageCode, out var parser))
+				throw new ArgumentException($"No parser registered for language: '{languageCode}'.");
+
+			var templates = parser.Parse(templateContents);
+			foreach (var template in templates)
+				Add(template);
+		}
+
+		/// <summary>
+		/// Imports a set of templates from the specified reader contents.
+		/// </summary>
+		/// <param name="reader">The reader containing the templates to import.</param>
+		/// <param name="languageCode">The language code of the template language. Default is "llt", Large Language Template.</param>
+		/// <exception cref="ArgumentException">Thrown when no parser is registered for the specified language code.</exception>
+		/// <exception cref="ParsingException">Thrown when the template contents cannot be parsed.</exception>
+		public void ImportFromReader(TextReader reader, string languageCode = "llt")
+		{
+			if (!_templateParsers.TryGetValue(languageCode, out var parser))
+				throw new ArgumentException($"No parser registered for language: '{languageCode}'.");
+
+			var templateContents = reader?.ReadToEnd() ?? throw new ArgumentNullException(nameof(reader));
+			var templates = parser.Parse(templateContents);
+			foreach (var template in templates)
+				Add(template);
+		}
+
+		/// <summary>
+		/// Imports a set of templates from the specified stream contents.
+		/// </summary>
+		/// <param name="stream">The stream containing the templates to import. Reads the entire content of the stream before parsing.</param>
+		/// <param name="languageCode">The language code of the template language. Default is "llt", Large Language Template.</param>
+		/// <exception cref="ArgumentException">Thrown when no parser is registered for the specified language code.</exception>
+		/// <exception cref="ParsingException">Thrown when the template contents cannot be parsed.</exception>
+		public void ImportFromStream(Stream stream, string languageCode = "llt")
+		{
+			if (!_templateParsers.TryGetValue(languageCode, out var parser))
+				throw new ArgumentException($"No parser registered for language: '{languageCode}'.");
+
+			using var reader = new StreamReader(stream);
+			var templateContents = reader.ReadToEnd();
+			var templates = parser.Parse(templateContents);
+			foreach (var template in templates)
+				Add(template);
+		}
+
+		/// <summary>
+		/// Imports a set of templates from the specified library.
+		/// </summary>
+		/// <param name="library">The library containing the templates to import.</param>
+		public void ImportFromLibrary(TemplateLibrary library)
+		{
+			TryAddRange(library);
+		}
+
+		/// <summary>
+		/// Imports a set of templates from the specified file contents.
+		/// </summary>
+		/// <param name="filename">The file containing the templates to import. Extracts the language code from the file extension or uses "llt" when no extension is provided.</param>
+		/// <exception cref="ArgumentException">Thrown when no parser is registered for the specified language code.</exception>
+		/// <exception cref="ParsingException">Thrown when the template contents cannot be parsed.</exception>
+		public void ImportFromFile(string filename)
+		{
+			var languageCode = Path.GetExtension(filename)?.TrimStart('.')?.ToLowerInvariant() ?? "llt";
+			if (!_templateParsers.TryGetValue(languageCode, out var parser))
+				throw new ArgumentException($"No parser registered for language: '{languageCode}'.");
+
+			var templateContents = File.ReadAllText(filename);
+			var templates = parser.Parse(templateContents);
+			AddRange(templates);
+		}
+
+		/// <summary>
+		/// Imports a set of templates from the specified file contents.
+		/// </summary>
+		/// <param name="filename">The file containing the templates to import.</param>
+		/// <param name="languageCode">The language code of the template language. Default is "llt", Large Language Template.</param>
+		/// <exception cref="ArgumentException">Thrown when no parser is registered for the specified language code.</exception>
+		/// <exception cref="ParsingException">Thrown when the template contents cannot be parsed.</exception>
+		public void ImportFromFile(string filename, string languageCode)
+		{
+			if (!_templateParsers.TryGetValue(languageCode, out var parser))
+				throw new ArgumentException($"No parser registered for language: '{languageCode}'.");
+
+			var templateContents = File.ReadAllText(filename);
+			var templates = parser.Parse(templateContents);
+			AddRange(templates);
+		}
+
+		/// <summary>
+		/// Imports templates from folder.
+		/// </summary>
+		/// <param name="folderPath">The path of the folder containing the templates to import.</param>
+		/// <param name="recursive">Whether to import templates from subfolders recursively. Default is <see langword="false"/>.</param>
+		/// <returns>The collection of parsing exceptions encountered during the import process. If no exceptions were encountered, an empty collection is returned.</returns>
+		public IEnumerable<ParsingException> ImportFromFolder(string folderPath, bool recursive = false)
+		{
+			return ImportFromFolder(folderPath, recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly);
+		}
+
+		/// <summary>
+		/// Imports templates from folder.
+		/// </summary>
+		/// <remarks>
+		/// Imports only files with registered extesnions (or language codes), such as ".llt".
+		/// </remarks>
+		/// <param name="folderPath">The path of the folder containing the templates to import.</param>
+		/// <param name="searchOption">The search option to use when searching for files in the folder.</param>
+		/// <returns>The collection of parsing exceptions encountered during the import process. If no exceptions were encountered, an empty collection is returned.</returns>
+		public IEnumerable<ParsingException> ImportFromFolder(string folderPath, SearchOption searchOption)
+		{
+			foreach (var file in Directory.GetFiles(folderPath, "*", searchOption))
+			{
+				var languageCode = Path.GetExtension(file)?.TrimStart('.')?.ToLowerInvariant();
+
+				if (languageCode != null && _templateParsers.TryGetValue(languageCode, out var parser))
+				{
+					ParsingException? _ex = null;
+
+					try
+					{
+						var templates = parser.Parse(File.ReadAllText(file));
+						AddRange(templates);
+					}
+					catch (ParsingException ex)
+					{
+						_ex = ex;
+					}
+
+					if (_ex != null)
+						yield return _ex;
+				}
+			}
+			yield break;
+		}
+
+		/// <summary>
+		/// Imports templates from assembly's manifest resources.
+		/// </summary>
+		/// <remarks>
+		/// Imports only files with registered extesnions (or language codes), such as ".llt".
+		/// </remarks>
+		/// <param name="assembly">The assembly containing the templates to import.</param>
+		/// <param name="folder">
+		/// The folder within the assembly containing the templates to import. <br/>
+		/// If <see langword="null"/>, imports all resources. <br/>
+		/// Must be a valid manifest resource prefix in format: DefaultNamespace.FolderName.AnotherFolderName... <br/>
+		/// </param>
+		/// <returns></returns>
+		public IEnumerable<ParsingException> ImportFromAssembly(Assembly assembly, string? folder = null)
+		{
+			foreach (var resource in assembly.GetManifestResourceNames())
+			{
+				if (folder != null && !resource.StartsWith(folder))
+					continue;
+
+				var languageCode = Path.GetFileNameWithoutExtension(resource)?.TrimStart('.')?.ToLowerInvariant();
+				if (_templateParsers.TryGetValue(languageCode, out var parser))
+				{
+					ParsingException? _ex = null;
+
+					try
+					{
+						var stream = assembly.GetManifestResourceStream(resource);
+						using var reader = new StreamReader(stream);
+						var templateContents = reader.ReadToEnd();
+						var templates = parser.Parse(templateContents);
+						AddRange(templates);
+					}
+					catch (ParsingException ex)
+					{
+						_ex = ex;
+					}
+
+					if (_ex != null)
+						yield return _ex;
+				}
+			}
 		}
 	}
 }

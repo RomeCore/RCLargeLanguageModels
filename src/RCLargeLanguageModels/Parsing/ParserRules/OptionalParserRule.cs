@@ -25,6 +25,8 @@ namespace RCLargeLanguageModels.Parsing.ParserRules
 			Rule = rule;
 		}
 
+		protected override HashSet<char>? FirstCharsCore => null;
+
 
 
 		public override ParsedRule Parse(ParserContext context, ParserContext childContext)

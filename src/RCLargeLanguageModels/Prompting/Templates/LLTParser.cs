@@ -5,12 +5,12 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using RCLargeLanguageModels.Metadata;
-using RCLargeLanguageModels.Parsing;
-using RCLargeLanguageModels.Parsing.Building;
 using RCLargeLanguageModels.Prompting.Metadata;
 using RCLargeLanguageModels.Prompting.Templates.DataAccessors;
 using RCLargeLanguageModels.Prompting.Templates.ExpressionNodes;
 using RCLargeLanguageModels.Prompting.Templates.TemplateNodes;
+using RCParsing;
+using RCParsing.Building;
 
 namespace RCLargeLanguageModels.Prompting.Templates
 {

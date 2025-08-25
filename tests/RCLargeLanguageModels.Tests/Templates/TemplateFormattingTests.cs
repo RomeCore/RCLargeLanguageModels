@@ -8,6 +8,9 @@ using RCLargeLanguageModels.Prompting.Templates;
 
 namespace RCLargeLanguageModels.Tests.Templates
 {
+	/// <summary>
+	/// The tests that verify the formatting of templates, including newlines and indentation.
+	/// </summary>
 	public class TemplateFormattingTests
 	{
 		[Fact]

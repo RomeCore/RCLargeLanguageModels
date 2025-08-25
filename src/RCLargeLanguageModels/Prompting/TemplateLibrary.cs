@@ -9,9 +9,9 @@ using System.Text;
 using System.Threading.Tasks;
 using RCLargeLanguageModels.Locale;
 using RCLargeLanguageModels.Metadata;
-using RCLargeLanguageModels.Parsing;
 using RCLargeLanguageModels.Prompting.Metadata;
 using RCLargeLanguageModels.Prompting.Templates;
+using RCParsing;
 
 namespace RCLargeLanguageModels.Prompting
 {

@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using RCLargeLanguageModels.Security;
+using RCLargeLanguageModels.Tasks;
 using Serilog;
 
 namespace RCLargeLanguageModels.Clients
@@ -289,7 +290,7 @@ namespace RCLargeLanguageModels.Clients
 
 					try
 					{
-						clientModels = await task.Item2;
+						clientModels = await task.Item2.WaitMax(2000);
 					}
 					catch (TaskCanceledException)
 					{

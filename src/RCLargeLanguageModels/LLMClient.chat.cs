@@ -13,21 +13,6 @@ namespace RCLargeLanguageModels
 	public partial class LLMClient
 	{
 		/// <summary>
-		/// Converts or creates (if <paramref name="completionProperties"/> is null) a completion properties object.
-		/// </summary>
-		/// <param name="completionProperties">The properties object to convert from. Can be null if needed to create an empty one.</param>
-		/// <remarks>
-		/// This method should do: <br/>
-		/// if <paramref name="completionProperties"/> is null, return a new instance of <see cref="ICompletionProperties"/>, depending on client. <br/>
-		/// if <paramref name="completionProperties"/> is already of the correct type, return it. <br/>
-		/// if <paramref name="completionProperties"/> is not of the correct type, convert it to the correct type.
-		/// </remarks>
-		/// <returns>The converted or created completion properties object.</returns>
-		public abstract ICompletionProperties ConvertOrCreateCompletionProperties(ICompletionProperties completionProperties);
-
-
-
-		/// <summary>
 		/// Creates chat completions using the specified model, messages, count, properties, native output format definition and tools.
 		/// </summary>
 		/// <remarks>
@@ -43,7 +28,7 @@ namespace RCLargeLanguageModels
 		/// Count of completions to create.
 		/// </param>
 		/// <param name="properties">
-		/// The properties that affects the result message. Previously converted inside the <see cref="ConvertOrCreateCompletionProperties"/>.
+		/// The properties that affects the result message.
 		/// </param>
 		/// <param name="outputFormatDefinition">
 		/// The native output format definition that should be used to natively configure the output format.
@@ -59,7 +44,7 @@ namespace RCLargeLanguageModels
 			LLModelDescriptor model,
 			IEnumerable<IMessage> messages,
 			int count,
-			ICompletionProperties properties,
+			IEnumerable<CompletionProperty> properties,
 			OutputFormatDefinition outputFormatDefinition,
 			IEnumerable<ITool> tools,
 			CancellationToken cancellationToken);
@@ -80,7 +65,7 @@ namespace RCLargeLanguageModels
 		/// Count of completions to create.
 		/// </param>
 		/// <param name="properties">
-		/// The properties that affects the result message. Previously converted inside the <see cref="ConvertOrCreateCompletionProperties"/>.
+		/// The properties that affects the result message.
 		/// </param>
 		/// <param name="outputFormatDefinition">
 		/// The native output format definition that should be used to natively configure the output format.
@@ -96,7 +81,7 @@ namespace RCLargeLanguageModels
 			LLModelDescriptor model,
 			IEnumerable<IMessage> messages,
 			int count,
-			ICompletionProperties properties,
+			IEnumerable<CompletionProperty> properties,
 			OutputFormatDefinition outputFormatDefinition,
 			IEnumerable<ITool> tools,
 			CancellationToken cancellationToken);
@@ -120,7 +105,7 @@ namespace RCLargeLanguageModels
 			ref IEnumerable<IMessage> messages,
 			bool streaming,
 			int count,
-			ref ICompletionProperties properties,
+			ref IEnumerable<CompletionProperty> properties,
 			ref OutputFormatDefinition outputFormatDefinition,
 			ref IEnumerable<ITool> tools)
 		{
@@ -163,7 +148,7 @@ namespace RCLargeLanguageModels
 					throw new LLMException($"Model does not support multiple completions per one request. (count:{count} > 1)", model);
 			}
 
-			properties = ConvertOrCreateCompletionProperties(properties);
+			properties ??= Enumerable.Empty<CompletionProperty>();
 
 			if (outputFormatDefinition == null)
 				outputFormatDefinition = OutputFormatDefinition.Empty;
@@ -207,7 +192,7 @@ namespace RCLargeLanguageModels
 		public async Task<ChatCompletionResult> CreateChatCompletionAsync(
 			LLModelDescriptor model,
 			IEnumerable<IMessage> messages,
-			ICompletionProperties? properties = null,
+			IEnumerable<CompletionProperty>? properties = null,
 			OutputFormatDefinition? outputFormatDefinition = null,
 			IEnumerable<ITool>? tools = null,
 			CancellationToken cancellationToken = default)
@@ -240,7 +225,7 @@ namespace RCLargeLanguageModels
 		public async Task<PartialChatCompletionResult> CreateStreamingChatCompletionAsync(
 			LLModelDescriptor model,
 			IEnumerable<IMessage> messages,
-			ICompletionProperties? properties = null,
+			IEnumerable<CompletionProperty>? properties = null,
 			OutputFormatDefinition? outputFormatDefinition = null,
 			IEnumerable<ITool>? tools = null,
 			CancellationToken cancellationToken = default)
@@ -275,7 +260,7 @@ namespace RCLargeLanguageModels
 			LLModelDescriptor model,
 			IEnumerable<IMessage> messages,
 			int count,
-			ICompletionProperties? properties = null,
+			IEnumerable<CompletionProperty>? properties = null,
 			OutputFormatDefinition? outputFormatDefinition = null,
 			IEnumerable<ITool>? tools = null,
 			CancellationToken cancellationToken = default)
@@ -310,7 +295,7 @@ namespace RCLargeLanguageModels
 			LLModelDescriptor model,
 			IEnumerable<IMessage> messages,
 			int count,
-			ICompletionProperties? properties = null,
+			IEnumerable<CompletionProperty>? properties = null,
 			OutputFormatDefinition? outputFormatDefinition = null,
 			IEnumerable<ITool>? tools = null,
 			CancellationToken cancellationToken = default)

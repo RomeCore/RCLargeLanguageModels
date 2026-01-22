@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using RCLargeLanguageModels.Completions;
@@ -26,7 +28,7 @@ namespace RCLargeLanguageModels
 		/// Count of completions to create.
 		/// </param>
 		/// <param name="properties">
-		/// The properties that affects the result message. Previously converted inside the <see cref="ConvertOrCreateCompletionProperties"/>.
+		/// The properties that affects the result message.
 		/// </param>
 		/// <param name="cancellationToken">
 		/// The cancellation token used to cancel the completion generation.
@@ -37,7 +39,7 @@ namespace RCLargeLanguageModels
 			string prompt,
 			string? suffix,
 			int count,
-			ICompletionProperties properties,
+			IEnumerable<CompletionProperty> properties,
 			CancellationToken cancellationToken);
 
 		/// <inheritdoc cref="CreateCompletionsOverrideAsync"/>
@@ -50,7 +52,7 @@ namespace RCLargeLanguageModels
 			string prompt,
 			string? suffix,
 			int count,
-			ICompletionProperties properties,
+			IEnumerable<CompletionProperty> properties,
 			CancellationToken cancellationToken);
 
 		/// <summary>
@@ -71,7 +73,7 @@ namespace RCLargeLanguageModels
 			string? suffix,
 			bool streaming,
 			int count,
-			ref ICompletionProperties properties)
+			ref IEnumerable<CompletionProperty> properties)
 		{
 			if (model == null)
 				throw new ArgumentNullException(nameof(model));
@@ -118,7 +120,7 @@ namespace RCLargeLanguageModels
 					throw new LLMException($"Model does not support multiple completions per one request. (count:{count} > 1)", model);
 			}
 
-			properties = ConvertOrCreateCompletionProperties(properties);
+			properties ??= Enumerable.Empty<CompletionProperty>();
 		}
 
 		/// <summary>
@@ -134,7 +136,7 @@ namespace RCLargeLanguageModels
 			LLModelDescriptor model,
 			string prompt,
 			string? suffix,
-			ICompletionProperties properties = null,
+			IEnumerable<CompletionProperty> properties = null,
 			CancellationToken cancellationToken = default)
 		{
 			ValidateCompletionParameters(model, prompt, suffix, false, 1, ref properties);
@@ -161,7 +163,7 @@ namespace RCLargeLanguageModels
 			LLModelDescriptor model,
 			string prompt,
 			string? suffix,
-			ICompletionProperties properties = null,
+			IEnumerable<CompletionProperty> properties = null,
 			CancellationToken cancellationToken = default)
 		{
 			ValidateCompletionParameters(model, prompt, suffix, true, 1, ref properties);
@@ -190,7 +192,7 @@ namespace RCLargeLanguageModels
 			string prompt,
 			string? suffix,
 			int count,
-			ICompletionProperties properties = null,
+			IEnumerable<CompletionProperty> properties = null,
 			CancellationToken cancellationToken = default)
 		{
 			ValidateCompletionParameters(model, prompt, suffix, false, count, ref properties);
@@ -219,7 +221,7 @@ namespace RCLargeLanguageModels
 			string prompt,
 			string? suffix,
 			int count,
-			ICompletionProperties properties = null,
+			IEnumerable<CompletionProperty> properties = null,
 			CancellationToken cancellationToken = default)
 		{
 			ValidateCompletionParameters(model, prompt, suffix, true, count, ref properties);
@@ -244,7 +246,7 @@ namespace RCLargeLanguageModels
 		public async Task<CompletionResult> CreateCompletionAsync(
 			LLModelDescriptor model,
 			string prompt,
-			ICompletionProperties properties = null,
+			IEnumerable<CompletionProperty> properties = null,
 			CancellationToken cancellationToken = default)
 		{
 			ValidateCompletionParameters(model, prompt, null, false, 1, ref properties);
@@ -269,7 +271,7 @@ namespace RCLargeLanguageModels
 		public async Task<PartialCompletionResult> CreateStreamingCompletionAsync(
 			LLModelDescriptor model,
 			string prompt,
-			ICompletionProperties properties = null,
+			IEnumerable<CompletionProperty> properties = null,
 			CancellationToken cancellationToken = default)
 		{
 			ValidateCompletionParameters(model, prompt, null, true, 1, ref properties);
@@ -296,7 +298,7 @@ namespace RCLargeLanguageModels
 			LLModelDescriptor model,
 			string prompt,
 			int count,
-			ICompletionProperties properties = null,
+			IEnumerable<CompletionProperty> properties = null,
 			CancellationToken cancellationToken = default)
 		{
 			ValidateCompletionParameters(model, prompt, null, false, count, ref properties);
@@ -323,7 +325,7 @@ namespace RCLargeLanguageModels
 			LLModelDescriptor model,
 			string prompt,
 			int count,
-			ICompletionProperties properties = null,
+			IEnumerable<CompletionProperty> properties = null,
 			CancellationToken cancellationToken = default)
 		{
 			ValidateCompletionParameters(model, prompt, null, true, count, ref properties);

@@ -48,7 +48,7 @@ namespace RCLargeLanguageModels.PropertyInjectors
 			ref string prompt,
 			ref string? suffix,
 			ref int count,
-			ref ICompletionProperties completionProperties)
+			ref IEnumerable<CompletionProperty> completionProperties)
 		{
 			foreach (var injector in this)
 			{
@@ -69,7 +69,7 @@ namespace RCLargeLanguageModels.PropertyInjectors
 			LLModel model,
 			ref IEnumerable<IMessage> messages,
 			ref int count,
-			ref ICompletionProperties chatProperties,
+			ref IEnumerable<CompletionProperty> chatProperties,
 			ref IEnumerable<ITool> tools,
 			ref OutputFormatDefinition outputFormatDefinition)
 		{
@@ -130,7 +130,7 @@ namespace RCLargeLanguageModels.PropertyInjectors
 			ref string prompt,
 			ref string? suffix,
 			ref int count,
-			ref ICompletionProperties completionProperties)
+			ref IEnumerable<CompletionProperty> completionProperties)
 		{
 			foreach (var injector in this)
 			{
@@ -151,7 +151,7 @@ namespace RCLargeLanguageModels.PropertyInjectors
 			LLModel model,
 			ref IEnumerable<IMessage> messages,
 			ref int count,
-			ref ICompletionProperties chatProperties,
+			ref IEnumerable<CompletionProperty> chatProperties,
 			ref IEnumerable<ITool> tools,
 			ref OutputFormatDefinition outputFormatDefinition)
 		{

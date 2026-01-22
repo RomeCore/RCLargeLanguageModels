@@ -18,7 +18,7 @@ namespace RCLargeLanguageModels
 		private async Task<ChatCompletionResult> ChatPrivateAsync(
 			IEnumerable<IMessage> messages,
 			int count,
-			ICompletionProperties properties = null,
+			IEnumerable<CompletionProperty> properties = null,
 			OutputFormatDefinition outputFormatDefinition = null,
 			IEnumerable<ITool> tools = null,
 			IEnumerable<ILLModelPropertyInjector> injectors = null,
@@ -52,7 +52,7 @@ namespace RCLargeLanguageModels
 		private async Task<PartialChatCompletionResult> ChatStreamingPrivateAsync(
 			IEnumerable<IMessage> messages,
 			int count,
-			ICompletionProperties properties = null,
+			IEnumerable<CompletionProperty> properties = null,
 			OutputFormatDefinition outputFormatDefinition = null,
 			IEnumerable<ITool> tools = null,
 			IEnumerable<ILLModelPropertyInjector> injectors = null,
@@ -180,7 +180,7 @@ namespace RCLargeLanguageModels
 		/// <returns>The chat completion result.</returns>
 		public Task<ChatCompletionResult> ChatAsync(
 			IEnumerable<IMessage> messages,
-			OptionalParameter<ICompletionProperties> properties = null,
+			OptionalParameter<IEnumerable<CompletionProperty>> properties = null,
 			OptionalParameter<OutputFormatDefinition> outputFormatDefinition = null,
 			OptionalParameter<IEnumerable<ITool>> tools = null,
 			OptionalParameter<IEnumerable<ILLModelPropertyInjector>> injectors = null,
@@ -213,7 +213,7 @@ namespace RCLargeLanguageModels
 		public async Task<ChatCompletionResult> ChatAsync(
 			IEnumerable<IMessage> messages,
 			int count,
-			OptionalParameter<ICompletionProperties> properties = null,
+			OptionalParameter<IEnumerable<CompletionProperty>> properties = null,
 			OptionalParameter<OutputFormatDefinition> outputFormatDefinition = null,
 			OptionalParameter<IEnumerable<ITool>> tools = null,
 			OptionalParameter<IEnumerable<ILLModelPropertyInjector>> injectors = null,
@@ -328,7 +328,7 @@ namespace RCLargeLanguageModels
 		/// <returns>The streaming partial chat completion result.</returns>
 		public Task<PartialChatCompletionResult> ChatStreamingAsync(
 			IEnumerable<IMessage> messages,
-			OptionalParameter<ICompletionProperties> properties = null,
+			OptionalParameter<IEnumerable<CompletionProperty>> properties = null,
 			OptionalParameter<OutputFormatDefinition> outputFormatDefinition = null,
 			OptionalParameter<IEnumerable<ITool>> tools = null,
 			OptionalParameter<IEnumerable<ILLModelPropertyInjector>> injectors = null,
@@ -361,7 +361,7 @@ namespace RCLargeLanguageModels
 		public async Task<PartialChatCompletionResult> ChatStreamingAsync(
 			IEnumerable<IMessage> messages,
 			int count,
-			OptionalParameter<ICompletionProperties> properties = null,
+			OptionalParameter<IEnumerable<CompletionProperty>> properties = null,
 			OptionalParameter<OutputFormatDefinition> outputFormatDefinition = null,
 			OptionalParameter<IEnumerable<ITool>> tools = null,
 			OptionalParameter<IEnumerable<ILLModelPropertyInjector>> injectors = null,

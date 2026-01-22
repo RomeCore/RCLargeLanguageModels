@@ -23,6 +23,7 @@ using System.Net.Http;
 using System.Collections.Immutable;
 using RCLargeLanguageModels.Metadata;
 using System.Runtime.InteropServices.ComTypes;
+using RCLargeLanguageModels.Completions.Properties;
 
 namespace RCLargeLanguageModels.Clients.OpenAI
 {
@@ -143,24 +144,8 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			return result.ToArray();
 		}
 
-		public override ICompletionProperties ConvertOrCreateCompletionProperties(ICompletionProperties chatProperties)
-		{
-			if (chatProperties == null)
-				return new CompletionProperties();
-
-			if (chatProperties is CompletionProperties)
-				return chatProperties;
-
-			return new CompletionProperties
-			{
-				MaxTokens = chatProperties.MaxTokens,
-				Temperature = chatProperties.Temperature,
-				TopP = chatProperties.TopP,
-				Stop = chatProperties.Stop
-			};
-		}
-
-		protected override async Task<ChatCompletionResult> CreateChatCompletionsOverrideAsync(LLModelDescriptor model, IEnumerable<IMessage> messages, int count, ICompletionProperties properties, OutputFormatDefinition outputFormatDefinition, IEnumerable<ITool> tools, CancellationToken cancellationToken)
+		protected override async Task<ChatCompletionResult> CreateChatCompletionsOverrideAsync(LLModelDescriptor model,
+			IEnumerable<IMessage> messages, int count, IEnumerable<CompletionProperty> properties, OutputFormatDefinition outputFormatDefinition, IEnumerable<ITool> tools, CancellationToken cancellationToken)
 		{
 			var body = BuildChatRequestBody(model, messages, outputFormatDefinition, tools, properties, count, false);
 			var headers = GetRequestHeaders();
@@ -194,7 +179,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			return new ChatCompletionResult(this, model, resultMessages);
 		}
 
-		protected override Task<PartialChatCompletionResult> CreateStreamingChatCompletionsOverrideAsync(LLModelDescriptor model, IEnumerable<IMessage> messages, int count, ICompletionProperties properties, OutputFormatDefinition outputFormatDefinition, IEnumerable<ITool> tools, CancellationToken cancellationToken)
+		protected override Task<PartialChatCompletionResult> CreateStreamingChatCompletionsOverrideAsync(LLModelDescriptor model, IEnumerable<IMessage> messages, int count, IEnumerable<CompletionProperty> properties, OutputFormatDefinition outputFormatDefinition, IEnumerable<ITool> tools, CancellationToken cancellationToken)
 		{
 			var resultMessages = Enumerable.Range(0, count).Select(i => new PartialAssistantMessage()).ToImmutableArray();
 			var contexts = Enumerable.Range(0, count).Select(i => new List<PartialMessageToolCallContext>()).ToImmutableArray();
@@ -344,19 +329,29 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			}
 		}
 
-		protected virtual void PopulateBodyWithProperties(JObject body, LLModelDescriptor model, OutputFormatDefinition outputFormatDefinition, IEnumerable<ITool> tools, ICompletionProperties properties)
+		protected virtual void PopulateBodyWithProperties(JObject body, LLModelDescriptor model, OutputFormatDefinition outputFormatDefinition, IEnumerable<ITool> tools, IEnumerable<CompletionProperty> properties)
 		{
-			if (properties != null)
+			foreach (var property in properties)
 			{
-				body.AddIfNotNull("max_tokens", properties.MaxTokens);
-				body.AddIfNotNull("stop", properties.Stop?.ToArray());
-				body.AddIfNotNull("temperature", properties.Temperature);
-				body.AddIfNotNull("top_p", properties.TopP);
+				var propertyName = property.Name;
+				var value = property.RawValue;
+
+				switch (property)
+				{
+					case TemperatureProperty tp:
+						value = tp.ToRange(-2, 2);
+						break;
+					case StopSequencesProperty ssp:
+						value = ssp.Value.ToArray();
+						break;
+				}
+
+				body.Add(propertyName, JToken.FromObject(value));
 			}
 		}
 
 		protected virtual JObject BuildChatRequestBody(LLModelDescriptor model, IEnumerable<IMessage> _messages,
-			OutputFormatDefinition outputFormatDefinition, IEnumerable<ITool> tools, ICompletionProperties properties,
+			OutputFormatDefinition outputFormatDefinition, IEnumerable<ITool> tools, IEnumerable<CompletionProperty> properties,
 			int count, bool stream)
 		{
 			var messages = _messages.ToList();
@@ -515,7 +510,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 		}
 
 		protected override async Task<CompletionResult> CreateCompletionsOverrideAsync(LLModelDescriptor model,
-			string prompt, string suffix, int count, ICompletionProperties properties, CancellationToken cancellationToken)
+			string prompt, string suffix, int count, IEnumerable<CompletionProperty> properties, CancellationToken cancellationToken)
 		{
 			var body = BuildCompletionRequestBody(model, prompt, suffix, properties, count, false);
 			var headers = GetRequestHeaders();
@@ -547,7 +542,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 		}
 
 		protected override Task<PartialCompletionResult> CreateStreamingCompletionsOverrideAsync(LLModelDescriptor model,
-			string prompt, string suffix, int count, ICompletionProperties properties, CancellationToken cancellationToken)
+			string prompt, string suffix, int count, IEnumerable<CompletionProperty> properties, CancellationToken cancellationToken)
 		{
 			var results = Enumerable.Range(0, count).Select(i => new PartialCompletion()).ToImmutableArray();
 
@@ -605,7 +600,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			return Task.FromResult(new PartialCompletionResult(this, model, results));
 		}
 
-		private JObject BuildCompletionRequestBody(LLModelDescriptor model, string prompt, string suffix, ICompletionProperties properties, int count, bool stream)
+		private JObject BuildCompletionRequestBody(LLModelDescriptor model, string prompt, string suffix, IEnumerable<CompletionProperty> properties, int count, bool stream)
 		{
 			var result = new JObject
 			{

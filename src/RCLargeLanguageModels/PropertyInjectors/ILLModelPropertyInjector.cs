@@ -24,7 +24,7 @@ namespace RCLargeLanguageModels.PropertyInjectors
 			ref string prompt,
 			ref string? suffix,
 			ref int count,
-			ref ICompletionProperties? completionProperties);
+			ref IEnumerable<CompletionProperty>? completionProperties);
 
 		/// <summary>
 		/// Injects properties into LLM API execution process.
@@ -39,7 +39,7 @@ namespace RCLargeLanguageModels.PropertyInjectors
 			LLModel model,
 			ref IEnumerable<IMessage> messages,
 			ref int count,
-			ref ICompletionProperties? chatProperties,
+			ref IEnumerable<CompletionProperty>? chatProperties,
 			ref IEnumerable<ITool>? tools,
 			ref OutputFormatDefinition? outputFormatDefinition);
 	}

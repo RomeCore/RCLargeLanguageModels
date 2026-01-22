@@ -184,17 +184,70 @@ namespace RCLargeLanguageModels
 				null);
 		}
 
+
+
 		/// <summary>
-		/// Creates a copy of the current instance with the specified chat properties.
+		/// Creates a copy of the current instance with the specified chat properties replaced with new values.
 		/// </summary>
 		/// <param name="properties">The chat properties to use for the new instance.</param>
 		/// <returns>A copied model instance with the specified properties.</returns>
 		/// <exception cref="ArgumentNullException">Thrown when the provided properties are null.</exception>
-		public LLModel WithProperties(ICompletionProperties properties)
+		public LLModel WithProperties(IEnumerable<CompletionProperty> properties)
 		{
 			return new LLModel(
 				Descriptor,
 				properties ?? throw new ArgumentNullException(nameof(properties)),
+				OutputFormatDefinition,
+				Tools,
+				Injectors,
+				QueueParameters);
+		}
+
+		/// <summary>
+		/// Creates a copy of the current instance with the specified chat properties replaced with new values.
+		/// </summary>
+		/// <param name="properties">The chat properties to use for the new instance.</param>
+		/// <returns>A copied model instance with the specified properties.</returns>
+		/// <exception cref="ArgumentNullException">Thrown when the provided properties are null.</exception>
+		public LLModel WithProperties(params CompletionProperty[] properties)
+		{
+			return new LLModel(
+				Descriptor,
+				properties ?? throw new ArgumentNullException(nameof(properties)),
+				OutputFormatDefinition,
+				Tools,
+				Injectors,
+				QueueParameters);
+		}
+
+		/// <summary>
+		/// Creates a copy of the current instance with the chat properties appended with new values.
+		/// </summary>
+		/// <param name="properties">The chat properties to use for the new instance.</param>
+		/// <returns>A copied model instance with the specified properties.</returns>
+		/// <exception cref="ArgumentNullException">Thrown when the provided properties are null.</exception>
+		public LLModel WithPropertiesAppend(IEnumerable<CompletionProperty> properties)
+		{
+			return new LLModel(
+				Descriptor,
+				CompletionProperties.AddRange(properties ?? throw new ArgumentNullException(nameof(properties))),
+				OutputFormatDefinition,
+				Tools,
+				Injectors,
+				QueueParameters);
+		}
+
+		/// <summary>
+		/// Creates a copy of the current instance with the chat properties appended with new values.
+		/// </summary>
+		/// <param name="properties">The chat properties to use for the new instance.</param>
+		/// <returns>A copied model instance with the specified properties.</returns>
+		/// <exception cref="ArgumentNullException">Thrown when the provided properties are null.</exception>
+		public LLModel WithPropertiesAppend(params CompletionProperty[] properties)
+		{
+			return new LLModel(
+				Descriptor,
+				CompletionProperties.AddRange(properties ?? throw new ArgumentNullException(nameof(properties))),
 				OutputFormatDefinition,
 				Tools,
 				Injectors,
@@ -219,6 +272,48 @@ namespace RCLargeLanguageModels
 
 
 		/// <summary>
+		/// Creates a copy of the current instance with the specified tool replacing all existing tools.
+		/// </summary>
+		/// <param name="tool">The tool to set as the only tool.</param>
+		/// <returns>A new LLModel instance with only the specified tool.</returns>
+		/// <exception cref="ArgumentNullException">Thrown when the provided tool is null.</exception>
+		public LLModel WithTool(ITool tool)
+		{
+			if (tool == null) throw new ArgumentNullException(nameof(tool));
+			return new LLModel(
+				Descriptor,
+				CompletionProperties,
+				OutputFormatDefinition,
+				new ITool[] { tool },
+				Injectors,
+				QueueParameters);
+		}
+
+		/// <summary>
+		/// Creates a copy of the current instance with the specified tools replacing all existing tools.
+		/// </summary>
+		/// <param name="tools">The tools to set as the new tools collection.</param>
+		/// <returns>A new LLModel instance with only the specified tools.</returns>
+		/// <exception cref="ArgumentNullException">Thrown when the provided tools collection is null.</exception>
+		public LLModel WithTools(IEnumerable<ITool> tools)
+		{
+			return new LLModel(
+				Descriptor,
+				CompletionProperties,
+				OutputFormatDefinition,
+				tools ?? throw new ArgumentNullException(nameof(tools)),
+				Injectors,
+				QueueParameters);
+		}
+
+		/// <summary>
+		/// Creates a copy of the current instance with the specified tools replacing all existing tools.
+		/// </summary>
+		/// <param name="tools">The tools to set as the new tools collection.</param>
+		/// <returns>A new LLModel instance with only the specified tools.</returns>
+		public LLModel WithTools(params ITool[] tools) => WithTools(tools as IEnumerable<ITool>);
+
+		/// <summary>
 		/// Creates a copy of the current instance with the specified tool appended to the existing tools.
 		/// </summary>
 		/// <param name="tool">The tool to append.</param>
@@ -232,24 +327,6 @@ namespace RCLargeLanguageModels
 				CompletionProperties,
 				OutputFormatDefinition,
 				Tools.With(tool),
-				Injectors,
-				QueueParameters);
-		}
-
-		/// <summary>
-		/// Creates a copy of the current instance with the specified tool replacing all existing tools.
-		/// </summary>
-		/// <param name="tool">The tool to set as the only tool.</param>
-		/// <returns>A new LLModel instance with only the specified tool.</returns>
-		/// <exception cref="ArgumentNullException">Thrown when the provided tool is null.</exception>
-		public LLModel WithToolReset(ITool tool)
-		{
-			if (tool == null) throw new ArgumentNullException(nameof(tool));
-			return new LLModel(
-				Descriptor,
-				CompletionProperties,
-				OutputFormatDefinition,
-				new ITool[] { tool },
 				Injectors,
 				QueueParameters);
 		}
@@ -273,71 +350,11 @@ namespace RCLargeLanguageModels
 		}
 
 		/// <summary>
-		/// Creates a copy of the current instance with the specified tools replacing all existing tools.
-		/// </summary>
-		/// <param name="tools">The tools to set as the new tools collection.</param>
-		/// <returns>A new LLModel instance with only the specified tools.</returns>
-		/// <exception cref="ArgumentNullException">Thrown when the provided tools collection is null.</exception>
-		public LLModel WithToolsReset(IEnumerable<ITool> tools)
-		{
-			return new LLModel(
-				Descriptor,
-				CompletionProperties,
-				OutputFormatDefinition,
-				tools ?? throw new ArgumentNullException(nameof(tools)),
-				Injectors,
-				QueueParameters);
-		}
-
-		/// <summary>
 		/// Creates a copy of the current instance with the specified tools appended to the existing tools.
 		/// </summary>
 		/// <param name="tools">The tools to append.</param>
 		/// <returns>A new LLModel instance with the appended tools.</returns>
 		public LLModel WithToolsAppend(params ITool[] tools) => WithToolsAppend(tools as IEnumerable<ITool>);
-
-		/// <summary>
-		/// Creates a copy of the current instance with the specified tools replacing all existing tools.
-		/// </summary>
-		/// <param name="tools">The tools to set as the new tools collection.</param>
-		/// <returns>A new LLModel instance with only the specified tools.</returns>
-		public LLModel WithToolsReset(params ITool[] tools) => WithToolsReset(tools as IEnumerable<ITool>);
-
-		/// <summary>
-		/// Creates a copy of the current instance with the specified tool removed.
-		/// </summary>
-		/// <param name="tool">The tool to remove.</param>
-		/// <returns>A new LLModel instance without the specified tool.</returns>
-		/// <exception cref="ArgumentNullException">Thrown when the provided tool is null.</exception>
-		public LLModel WithoutTool(ITool tool)
-		{
-			if (tool == null) throw new ArgumentNullException(nameof(tool));
-			return new LLModel(
-				Descriptor,
-				CompletionProperties,
-				OutputFormatDefinition,
-				Tools.Without(tool),
-				Injectors,
-				QueueParameters);
-		}
-
-		/// <summary>
-		/// Creates a copy of the current instance with the specified tools removed.
-		/// </summary>
-		/// <param name="tools">The tools to remove.</param>
-		/// <returns>A new LLModel instance without the specified tools.</returns>
-		/// <exception cref="ArgumentNullException">Thrown when the provided tools collection is null.</exception>
-		public LLModel WithoutTools(IEnumerable<ITool> tools)
-		{
-			if (tools == null) throw new ArgumentNullException(nameof(tools));
-			return new LLModel(
-				Descriptor,
-				CompletionProperties,
-				OutputFormatDefinition,
-				Tools.Except(tools),
-				Injectors,
-				QueueParameters);
-		}
 
 		/// <summary>
 		/// Creates a copy of the current instance with all tools removed.

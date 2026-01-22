@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -24,7 +25,7 @@ namespace RCLargeLanguageModels
 		/// <summary>
 		/// Gets the completion properties associated with the model that will be used in completions. Can be null.
 		/// </summary>
-		public ICompletionProperties CompletionProperties { get; }
+		public ImmutableList<CompletionProperty> CompletionProperties { get; }
 
 		/// <summary>
 		/// Gets the native output format definition associated with the model that will be used in completions.
@@ -87,7 +88,7 @@ namespace RCLargeLanguageModels
 		/// <exception cref="ArgumentException">Thrown when descriptor's client is null.</exception>
 		public LLModel(
 			LLModelDescriptor descriptor,
-			ICompletionProperties chatProperties = null,
+			IEnumerable<CompletionProperty> chatProperties = null,
 			OutputFormatDefinition outputFormatDefinition = null,
 			IEnumerable<ITool> tools = null,
 			IEnumerable<ILLModelPropertyInjector> injectors = null,
@@ -98,7 +99,8 @@ namespace RCLargeLanguageModels
 			if (Descriptor.Client == null)
 				throw new ArgumentException("Descriptor client cannot be null", nameof(descriptor));
 
-			CompletionProperties = chatProperties;
+			var props = chatProperties ?? Enumerable.Empty<CompletionProperty>();
+			CompletionProperties = props as ImmutableList<CompletionProperty> ?? props.ToImmutableList();
 			OutputFormatDefinition = outputFormatDefinition ?? OutputFormatDefinition.Empty;
 			Tools = tools != null ? new ImmutableToolSet(tools) : ImmutableToolSet.Empty;
 			Injectors = injectors != null
@@ -120,7 +122,7 @@ namespace RCLargeLanguageModels
 		public LLModel(
 			LLMClient client,
 			string name,
-			ICompletionProperties chatProperties = null,
+			IEnumerable<CompletionProperty> chatProperties = null,
 			OutputFormatDefinition outputFormatDefinition = null,
 			IEnumerable<ITool> tools = null,
 			IEnumerable<ILLModelPropertyInjector> injectors = null,
@@ -151,7 +153,7 @@ namespace RCLargeLanguageModels
 			LLMClient client,
 			string name,
 			string displayName,
-			ICompletionProperties chatProperties = null,
+			IEnumerable<CompletionProperty> chatProperties = null,
 			OutputFormatDefinition outputFormatDefinition = null,
 			IEnumerable<ITool> tools = null,
 			IEnumerable<ILLModelPropertyInjector> injectors = null,

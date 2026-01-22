@@ -16,6 +16,7 @@ using Serilog;
 using System.Net.Http;
 using RCLargeLanguageModels.Completions;
 using System.IO;
+using RCLargeLanguageModels.Completions.Properties;
 
 namespace RCLargeLanguageModels.Clients.Ollama
 {
@@ -136,35 +137,18 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			return version;
 		}
 
-		public override ICompletionProperties ConvertOrCreateCompletionProperties(ICompletionProperties chatProperties)
-		{
-			if (chatProperties == null)
-				return new OllamaChatProperties();
-
-			if (chatProperties is OllamaChatProperties ollamaChatProperties)
-				return ollamaChatProperties;
-
-			return new OllamaChatProperties
-			{
-				NumPredict = chatProperties.MaxTokens,
-				Temperature = chatProperties.Temperature,
-				TopP = chatProperties.TopP,
-				Stop = chatProperties.Stop
-			};
-		}
-
 		protected override async Task<ChatCompletionResult> CreateChatCompletionsOverrideAsync(
 			LLModelDescriptor model,
 			IEnumerable<IMessage> messages,
 			int count,
-			ICompletionProperties properties,
+			IEnumerable<CompletionProperty> properties,
 			OutputFormatDefinition outputFormatDefinition,
 			IEnumerable<ITool> tools,
 			CancellationToken cancellationToken)
 		{
 			await GetVersionAsync(cancellationToken);
 
-			var body = BuildChatRequestBody(model, messages, false, (OllamaChatProperties)properties, outputFormatDefinition, tools);
+			var body = BuildChatRequestBody(model, messages, false, properties, outputFormatDefinition, tools);
 
 			var response = await RequestUtility.GetResponseAsync<JObject>(
 				RequestType.Post,
@@ -181,14 +165,14 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			LLModelDescriptor model,
 			IEnumerable<IMessage> messages,
 			int count,
-			ICompletionProperties properties,
+			IEnumerable<CompletionProperty> properties,
 			OutputFormatDefinition outputFormatDefinition,
 			IEnumerable<ITool> tools,
 			CancellationToken cancellationToken)
 		{
 			await GetVersionAsync(cancellationToken);
 
-			var body = BuildChatRequestBody(model, messages, true, (OllamaChatProperties)properties, outputFormatDefinition, tools);
+			var body = BuildChatRequestBody(model, messages, true, properties, outputFormatDefinition, tools);
 
 			string bodyStr = body.ToString();
 			Log.Information("Request body: {0}", bodyStr);
@@ -226,12 +210,12 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			string prompt,
 			string suffix,
 			int count,
-			ICompletionProperties properties,
+			IEnumerable<CompletionProperty> properties,
 			CancellationToken cancellationToken)
 		{
 			await GetVersionAsync(cancellationToken);
 
-			var body = BuildRequestBody(model, prompt, suffix, false, (OllamaChatProperties)properties);
+			var body = BuildRequestBody(model, prompt, suffix, false, properties);
 
 			var response = await RequestUtility.GetResponseAsync<JObject>(
 				RequestType.Post,
@@ -248,12 +232,12 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			string prompt,
 			string suffix,
 			int count,
-			ICompletionProperties properties,
+			IEnumerable<CompletionProperty> properties,
 			CancellationToken cancellationToken)
 		{
 			await GetVersionAsync(cancellationToken);
 
-			var body = BuildRequestBody(model, prompt, suffix, true, (OllamaChatProperties)properties);
+			var body = BuildRequestBody(model, prompt, suffix, true, properties);
 
 			string bodyStr = body.ToString();
 			Log.Information("Request body: {0}", bodyStr);
@@ -286,8 +270,11 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			return new PartialCompletionResult(this, model, completion);
 		}
 
-		private JObject BuildRequestBody(LLModelDescriptor model, string prompt, string suffix, bool stream, OllamaChatProperties properties)
+		private JObject BuildRequestBody(LLModelDescriptor model, string prompt, string suffix,
+			bool stream, IEnumerable<CompletionProperty> _properties)
 		{
+			var properties = _properties as List<CompletionProperty> ?? _properties.ToList();
+
 			var result = new JObject
 			{
 				["model"] = model.Name,
@@ -432,13 +419,14 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			LLModelDescriptor model,
 			IEnumerable<IMessage> _messages,
 			bool stream,
-			OllamaChatProperties properties,
+			IEnumerable<CompletionProperty> _properties,
 			OutputFormatDefinition outputFormatDefinition,
 			IEnumerable<ITool> tools)
 		{
 			var messages = _messages as List<IMessage> ?? _messages.ToList();
 			var builtMessages = new List<JObject>(messages.Count);
 			int c = 0, lastIndex = messages.Count - 1;
+			var properties = _properties as List<CompletionProperty> ?? _properties.ToList();
 
 			foreach (var message in messages)
 			{
@@ -464,34 +452,45 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			// The 0.9.0 version of Ollama introduced explicit thinking support (no need to parse <think> tags)
 			if (version >= new Version(0, 9, 0))
 			{
-				if (model.Capabilities.IsReasoning())
-					result["think"] = properties.Think ?? true;
+				if (model.Capabilities.IsReasoning() || model.Capabilities.IsUnknown())
+					result["think"] = properties.OfType<ThinkProperty>().FirstOrDefault()?.Value ?? true;
 			}
 
 			return result;
 		}
 
-		protected virtual JObject BuildOptions(OllamaChatProperties properties)
+		protected virtual JObject BuildOptions(List<CompletionProperty> properties)
 		{
 			var body = new JObject();
 
-			body.AddIfNotNull("num_ctx", properties.NumContext);
-			body.AddIfNotNull("repeat_last_n", properties.RepeatLastN);
-			body.AddIfNotNull("repeat_penalty", properties.RepeatPenalty);
-			body.AddIfNotNull("temperature", properties.Temperature);
-			body.AddIfNotNull("seed", properties.Seed);
-			body.AddIfNotNull("stop", properties.Stop?.ToArray());
-			body.AddIfNotNull("num_predict", properties.NumPredict);
-			body.AddIfNotNull("top_k", properties.TopK);
-			body.AddIfNotNull("top_p", properties.TopP);
-			body.AddIfNotNull("min_p", properties.MinP);
+			foreach (var property in properties)
+			{
+				var propertyName = property.Name;
+				var value = property.RawValue;
+
+				switch (property)
+				{
+					case MaxTokensProperty:
+						propertyName = "num_predict";
+						break;
+					case StopSequencesProperty ssp:
+						value = ssp.Value.ToArray();
+						break;
+
+					case KeepAliveProperty:
+					case ThinkProperty:
+						continue;
+				}
+
+				body.Add(propertyName, JToken.FromObject(value));
+			}
 
 			return body;
 		}
 
 		protected virtual void PopulateBodyWithProperties(JObject body,
 			LLModelDescriptor model,
-			OllamaChatProperties properties,
+			List<CompletionProperty> properties,
 			OutputFormatDefinition outputFormatDefinition)
 		{
 			if (outputFormatDefinition.Type == OutputFormatType.Json)
@@ -499,9 +498,11 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			else if (outputFormatDefinition is JsonSchemaOutputFormatDefinition jsonSchemaOutput)
 				body["format"] = jsonSchemaOutput.Schema;
 			
-			if (properties.KeepAlive.HasValue)
+			var keepAlive = properties.OfType<KeepAliveProperty>().FirstOrDefault()?.Value;
+
+			if (keepAlive.HasValue)
 			{
-				var timeSpan = properties.KeepAlive.Value;
+				var timeSpan = keepAlive.Value;
 
 				if (timeSpan.TotalSeconds < 1)
 				{

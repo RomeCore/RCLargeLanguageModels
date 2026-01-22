@@ -16,7 +16,7 @@ namespace RCLargeLanguageModels.Tools
 	/// <remarks>
 	/// Implements the function calling pattern for LLMs.
 	/// </remarks>
-	public class FunctionTool : IFunctionTool
+	public class FunctionTool : ITool
 	{
 		private readonly Func<JToken, CancellationToken, Task<ToolResult>> _function;
 

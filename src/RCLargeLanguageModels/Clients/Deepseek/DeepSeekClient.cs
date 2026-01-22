@@ -113,34 +113,9 @@ namespace RCLargeLanguageModels.Clients.Deepseek
 			});
 		}
 
-		public override ICompletionProperties ConvertOrCreateCompletionProperties(ICompletionProperties chatProperties)
+		protected override void PopulateBodyWithProperties(JObject body, LLModelDescriptor model,
+			OutputFormatDefinition outputFormatDefinition, IEnumerable<ITool> tools, IEnumerable<CompletionProperty> properties)
 		{
-			if (chatProperties is null)
-				return new DeepSeekCompletionProperties();
-
-			if (chatProperties is DeepSeekCompletionProperties ds)
-				return ds;
-
-			return new DeepSeekCompletionProperties
-			{
-				Temperature = chatProperties.Temperature,
-				MaxTokens = chatProperties.MaxTokens,
-				TopP = chatProperties.TopP,
-				Stop = chatProperties.Stop
-			};
-		}
-
-		protected override void PopulateBodyWithProperties(JObject body, LLModelDescriptor model, OutputFormatDefinition outputFormatDefinition, IEnumerable<ITool> tools, ICompletionProperties properties)
-		{
-			var conv = (DeepSeekCompletionProperties)properties;
-
-			body.AddIfNotNull("frequency_penalty", conv.FrequencyPenalty);
-			body.AddIfNotNull("presence_penalty", conv.PresencePenalty);
-			body.AddIfNotNull("max_tokens", conv.MaxTokens);
-			body.AddIfNotNull("stop", conv.Stop?.ToArray());
-			body.AddIfNotNull("temperature", conv.Temperature);
-			body.AddIfNotNull("top_p", conv.TopP);
-
 			if (outputFormatDefinition.Type == OutputFormatType.Json)
 				body["response_format"] = new JObject
 				{

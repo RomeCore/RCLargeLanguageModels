@@ -15,7 +15,7 @@ namespace RCLargeLanguageModels
 			string prompt,
 			string suffix,
 			int count,
-			ICompletionProperties properties = null,
+			IEnumerable<CompletionProperty> properties = null,
 			IEnumerable<ILLModelPropertyInjector> injectors = null,
 			TaskQueueParameters queueParameters = null,
 			CancellationToken cancellationToken = default)
@@ -48,7 +48,7 @@ namespace RCLargeLanguageModels
 			string prompt,
 			string suffix,
 			int count,
-			ICompletionProperties properties = null,
+			IEnumerable<CompletionProperty> properties = null,
 			IEnumerable<ILLModelPropertyInjector> injectors = null,
 			TaskQueueParameters queueParameters = null,
 			CancellationToken cancellationToken = default)
@@ -168,7 +168,7 @@ namespace RCLargeLanguageModels
 		/// <returns>The completion result.</returns>
 		public async Task<CompletionResult> CompleteAsync(
 			string prompt,
-			OptionalParameter<ICompletionProperties> properties = null,
+			OptionalParameter<IEnumerable<CompletionProperty>> properties = null,
 			OptionalParameter<IEnumerable<ILLModelPropertyInjector>> injectors = null,
 			OptionalParameter<TaskQueueParameters> queueParameters = null,
 			CancellationToken cancellationToken = default)
@@ -196,7 +196,7 @@ namespace RCLargeLanguageModels
 		public async Task<CompletionResult> CompleteAsync(
 			string prompt,
 			int count,
-			OptionalParameter<ICompletionProperties> properties = null,
+			OptionalParameter<IEnumerable<CompletionProperty>> properties = null,
 			OptionalParameter<IEnumerable<ILLModelPropertyInjector>> injectors = null,
 			OptionalParameter<TaskQueueParameters> queueParameters = null,
 			CancellationToken cancellationToken = default)
@@ -312,7 +312,7 @@ namespace RCLargeLanguageModels
 		public async Task<CompletionResult> CompleteAsync(
 			string prompt,
 			string suffix,
-			OptionalParameter<ICompletionProperties> properties = null,
+			OptionalParameter<IEnumerable<CompletionProperty>> properties = null,
 			OptionalParameter<IEnumerable<ILLModelPropertyInjector>> injectors = null,
 			OptionalParameter<TaskQueueParameters> queueParameters = null,
 			CancellationToken cancellationToken = default)
@@ -342,7 +342,7 @@ namespace RCLargeLanguageModels
 			string prompt,
 			string suffix,
 			int count,
-			OptionalParameter<ICompletionProperties> properties = null,
+			OptionalParameter<IEnumerable<CompletionProperty>> properties = null,
 			OptionalParameter<IEnumerable<ILLModelPropertyInjector>> injectors = null,
 			OptionalParameter<TaskQueueParameters> queueParameters = null,
 			CancellationToken cancellationToken = default)
@@ -448,7 +448,7 @@ namespace RCLargeLanguageModels
 		/// <returns>The streaming partial completion result.</returns>
 		public async Task<PartialCompletionResult> CompleteStreamingAsync(
 			string prompt,
-			OptionalParameter<ICompletionProperties> properties = null,
+			OptionalParameter<IEnumerable<CompletionProperty>> properties = null,
 			OptionalParameter<IEnumerable<ILLModelPropertyInjector>> injectors = null,
 			OptionalParameter<TaskQueueParameters> queueParameters = null,
 			CancellationToken cancellationToken = default)
@@ -476,7 +476,7 @@ namespace RCLargeLanguageModels
 		public async Task<PartialCompletionResult> CompleteStreamingAsync(
 			string prompt,
 			int count,
-			OptionalParameter<ICompletionProperties> properties = null,
+			OptionalParameter<IEnumerable<CompletionProperty>> properties = null,
 			OptionalParameter<IEnumerable<ILLModelPropertyInjector>> injectors = null,
 			OptionalParameter<TaskQueueParameters> queueParameters = null,
 			CancellationToken cancellationToken = default)
@@ -592,7 +592,7 @@ namespace RCLargeLanguageModels
 		public async Task<PartialCompletionResult> CompleteStreamingAsync(
 			string prompt,
 			string suffix,
-			OptionalParameter<ICompletionProperties> properties = null,
+			OptionalParameter<IEnumerable<CompletionProperty>> properties = null,
 			OptionalParameter<IEnumerable<ILLModelPropertyInjector>> injectors = null,
 			OptionalParameter<TaskQueueParameters> queueParameters = null,
 			CancellationToken cancellationToken = default)
@@ -622,7 +622,7 @@ namespace RCLargeLanguageModels
 			string prompt,
 			string suffix,
 			int count,
-			OptionalParameter<ICompletionProperties> properties = null,
+			OptionalParameter<IEnumerable<CompletionProperty>> properties = null,
 			OptionalParameter<IEnumerable<ILLModelPropertyInjector>> injectors = null,
 			OptionalParameter<TaskQueueParameters> queueParameters = null,
 			CancellationToken cancellationToken = default)

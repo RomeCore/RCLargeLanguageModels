@@ -50,7 +50,7 @@ namespace RCLargeLanguageModels.SourceGenerators
 			// Generate constructors
 			var constructors = string.Join("\n\n", Enumerable.Range(1, typeParamCount).Select(i =>
 		$@"		/// <summary>
-		/// Initializes a new instance of the <see cref=""Or<{typeParams}>""/> struct with a value of type <typeparamref name=""T{i}""/>.
+		/// Initializes a new instance of the <see cref=""Or{{{typeParams}}}""/> struct with a value of type <typeparamref name=""T{i}""/>.
 		/// </summary>
 		/// <param name=""value"">The value to store.</param>
 		/// <exception cref=""InvalidOperationException"">Thrown when any two type parameters are the same type.</exception>
@@ -64,7 +64,7 @@ namespace RCLargeLanguageModels.SourceGenerators
 			// Generate Create methods
 			var createMethods = string.Join("\n\n", Enumerable.Range(1, typeParamCount).Select(i =>
 		$@"		/// <summary>
-		/// Explicitly creates a new <see cref=""Or<{typeParams}>""/> struct with a value of type <typeparamref name=""T{i}""/>.
+		/// Explicitly creates a new <see cref=""Or{{{typeParams}}}""/> struct with a value of type <typeparamref name=""T{i}""/>.
 		/// </summary>
 		/// <param name=""value"">The value to store.</param>
 		/// <returns>A new created <see cref=""Or{{{typeParams}}}""/> with used <typeparamref name=""T{i}""/> type as active.</returns>
@@ -185,7 +185,10 @@ namespace RCLargeLanguageModels.SourceGenerators
 			var equalsCases = string.Join("\n\t\t\t", Enumerable.Range(0, typeParamCount)
 				.Select(i => $"case {i}:\n\t\t\t\treturn Equals(_value{i + 1}, other._value{i + 1});"));
 
-			var equalityMethods = $@"		public override bool Equals(object other)
+			var equalityMethods = $@"		/// <summary>
+		/// Determines whether the specified object is equal to the current <see cref=""Or{{{typeParams}}}""/>.
+		/// </summary>
+		public override bool Equals(object other)
 		{{
 			if (other is null)
 				return false;
@@ -195,7 +198,10 @@ namespace RCLargeLanguageModels.SourceGenerators
 
 			return false;
 		}}
-
+		
+		/// <summary>
+		/// Determines whether the specified object is equal to the current <see cref=""Or{{{typeParams}}}""/>.
+		/// </summary>
 		public bool Equals(Or<{typeParams}> other)
 		{{
 			if (VariantIndex != other.VariantIndex)
@@ -208,7 +214,10 @@ namespace RCLargeLanguageModels.SourceGenerators
 				return false;
 			}}
 		}}
-
+		
+		/// <summary>
+		/// Returns the hash code for this <see cref=""Or{{{typeParams}}}""/>.
+		/// </summary>
 		public override int GetHashCode()
 		{{
 			int hc = VariantIndex.GetHashCode();
@@ -223,17 +232,26 @@ namespace RCLargeLanguageModels.SourceGenerators
 
 			// Generate conversion operators
 			var conversionOperators = string.Join("\n\n", Enumerable.Range(1, typeParamCount)
-				.Select(i => $@"		public static implicit operator Or<{typeParams}>(T{i} value)
+				.Select(i => $@"		/// <summary>
+		/// Converts the current <see cref=""Or{{{typeParams}}}""/> to a value of type <typeparamref name=""T{i}""/>.
+		/// </summary>
+		public static implicit operator Or<{typeParams}>(T{i} value)
 		{{
 			return new Or<{typeParams}>(value);
 		}}"));
 
 			// Generate equality operators
-			var equalityOperators = $@"		public static bool operator ==(Or<{typeParams}> left, Or<{typeParams}> right)
+			var equalityOperators = $@"		/// <summary>
+		/// Determines whether two <see cref=""Or{{{typeParams}}}""/> instances are equal.
+		/// </summary>
+		public static bool operator ==(Or<{typeParams}> left, Or<{typeParams}> right)
 		{{
 			return left.Equals(right);
 		}}
 
+		/// <summary>
+		/// Determines whether two <see cref=""Or{{{typeParams}}}""/> instances are not equal.
+		/// </summary>
 		public static bool operator !=(Or<{typeParams}> left, Or<{typeParams}> right)
 		{{
 			return !(left == right);
@@ -241,23 +259,35 @@ namespace RCLargeLanguageModels.SourceGenerators
 
 			// Generate cross-type equality operators
 			var crossEqualityOperators = string.Join("\n\n", Enumerable.Range(1, typeParamCount)
-				.Select(i => $@"		public static bool operator ==(Or<{typeParams}> left, T{i} right)
+				.Select(i => $@"		/// <summary>
+		/// Determines whether an <see cref=""Or{{{typeParams}}}""/> instance is equal to a value of type <typeparamref name=""T{i}""/>.
+		/// </summary>
+		public static bool operator ==(Or<{typeParams}> left, T{i} right)
 		{{
 			if (left.VariantIndex == {i - 1})
 				return Equals(left._value{i}, right);
 			return false;
 		}}
 
+		/// <summary>
+		/// Determines whether an <see cref=""Or{{{typeParams}}}""/> instance is not equal to a value of type <typeparamref name=""T{i}""/>.
+		/// </summary>
 		public static bool operator !=(Or<{typeParams}> left, T{i} right)
 		{{
 			return !(left == right);
 		}}
-
+		
+		/// <summary>
+		/// Determines whether a value of type <typeparamref name=""T{i}""/> is equal to an <see cref=""Or{{{typeParams}}}""/> instance.
+		/// </summary>
 		public static bool operator ==(T{i} left, Or<{typeParams}> right)
 		{{
 			return right == left;
 		}}
 
+		/// <summary>
+		/// Determines whether a value of type <typeparamref name=""T{i}""/> is not equal to an <see cref=""Or{{{typeParams}}}""/> instance.
+		/// </summary>
 		public static bool operator !=(T{i} left, Or<{typeParams}> right)
 		{{
 			return right != left;

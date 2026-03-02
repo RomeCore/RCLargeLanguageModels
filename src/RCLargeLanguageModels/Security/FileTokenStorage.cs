@@ -165,8 +165,10 @@ namespace RCLargeLanguageModels.Security
 
 		private byte[] GetEncryptionKey()
 		{
+#pragma warning disable SYSLIB0041
 			using (var deriveBytes = new Rfc2898DeriveBytes(Password, salt: Salt, iterations: 500000))
 				return deriveBytes.GetBytes(32);
+#pragma warning restore SYSLIB0041
 		}
 	}
 }

@@ -26,8 +26,22 @@
 		<Optimize>true</Optimize>
 	</PropertyGroup>
 
+	<PropertyGroup>
+		<PackageId>RCLLM</PackageId>
+		<Version>0.1.0</Version>
+		<Authors>Roman K.</Authors>
+		<Company>RomeCore</Company>
+		<Product>RCLargeLanguageModels</Product>
+		<Description>The library provides a set of tools for working with large language models (LLM).</Description>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageTags>llm, large language models, ai, ml, nlp, openai</PackageTags>
+		<RepositoryUrl>https://github.com/RomeCore/RCLargeLanguageModels</RepositoryUrl>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<GenerateDocumentationFile>True</GenerateDocumentationFile>
+	</PropertyGroup>
+
 	<ItemGroup>
-	  <None Remove="Prompting\TemplateLibrary.cs~RF80b6ab1.TMP" />
+		<None Include="..\..\README.md" Pack="true" PackagePath="\" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -55,6 +69,5 @@
 	<ItemGroup>
 		<Folder Include="Html\" />
 		<Folder Include="Pipelines\" />
-		<Folder Include="REST\" />
 	</ItemGroup>
 </Project>

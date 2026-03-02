@@ -127,21 +127,30 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 		{
 			var headers = GetRequestHeaders();
 
-			var response = await RequestUtility.GetResponseAsync<JObject>(RequestType.Get, _endpoint.ListModels,
-				null, _http, headers, cancellationToken);
-
-			var models = response["data"] as JArray;
-			if (models == null)
-				throw new Exception("No models in response.");
-
-			var result = new List<LLModelDescriptor>();
-			foreach (var model in models)
+			try
 			{
-				var id = model["id"]?.Value<string>();
-				result.Add(new LLModelDescriptor(this, id));
-			}
+				var response = await RequestUtility.GetResponseAsync(RequestType.Get, _endpoint.ListModels,
+					null, _http, headers, cancellationToken);
 
-			return result.ToArray();
+				var responseContent = await response.ParseContentAsync<JObject>(cancellationToken);
+
+				var models = responseContent["data"] as JArray;
+				if (models == null)
+					throw new LLMException("No models in response.");
+
+				var result = new List<LLModelDescriptor>();
+				foreach (var model in models)
+				{
+					var id = model["id"]?.Value<string>();
+					result.Add(new LLModelDescriptor(this, id));
+				}
+
+				return result.ToArray();
+			}
+			catch (Exception ex)
+			{
+				throw new LLMException("Failed to list models.", ex);
+			}
 		}
 
 		protected override async Task<ChatCompletionResult> CreateChatCompletionsOverrideAsync(LLModelDescriptor model,
@@ -150,15 +159,17 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			var body = BuildChatRequestBody(model, messages, outputFormatDefinition, tools, properties, count, false);
 			var headers = GetRequestHeaders();
 
-			var response = await RequestUtility.GetResponseAsync<JObject>(RequestType.Post, _endpoint.GenerateChatCompletion,
+			var response = await RequestUtility.GetResponseAsync(RequestType.Post, _endpoint.GenerateChatCompletion,
 				body, _http, headers, cancellationToken);
 
-			var error = response["error"] as JObject ?? response;
+			var responseContent = await response.ParseContentAsync<JObject>(cancellationToken);
+
+			var error = responseContent["error"] as JObject ?? responseContent;
 			var errorCode = error["code"]?.Value<string>();
 			if (errorCode != null)
-				throw new InvalidDataException($"Error {errorCode}: {error["message"]}"); // TODO: Change to custom exception
+				throw new LLMException($"Error {errorCode}: {error["message"]}");
 
-			var choices = response["choices"] as JArray;
+			var choices = responseContent["choices"] as JArray;
 			if (choices == null || choices.Count == 0)
 				throw new InvalidDataException("No choices in response.");
 
@@ -172,7 +183,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 				resultMessages.Add(ParseNonStreamingAssistantMessage(message, model, tools));
 			}
 
-			var usage = response["usage"] as JObject;
+			var usage = responseContent["usage"] as JObject;
 			if (usage != null)
 				AppendUsage(usage, model);
 

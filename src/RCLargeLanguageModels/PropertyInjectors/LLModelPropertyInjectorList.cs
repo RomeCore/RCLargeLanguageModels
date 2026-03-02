@@ -114,8 +114,10 @@ namespace RCLargeLanguageModels.PropertyInjectors
 		/// <summary>
 		/// Gets an empty immutable collection.
 		/// </summary>
+#pragma warning disable CS0108
 		public static ImmutableLLModelPropertyInjectorList Empty { get; }
 			= new ImmutableLLModelPropertyInjectorList(new LLModelPropertyInjectorList());
+#pragma warning restore CS0108
 
 		/// <summary>
 		/// Executes all injectors in the collection.

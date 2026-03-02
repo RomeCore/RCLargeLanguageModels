@@ -83,7 +83,7 @@ namespace RCLargeLanguageModels.Utilities
 		/// <param name="headers">Optional dictionary of headers to include in the request.</param>
 		/// <param name="cancellationToken">The cancellation token used to cancel the request.</param>
 		/// <returns>The deserialized response of type <typeparamref name="T"/>.</returns>
-		public static async Task<T> GetResponseAsync<T>(RequestType requestType, string uri, object body, 
+		public static async Task<T> GetResponseAsync<T>(RequestType requestType, string uri, object body,
 			HttpClient client = null, Dictionary<string, string> headers = null, CancellationToken cancellationToken = default)
 		{
 			HttpResponseMessage response = await GetResponseAsync(requestType, uri, body, client, headers, cancellationToken);
@@ -129,7 +129,7 @@ namespace RCLargeLanguageModels.Utilities
 		}
 
 		/// <summary>
-		/// Processes a streaming JSON response
+		/// Processes a streaming JSON response and calls a callback function for each parsed object.
 		/// </summary>
 		/// <param name="requestType">HTTP request type</param>
 		/// <param name="uri">Target endpoint</param>
@@ -255,6 +255,23 @@ namespace RCLargeLanguageModels.Utilities
 				default:
 					throw new ArgumentOutOfRangeException(nameof(requestType), requestType, null);
 			}
+		}
+
+		/// <summary>
+		/// Parses the content of an HTTP response into a specific type.
+		/// </summary>
+		/// <typeparam name="T">The type to parse the response into.</typeparam>
+		/// <param name="message">The HTTP response message.</param>
+		/// <param name="ct">The cancellation token used to cancel the operation.</param>
+		/// <returns>The parsed object of type <typeparamref name="T"/>.</returns>
+		public static async Task<T> ParseContentAsync<T>(this HttpResponseMessage message, CancellationToken ct = default)
+		{
+#if NET6_0_OR_GREATER
+			var content = await message.Content.ReadAsStringAsync(ct);
+#else
+			var content = await message.Content.ReadAsStringAsync();
+#endif
+			return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(content);
 		}
 	}
 }

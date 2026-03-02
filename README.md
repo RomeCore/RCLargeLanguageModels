@@ -57,11 +57,9 @@ using RCLargeLanguageModels.Security;
 var token = new EnvironmentTokenAccessor("OPENAI_API_KEY");
 var client = new OpenAIClient(token);
 var descriptor = new LLModelDescriptor(client, "gpt-4-turbo", displayName: "GPT-4 Turbo");
-var model = new LLModel(descriptor).WithProperties(new CompletionProperties
-{
-	Temperature = 0.6f,
-	MaxTokens = 1024
-});
+var model = new LLModel(descriptor).WithProperties(
+	new TemperatureProperty(0.7f),
+	new MaxTokensProperty(1024));
 
 // Create the chat completion
 var result = await model.ChatStreamingAsync([
@@ -89,18 +87,18 @@ Or without `await foreach`, for C#<8.0:
 ```csharp
 foreach (var _part in result.Message.GetTaskEnumerator())
 {
-    string part;
-    // Since the _part is Task<> and it can throw exception on finish, we need to catch it
-    try
-    {
-        part = await _part;
-    }
-    catch (TaskEnumerableFinishedException)
-    {
-        break;
-    }
+	string part;
+	// Since the _part is Task<> and it can throw exception on finish, we need to catch it
+	try
+	{
+		part = await _part;
+	}
+	catch (TaskEnumerableFinishedException)
+	{
+		break;
+	}
 
-    Console.WriteLine("Got token: {0}", part);
+	Console.WriteLine("Got token: {0}", part);
 }
 ```
 
@@ -121,12 +119,12 @@ Using tools:
 ```csharp
 // Declare the weather function in C#
 string GetWeather(
-    [Description("The location to get weather for")]
-    string location
+	[Description("The location to get weather for")]
+	string location
 )
 {
-    // Just return the fixed data, for example
-    return "24 C, Cloudy";
+	// Just return the fixed data, for example
+	return "24 C, Cloudy";
 }
 
 // Create the tool and give it to model
@@ -156,15 +154,15 @@ var result = await model.ChatAsync([
 
 foreach (var message in result.Choices)
 {
-    Console.WriteLine(message.Content);
+	Console.WriteLine(message.Content);
 }
 ```
 
 The general completions:
 
 ```csharp
-var result = await model.CompleteAsync(prompt: "Once upon a day, ",
-    properties: new CompletionProperties { Temperature = 1f });
+var result = await model.CompleteAsync(prompt: "Once upon a time, ",
+	properties: new List<CompletionProperty> { new TemperatureProperty(0.5f) });
 Console.WriteLine(result.Completion.Content);
 // Or:
 Console.WriteLine(result.Content);
@@ -175,7 +173,7 @@ The FIM completions:
 ```csharp
 // Note that some models/clients are not supporting FIM completions
 var result = await model.CompleteAsync(prompt: "```python\ndef fibonacci", suffix: "    return result```",
-    properties: new CompletionProperties { Temperature = 0.1f });
+	properties: new List<CompletionProperty> { new TemperatureProperty(0.1f) });
 Console.WriteLine(result.Content);
 ```
 
@@ -205,132 +203,6 @@ Console.WriteLine(result.Content);
 - *[Planned]* **REST client**: The REST client that is optimized for debugging and SSE standards.
 - *[Planned]* **Model metadata databases**: The model databases that stores and automatically retrieves model metadata, such as context length.
 - *[Planned]* **Tokenizers**: The utilities to count tokens, truncate text/messages by token count, tokenize text, etc.
-
-### *[Now in development]* **Prompt and messages templates**  
-The powerful template system for storing, compiling and retrieving templates with metadata support (such as language, target model/model family, etc.).
-
-The **LLT** (Large Language Template) language is a powerful feature that allows you to create Razor-like templates for prompts and messages with metadata support.
-
-**Examples**:
-
-Simple prompt template for text quest:
-```llt
-@// The character template
-@template char_template {
-    Character: @name
-
-    Description:
-    @description
-
-    @if is_brave {
-        He is very brave.
-    } else {
-        He is not brave.
-    }
-}
-
-@// The system prompt template
-@template quest_master_prompt {
-    @metadata {
-        lang: en,
-        model: gpt-3.5-turbo
-    }
-    You are text quest master.
-
-    Setting of game:
-    @setting
-
-    Characters:
-
-    @foreach character in characters {
-        @render char_template with character
-        
-    }
-}
-```
-
-It can be rendered with data:
-```csharp
-var template = PromptLibrary.GetPromptTemplate("quest_master_prompt");
-var data = new[] {
-    setting = "The world of dark fantasy",
-    characters = new[] {
-        new { name = "Hero", description = "A brave hero", is_brave = true },
-        new { name = "Monster", description = "A terrifying monster", is_brave = false },
-    }
-};
-var result = template.Render(data);
-Console.WriteLine(result);
-
-// Output:
-
-// You are text quest master.
-//
-// Setting of game:
-// The world of dark fantasy
-//
-// Characters:
-//
-// Character: Hero
-//
-// Description:
-// A brave hero
-//
-// He is very brave.
-//
-// Character: Monster
-//
-// Description:
-// A terrifying monster
-//
-// He is not brave.
-//
-```
-
-Messages template with multi-message rendering support:
-
-```llt
-@messages_template example_mt {
-    @// Message with explicit 'system' role
-    @system_message {
-        You are helpful assistant. @notes
-    }
-
-    @foreach msg in messages {
-        @// Message with role contained in msg.role context variable
-        @message {
-            @role msg.role
-            The message contents are as follows:
-            @msg.Text
-        }
-    }
-}
-```
-
-```csharp
-var template = PromptLibrary.GetMessagesTemplate("example_mt");
-var data = new { ... };
-IEnumerable<IMessage> messages = template.Render(data);
-```
-
-Raw FIM completion prompts for different model families:
-
-```llt
-@template fim_completion_template {
-    @metadata {
-        model_family: codellama
-    }
-    <PRE>@prefix<SUF>@suffix<MID>
-}
-
-@template fim_completion_template {
-    @metadata {
-        model_family: qwen
-    }
-    @/ Qwen models has special FIM completion tokens
-    <|fim_prefix|>@prefix<|fim_suffix|>@suffix<|fim_middle|>
-}
-```
 
 ## Contributing
 

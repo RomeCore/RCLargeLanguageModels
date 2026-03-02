@@ -145,7 +145,7 @@ namespace RCLargeLanguageModels
 
 	public class AttributeCollection<TBase, TSeparator> : AttributeCollection<TBase>
 		where TBase : Attribute
-		where TSeparator : TBase
+		where TSeparator : Attribute
 	{
 		private static readonly Dictionary<object, AttributeCollection<TBase, TSeparator>> _cache
 			= new Dictionary<object, AttributeCollection<TBase, TSeparator>>();

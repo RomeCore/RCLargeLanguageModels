@@ -83,14 +83,5 @@ namespace RCLargeLanguageModels.Json
 				return (int)value;
 			return value;
 		}
-
-		/// <summary>
-		/// Converts JSON schema to <see cref="JToken"/>.
-		/// </summary>
-		public static JToken ToJToken(this JSchema schema)
-		{
-			var str = schema.ToString();
-			return JObject.Parse(str);
-		}
 	}
 }

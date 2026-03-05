@@ -11,11 +11,11 @@ namespace RCLargeLanguageModels.Tools
 {
 	// Снизу жопа
 
-	internal class FunctionToolParameterBuilder
+	/*internal class FunctionToolParameterBuilder
 	{
 		public string name = null;
 		public bool required = false;
-		public JSchema schema = null;
+		public JObject schema = null;
 	}
 
 	/// <summary>
@@ -614,5 +614,5 @@ namespace RCLargeLanguageModels.Tools
 					return executor.Invoke(arg1, arg2, arg3, arg4, ct);
 				});
 		}
-	}
+	}*/
 }

@@ -536,7 +536,7 @@ namespace RCLargeLanguageModels.Clients.Ollama
 						{
 							["name"] = functionTool.Name,
 							["description"] = functionTool.Description,
-							["parameters"] = functionTool.ArgumentSchema.ToJToken()
+							["parameters"] = functionTool.ArgumentSchema
 						}
 					};
 

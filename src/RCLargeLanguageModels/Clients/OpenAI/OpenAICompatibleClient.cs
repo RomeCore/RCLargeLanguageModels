@@ -8,7 +8,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Schema.Generation;
 using RCLargeLanguageModels.Json;
 using RCLargeLanguageModels.Messages;
 using RCLargeLanguageModels.Formats;
@@ -265,7 +264,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 						{
 							["name"] = functionTool.Name,
 							["description"] = functionTool.Description,
-							["parameters"] = functionTool.ArgumentSchema.ToJToken()
+							["parameters"] = functionTool.ArgumentSchema
 						}
 					};
 

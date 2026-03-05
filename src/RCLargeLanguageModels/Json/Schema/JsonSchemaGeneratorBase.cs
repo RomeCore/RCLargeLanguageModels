@@ -15,6 +15,6 @@ namespace RCLargeLanguageModels.Json.Schema
 		/// </summary>
 		/// <param name="member">The member to generate a schema for.</param>
 		/// <returns>A JSON schema object, or null if no schema can be generated.</returns>
-		public abstract JObject? GenerateSchema(MemberAccessor member);
+		public abstract JObject? GenerateSchema(JsonMemberAccessor member);
 	}
 }

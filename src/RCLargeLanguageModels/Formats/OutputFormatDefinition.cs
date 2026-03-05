@@ -46,13 +46,13 @@ namespace RCLargeLanguageModels.Formats
 		/// <summary>
 		/// Gets the JSON schema that will be sent as parameter in API with LLM.
 		/// </summary>
-		public JSchema Schema { get; }
+		public JObject Schema { get; }
 
 		/// <summary>
 		/// Creates a new instance of <see cref="JsonSchemaOutputFormatDefinition"/> class using JSON schema object.
 		/// </summary>
 		/// <param name="schema">The JSON schema.</param>
-		public JsonSchemaOutputFormatDefinition(JSchema schema)
+		public JsonSchemaOutputFormatDefinition(JObject schema)
 		{
 			Schema = schema ?? throw new ArgumentNullException(nameof(schema));
 		}

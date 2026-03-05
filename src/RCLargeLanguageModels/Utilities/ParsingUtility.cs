@@ -6,7 +6,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace RCLargeLanguageModels
+namespace RCLargeLanguageModels.Utilities
 {
 	/// <summary>
 	/// The utility to parse objects from strings. Target types must implement Parse(string) method to consider type parsable.
@@ -88,7 +88,7 @@ namespace RCLargeLanguageModels
 		/// <returns>The object of <typeparamref name="T"/> parsed from <paramref name="str"/>.</returns>
 		public static T Parse<T>(this string str)
 		{
-			return (T)Parse(str, typeof(T));
+			return (T)str.Parse(typeof(T));
 		}
 
 		/// <summary>
@@ -122,7 +122,7 @@ namespace RCLargeLanguageModels
 		/// <returns><see langword="true"/> if parsing was successful; otherwise, <see langword="false"/>.</returns>
 		public static bool TryParse<T>(this string str, out T parsed)
 		{
-			var result = TryParse(str, typeof(T), out object _parsed);
+			var result = str.TryParse(typeof(T), out object _parsed);
 
 			if (!result)
 			{

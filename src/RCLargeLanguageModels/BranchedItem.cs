@@ -111,7 +111,7 @@ namespace RCLargeLanguageModels
 	/// <summary>
 	/// The branched entry that represents a branch with list of items and subsequent branches in a branched collection.
 	/// </summary>
-	internal class BranchedEntry<T>
+	public class BranchedEntry<T>
 	{
 		public BranchedEntry<T> Parent { get; set; }
 

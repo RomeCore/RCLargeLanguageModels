@@ -22,7 +22,7 @@ namespace RCLargeLanguageModels.Tools
 
 		public string Name { get; }
 		public string Description { get; }
-		public JSchema ArgumentSchema { get; }
+		public JObject ArgumentSchema { get; }
 
 		/// <summary>
 		/// Initializes a new AI-callable function.
@@ -31,7 +31,7 @@ namespace RCLargeLanguageModels.Tools
 		/// <param name="description">LLM-readable description.</param>
 		/// <param name="argumentSchema">Input argument JSON schema.</param>
 		/// <param name="function">Execution implementation.</param>
-		public FunctionTool(string name, string description, JSchema argumentSchema, Func<JToken, CancellationToken, Task<ToolResult>> function)
+		public FunctionTool(string name, string description, JObject argumentSchema, Func<JToken, CancellationToken, Task<ToolResult>> function)
 		{
 			Name = name ?? throw new ArgumentNullException(nameof(name));
 			Description = description ?? throw new ArgumentNullException(nameof(description));
@@ -39,16 +39,20 @@ namespace RCLargeLanguageModels.Tools
 			_function = function ?? throw new ArgumentNullException(nameof(function));
 		}
 
+		/// <summary>
+		/// Executes the function with the provided arguments.
+		/// </summary>
+		/// <param name="args">The arguments to pass to the function.</param>
+		/// <param name="cancellationToken">The cancellation token to use for the operation. </param>
+		/// <returns>The result of the function execution.</returns>
+		/// <exception cref="ArgumentNullException">Thrown when the arguments are null.</exception>
 		public async Task<ToolResult> ExecuteAsync(JToken args, CancellationToken cancellationToken = default)
 		{
 			if (args == null)
 				throw new ArgumentNullException(nameof(args));
-			if (!args.IsValid(ArgumentSchema))
-				throw new ArgumentException($"Invalid JSON argument (not compatible to schema): {args}");
 
 			return await _function.Invoke(args, cancellationToken);
 		}
-
 
 		/// <summary>
 		/// Creates a function tool from a delegate.
@@ -108,7 +112,7 @@ namespace RCLargeLanguageModels.Tools
 				throw new ArgumentException("Return type must be ToolResult, Task<ToolResult>, string, Task<string> or Task.", nameof(method));
 
 			var parameters = method.GetParameters();
-			var schema = Json.JsonSchemaGenerator.GenerateJSchema(method);
+			var schema = Json.JsonSchemaGenerator.Generate(method);
 			var mappings = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 			int ctMapping = -1;
 
@@ -247,9 +251,9 @@ namespace RCLargeLanguageModels.Tools
 		{
 		}
 
-		private static JSchema GetSchema()
+		private static JObject GetSchema()
 		{
-			return Json.JsonSchemaGenerator.GenerateJSchema(typeof(TArg));
+			return Json.JsonSchemaGenerator.Generate(typeof(TArg));
 		}
 
 		private static Func<JToken, CancellationToken, Task<ToolResult>> WrapFunction(

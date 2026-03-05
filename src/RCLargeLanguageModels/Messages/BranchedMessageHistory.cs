@@ -17,11 +17,10 @@ namespace RCLargeLanguageModels.Messages
 		/// <summary>
 		/// Gets the read-only collection of system messages in the history.
 		/// </summary>
-		[JsonProperty]
 		public IEnumerable<SystemMessage> SystemMessages { get; }
 
 		/// <summary>
-		/// Initializes a new empty branched message history.
+		/// Initializes a new instance of <see cref="BranchedMessageHistory"/> class.
 		/// </summary>
 		public BranchedMessageHistory()
 		{
@@ -29,7 +28,7 @@ namespace RCLargeLanguageModels.Messages
 		}
 
 		/// <summary>
-		/// Initializes a new branched message history with the specified messages.
+		/// Initializes a new instance of <see cref="BranchedMessageHistory"/> class.
 		/// </summary>
 		/// <param name="messages">Initial messages to add (system messages will be filtered automatically).</param>
 		public BranchedMessageHistory(IEnumerable<IMessage> messages)
@@ -39,7 +38,7 @@ namespace RCLargeLanguageModels.Messages
 		}
 
 		/// <summary>
-		/// Initializes a new branched message history with the specified messages.
+		/// Initializes a new instance of <see cref="BranchedMessageHistory"/> class.
 		/// </summary>
 		/// <param name="messages">Initial messages to add (system messages will be filtered automatically).</param>
 		public BranchedMessageHistory(params IMessage[] messages)
@@ -48,8 +47,12 @@ namespace RCLargeLanguageModels.Messages
 			AddRange(messages);
 		}
 
-		[JsonConstructor]
-		internal BranchedMessageHistory(IEnumerable<SystemMessage> systemMessages, BranchedEntry<IMessage> root)
+		/// <summary>
+		/// Ini
+		/// </summary>
+		/// <param name="systemMessages"></param>
+		/// <param name="root"></param>
+		protected BranchedMessageHistory(IEnumerable<SystemMessage> systemMessages, BranchedEntry<IMessage> root)
 			: base(ProcessRoot(root, ref systemMessages))
 		{
 			SystemMessages = _systemMessages.AsReadOnly();

@@ -19,7 +19,7 @@ namespace RCLargeLanguageModels.Utilities
 		public static int Count(string text)
 		{
 			// TODO: Implement real token counting logic.
-			return text.Length / 5;
+			return text.Length / 4;
 		}
 	}
 }

@@ -7,41 +7,21 @@ using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Schema;
-using Newtonsoft.Json.Schema.Generation;
 using Newtonsoft.Json.Serialization;
 
 namespace RCLargeLanguageModels.Json
 {
 	public static class JsonSchemaGenerator
 	{
-		private static JSchemaGenerator _generator = new JSchemaGenerator
-		{
-			ContractResolver = new CamelCasePropertyNamesContractResolver()
-		};
-
-		public static JSchema GenerateJSchema(Type type)
+		public static JObject Generate(Type type)
 		{
 			return _generator.Generate(type);
 		}
 
-		public static JObject GenerateJObject(Type type)
-		{
-			var schema = GenerateJSchema(type);
-			var str = schema.ToString();
-			return JObject.Parse(str);
-		}
-
-		public static string GenerateString(Type type)
-		{
-			var schema = GenerateJSchema(type);
-			return schema.ToString();
-		}
-
-		public static JSchema GenerateJSchema(MethodInfo method)
+		public static JObject Generate(MethodInfo method)
 		{
 			var parameters = method.GetParameters();
-			var result = new JSchema
+			var result = new JObject
 			{
 				Type = JSchemaType.Object
 			};
@@ -75,19 +55,6 @@ namespace RCLargeLanguageModels.Json
 			}
 
 			return result;
-		}
-
-		public static JObject GenerateJObject(MethodInfo method)
-		{
-			var schema = GenerateJSchema(method);
-			var str = schema.ToString();
-			return JObject.Parse(str);
-		}
-
-		public static string GenerateString(MethodInfo method)
-		{
-			var schema = GenerateJSchema(method);
-			return schema.ToString();
 		}
 	}
 }

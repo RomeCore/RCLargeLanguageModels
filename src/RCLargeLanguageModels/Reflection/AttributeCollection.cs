@@ -1,36 +1,27 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reflection;
+using RCLargeLanguageModels;
 
-namespace RCLargeLanguageModels
+namespace RCLargeLanguageModels.Reflection
 {
-	public class SameTypeComparer<T> : IEqualityComparer<T>
-	{
-		public static SameTypeComparer<T> Default { get; } = new SameTypeComparer<T>();
-
-		public bool Equals(T x, T y)
-		{
-			return x.GetType() == y.GetType();
-		}
-
-		public int GetHashCode(T obj)
-		{
-			return obj.GetType().GetHashCode();
-		}
-	}
-
 	public class AttributeCollection<TBase> : IEnumerable<TBase>
 		where TBase : Attribute
 	{
-		private static readonly Dictionary<object, AttributeCollection<TBase>> _cache
-			= new Dictionary<object, AttributeCollection<TBase>>();
+		private static readonly ConcurrentDictionary<object, AttributeCollection<TBase>> _cache
+			= new ConcurrentDictionary<object, AttributeCollection<TBase>>();
 
 		private readonly Dictionary<Type, TBase> _dictionary;
 		public ReadOnlyDictionary<Type, TBase> Dictionary { get; }
 
+		/// <summary>
+		/// Initializes a new instance of the <see cref="AttributeCollection{TBase}"/> class.
+		/// </summary>
+		/// <param name="collection">The collection of attributes.</param>
 		public AttributeCollection(IEnumerable<TBase> collection)
 		{
 			_dictionary = collection.Distinct(SameTypeComparer<TBase>.Default).ToDictionary(k => k.GetType());
@@ -50,34 +41,7 @@ namespace RCLargeLanguageModels
 		/// <returns>The <see cref="AttributeCollection{TBase}"/> for the given member</returns>
 		public static AttributeCollection<TBase> GetFor(MemberInfo member, bool includeUnderlyingType = true)
 		{
-			if (member == null)
-				return Empty;
-
-			if (_cache.TryGetValue(member, out var collection))
-				return collection;
-
-			var attributes = member.GetCustomAttributes<TBase>(true);
-
-			switch (member)
-			{
-				case PropertyInfo property:
-
-					if (includeUnderlyingType)
-						attributes = attributes.Concat(property.PropertyType.GetCustomAttributes<TBase>(true));
-
-					break;
-
-				case FieldInfo field:
-
-					if (includeUnderlyingType)
-						attributes = attributes.Concat(field.FieldType.GetCustomAttributes<TBase>(true));
-
-					break;
-			}
-
-			collection = new AttributeCollection<TBase>(attributes);
-			_cache[member] = collection;
-			return collection;
+			return _cache.GetOrAdd(member, _ => GetForCore(member, includeUnderlyingType));
 		}
 
 		/// <summary>
@@ -88,26 +52,14 @@ namespace RCLargeLanguageModels
 		/// <returns>The <see cref="AttributeCollection{TBase}"/> for the given member</returns>
 		public static AttributeCollection<TBase> GetFor(ParameterInfo parameter, bool includeUnderlyingType = true)
 		{
-			if (_cache.TryGetValue(parameter, out var collection))
-				return collection;
-
-			var attributes = parameter.GetCustomAttributes<TBase>(true);
-
-			if (includeUnderlyingType)
-			{
-				attributes = attributes.Concat(parameter.ParameterType.GetCustomAttributes<TBase>(true));
-			}
-
-			collection = new AttributeCollection<TBase>(attributes);
-			_cache[parameter] = collection;
-			return collection;
+			return _cache.GetOrAdd(parameter, _ => GetForCore(parameter, includeUnderlyingType));
 		}
 
 		/// <summary>
 		/// Gets the attribute of the specified type
 		/// </summary>
 		/// <returns>The found type of <typeparamref name="T"/> or <see langword="null"/></returns>
-		public T Get<T>() where T : TBase
+		public T? Get<T>() where T : TBase
 		{
 			if (_dictionary.TryGetValue(typeof(T), out var result))
 				return result as T;
@@ -141,14 +93,51 @@ namespace RCLargeLanguageModels
 		{
 			return GetEnumerator();
 		}
+
+		private static AttributeCollection<TBase> GetForCore(MemberInfo member, bool includeUnderlyingType)
+		{
+			var attributes = member.GetCustomAttributes<TBase>(true);
+
+			if (includeUnderlyingType)
+			{
+				switch (member)
+				{
+					case PropertyInfo property:
+
+						attributes = attributes.Concat(property.PropertyType.GetCustomAttributes<TBase>(true));
+
+						break;
+
+					case FieldInfo field:
+
+						attributes = attributes.Concat(field.FieldType.GetCustomAttributes<TBase>(true));
+
+						break;
+				}
+			}
+
+			return new AttributeCollection<TBase>(attributes);
+		}
+
+		private static AttributeCollection<TBase> GetForCore(ParameterInfo parameter, bool includeUnderlyingType)
+		{
+			var attributes = parameter.GetCustomAttributes<TBase>(true);
+
+			if (includeUnderlyingType)
+			{
+				attributes = attributes.Concat(parameter.ParameterType.GetCustomAttributes<TBase>(true));
+			}
+
+			return new AttributeCollection<TBase>(attributes);
+		}
 	}
 
 	public class AttributeCollection<TBase, TSeparator> : AttributeCollection<TBase>
 		where TBase : Attribute
 		where TSeparator : Attribute
 	{
-		private static readonly Dictionary<object, AttributeCollection<TBase, TSeparator>> _cache
-			= new Dictionary<object, AttributeCollection<TBase, TSeparator>>();
+		private static readonly ConcurrentDictionary<object, AttributeCollection<TBase, TSeparator>> _cache
+			= new ConcurrentDictionary<object, AttributeCollection<TBase, TSeparator>>();
 
 		private readonly Dictionary<Type, AttributeCollection<TBase>> _separated;
 		public ReadOnlyDictionary<Type, AttributeCollection<TBase>> Separated { get; }
@@ -203,9 +192,29 @@ namespace RCLargeLanguageModels
 		/// <returns>The <see cref="AttributeCollection{TBase, TSeparator}"/> for the given member</returns>
 		public static new AttributeCollection<TBase, TSeparator> GetFor(MemberInfo member, bool includeUnderlyingType = true)
 		{
-			if (_cache.TryGetValue(member, out var collection))
-				return collection;
+			return _cache.GetOrAdd(member, _ => GetForCore(member, includeUnderlyingType));
+		}
 
+		/// <summary>
+		/// Gets the attributes for the specified method parameter
+		/// </summary>
+		/// <param name="parameter">The parameter</param>
+		/// <param name="includeUnderlyingType">Marks that attributes of parameter underlying type needs to be included</param>
+		/// <returns>The <see cref="AttributeCollection{TBase, TSeparator}"/> for the given member</returns>
+		public static new AttributeCollection<TBase, TSeparator> GetFor(ParameterInfo parameter, bool includeUnderlyingType = true)
+		{
+			return _cache.GetOrAdd(parameter, _ => GetForCore(parameter, includeUnderlyingType));
+		}
+
+		public override AttributeCollection<TBase> GetSeparated<T>()
+		{
+			if (_separated.TryGetValue(typeof(T), out var result))
+				return result;
+			return AttributeCollection<TBase>.Empty;
+		}
+
+		private static AttributeCollection<TBase, TSeparator> GetForCore(MemberInfo member, bool includeUnderlyingType)
+		{
 			var attributes = member.GetCustomAttributes<TBase>(true);
 
 			if (includeUnderlyingType)
@@ -226,22 +235,11 @@ namespace RCLargeLanguageModels
 				}
 			}
 
-			collection = new AttributeCollection<TBase, TSeparator>(attributes);
-			_cache[member] = collection;
-			return collection;
+			return new AttributeCollection<TBase, TSeparator>(attributes);
 		}
 
-		/// <summary>
-		/// Gets the attributes for the specified method parameter
-		/// </summary>
-		/// <param name="parameter">The parameter</param>
-		/// <param name="includeUnderlyingType">Marks that attributes of parameter underlying type needs to be included</param>
-		/// <returns>The <see cref="AttributeCollection{TBase, TSeparator}"/> for the given member</returns>
-		public static new AttributeCollection<TBase, TSeparator> GetFor(ParameterInfo parameter, bool includeUnderlyingType = true)
+		private static AttributeCollection<TBase, TSeparator> GetForCore(ParameterInfo parameter, bool includeUnderlyingType)
 		{
-			if (_cache.TryGetValue(parameter, out var collection))
-				return collection;
-
 			var attributes = parameter.GetCustomAttributes<TBase>(true);
 
 			if (includeUnderlyingType)
@@ -249,16 +247,7 @@ namespace RCLargeLanguageModels
 				attributes = attributes.Concat(parameter.ParameterType.GetCustomAttributes<TBase>(true));
 			}
 
-			collection = new AttributeCollection<TBase, TSeparator>(attributes);
-			_cache[parameter] = collection;
-			return collection;
-		}
-		
-		public override AttributeCollection<TBase> GetSeparated<T>()
-		{
-			if (_separated.TryGetValue(typeof(T), out var result))
-				return result;
-			return AttributeCollection<TBase>.Empty;
+			return new AttributeCollection<TBase, TSeparator>(attributes);
 		}
 	}
 }

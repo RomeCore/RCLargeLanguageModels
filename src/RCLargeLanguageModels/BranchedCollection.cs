@@ -7,6 +7,7 @@ using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
+using RCLargeLanguageModels.Utilities;
 
 namespace RCLargeLanguageModels
 {

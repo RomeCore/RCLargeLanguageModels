@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace RCLargeLanguageModels
+namespace RCLargeLanguageModels.Utilities
 {
 	public static class Utils
 	{

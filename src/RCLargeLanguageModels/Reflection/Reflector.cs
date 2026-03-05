@@ -7,8 +7,9 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
+using RCLargeLanguageModels;
 
-namespace RCLargeLanguageModels
+namespace RCLargeLanguageModels.Reflection
 {
 	/// <summary>
 	/// Provides attribute-driven type discovery and instance management system

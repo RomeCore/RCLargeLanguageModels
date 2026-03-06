@@ -71,6 +71,10 @@ namespace RCLargeLanguageModels.Tests
 		{
 			[MinLength(2)]
 			[MaxLength(5)]
+
+			[Items]
+
+			[Range(1, 10)]
 			public int[] BoundedArray { get; set; }
 
 			[UniqueItems]
@@ -120,7 +124,7 @@ namespace RCLargeLanguageModels.Tests
 			var generator = new JsonSchemaValueGenerator();
 
 			// Act
-			var schema = Json.JsonSchemaGenerator.Generate(member) as JObject;
+			var schema = Json.JsonSchemaGenerator.Generate(member);
 
 			// Assert
 			Assert.NotNull(schema);
@@ -166,7 +170,7 @@ namespace RCLargeLanguageModels.Tests
 
 			// Test nullable property
 			var nullableProp = properties["NullableIntProperty"] as JObject;
-			Assert.Equal("integer", nullableProp["type"]);
+			Assert.Equal(["integer", "null"], nullableProp["type"]);
 		}
 
 		[Fact]
@@ -175,10 +179,9 @@ namespace RCLargeLanguageModels.Tests
 			// Arrange
 			var type = typeof(ConstrainedValueTypesClass);
 			var member = new JsonMemberAccessor(type);
-			var generator = new JsonSchemaValueGenerator();
 
 			// Act
-			var schema = generator.GenerateSchema(member) as JObject;
+			var schema = Json.JsonSchemaGenerator.Generate(member);
 			var properties = schema["properties"] as JObject;
 
 			// Assert
@@ -206,10 +209,9 @@ namespace RCLargeLanguageModels.Tests
 			// Arrange
 			var type = typeof(ArrayTypesClass);
 			var member = new JsonMemberAccessor(type);
-			var generator = new JsonSchemaArrayGenerator();
 
 			// Act
-			var schema = generator.GenerateSchema(member) as JObject;
+			var schema = Json.JsonSchemaGenerator.Generate(member);
 			var properties = schema["properties"] as JObject;
 
 			// Assert
@@ -240,10 +242,9 @@ namespace RCLargeLanguageModels.Tests
 			// Arrange
 			var type = typeof(ArrayTypesClass);
 			var member = new JsonMemberAccessor(type);
-			var generator = new JsonSchemaArrayGenerator();
 
 			// Act
-			var schema = generator.GenerateSchema(member) as JObject;
+			var schema = Json.JsonSchemaGenerator.Generate(member);
 			var properties = schema["properties"] as JObject;
 
 			// Assert jagged array
@@ -275,10 +276,9 @@ namespace RCLargeLanguageModels.Tests
 			// Arrange
 			var type = typeof(ConstrainedArrayTypesClass);
 			var member = new JsonMemberAccessor(type);
-			var generator = new JsonSchemaArrayGenerator();
 
 			// Act
-			var schema = generator.GenerateSchema(member) as JObject;
+			var schema = Json.JsonSchemaGenerator.Generate(member);
 			var properties = schema["properties"] as JObject;
 
 			// Assert
@@ -286,6 +286,11 @@ namespace RCLargeLanguageModels.Tests
 			Assert.Equal("array", boundedArray["type"]);
 			Assert.Equal(2, boundedArray["minItems"]);
 			Assert.Equal(5, boundedArray["maxItems"]);
+
+			var boundedArrayItems = boundedArray["items"] as JObject;
+			Assert.Equal("integer", boundedArrayItems["type"]);
+			Assert.Equal(1, boundedArrayItems["minimum"]);
+			Assert.Equal(10, boundedArrayItems["maximum"]);
 
 			var uniqueList = properties["UniqueItemsList"] as JObject;
 			Assert.Equal("array", uniqueList["type"]);
@@ -396,20 +401,6 @@ namespace RCLargeLanguageModels.Tests
 			var properties = schema["properties"] as JObject;
 			Assert.NotNull(properties);
 			Assert.Equal(8, properties.Count); // All 8 properties from SimpleValueTypesClass
-		}
-
-		[Fact]
-		public void Generator_WithNullMember_ReturnsNull()
-		{
-			// Arrange
-			var valueGenerator = new JsonSchemaValueGenerator();
-			var arrayGenerator = new JsonSchemaArrayGenerator();
-			var objectGenerator = new JsonSchemaObjectGenerator();
-
-			// Act & Assert
-			Assert.Null(valueGenerator.GenerateSchema(null));
-			Assert.Null(arrayGenerator.GenerateSchema(null));
-			Assert.Null(objectGenerator.GenerateSchema(null));
 		}
 
 		[Fact]

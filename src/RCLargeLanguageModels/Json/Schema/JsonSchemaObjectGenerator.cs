@@ -23,7 +23,7 @@ namespace RCLargeLanguageModels.Json.Schema
 				["type"] = "object",
 				["properties"] = propertiesSchema,
 				["required"] = requiredProperties,
-				["allow_additional_properties"] = false
+				["additionalProperties"] = false
 			};
 
 			foreach (var property in properties)

@@ -7,6 +7,5 @@ namespace RCLargeLanguageModels.Json.Schema
 	/// </summary>
 	public sealed class NullableAttribute : Attribute
 	{
-
 	}
 }

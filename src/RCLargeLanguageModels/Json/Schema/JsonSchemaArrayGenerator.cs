@@ -3,11 +3,13 @@ using System.ComponentModel;
 using System;
 using Newtonsoft.Json.Linq;
 using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace RCLargeLanguageModels.Json.Schema
 {
 	/// <summary>
-	/// Generates JSON Schema for arrays and collections
+	/// Generates JSON Schema for arrays and collections.
 	/// </summary>
 	public class JsonSchemaArrayGenerator : JsonSchemaGeneratorBase
 	{
@@ -27,11 +29,6 @@ namespace RCLargeLanguageModels.Json.Schema
 				if (genericArgs.Length == 1)
 				{
 					elementType = genericArgs[0];
-				}
-				else if (genericArgs.Length > 1 && typeof(IDictionary).IsAssignableFrom(type))
-				{
-					// Handle dictionaries as objects, not arrays
-					return null;
 				}
 			}
 
@@ -77,18 +74,6 @@ namespace RCLargeLanguageModels.Json.Schema
 			if (member.Attributes.Get<UniqueItemsAttribute>() is UniqueItemsAttribute)
 			{
 				resultSchema["uniqueItems"] = true;
-			}
-
-			// Handle default value for array
-			if (member.DefaultValue != null)
-			{
-				resultSchema["default"] = JToken.FromObject(member.DefaultValue);
-			}
-
-			// Add description if available
-			if (member.Attributes.Get<DescriptionAttribute>() is DescriptionAttribute description)
-			{
-				resultSchema["description"] = description.Description;
 			}
 
 			return resultSchema;

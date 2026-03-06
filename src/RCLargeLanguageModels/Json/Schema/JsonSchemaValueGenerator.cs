@@ -12,24 +12,14 @@ namespace RCLargeLanguageModels.Json.Schema
 	{
 		public override JObject? GenerateSchema(JsonMemberAccessor member)
 		{
-			var type = member.Type;
+			var type = member.NullableUnderlyingType;
 			var typeSchema = new JObject();
 
-			// Handle nullable types
-			var underlyingType = Nullable.GetUnderlyingType(type);
-			if (underlyingType != null)
-			{
-				type = underlyingType;
-			}
-
-			var jsonType = GetJsonType(type);
-			if (jsonType == null)
-				return null;
-			typeSchema["type"] = jsonType;
+			string? jsonType = null;
 
 			// Handle enums
 			var enumAttr = member.Attributes.Get<EnumAttribute>();
-			if (type.IsEnum || enumAttr != null)
+			if (type.IsEnum || (type == typeof(string) && enumAttr != null))
 			{
 				var enumValues = new JArray();
 				if (enumAttr != null)
@@ -47,8 +37,14 @@ namespace RCLargeLanguageModels.Json.Schema
 						enumValues.Add(enumName);
 					}
 				}
+				jsonType = "string";
 				typeSchema["enum"] = enumValues;
 			}
+
+			jsonType = jsonType ?? GetJsonType(type);
+			if (jsonType == null)
+				return null;
+			typeSchema["type"] = jsonType;
 
 			// Add format for specific types
 			if (type == typeof(DateTime) || type == typeof(DateTimeOffset))
@@ -96,18 +92,6 @@ namespace RCLargeLanguageModels.Json.Schema
 			if (member.Attributes.Get<RegularExpressionAttribute>() is RegularExpressionAttribute regex)
 			{
 				typeSchema["pattern"] = regex.Pattern;
-			}
-
-			// Handle default value
-			if (member.DefaultValue != null)
-			{
-				typeSchema["default"] = JToken.FromObject(member.DefaultValue);
-			}
-
-			// Add description if available
-			if (member.Attributes.Get<DescriptionAttribute>() is DescriptionAttribute description)
-			{
-				typeSchema["description"] = description.Description;
 			}
 
 			return typeSchema;

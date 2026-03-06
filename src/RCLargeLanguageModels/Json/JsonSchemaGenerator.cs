@@ -17,6 +17,7 @@ namespace RCLargeLanguageModels.Json
 	{
 		private static readonly JsonSchemaGeneratorBase[] _generators = new JsonSchemaGeneratorBase[]
 		{
+			new JsonSchemaDictionaryGenerator(),
 			new JsonSchemaArrayGenerator(),
 			new JsonSchemaValueGenerator(),
 			new JsonSchemaObjectGenerator()
@@ -26,6 +27,11 @@ namespace RCLargeLanguageModels.Json
 		{
 			if (member.Attributes.Get<DescriptionAttribute>()?.Description is string desc)
 				schema["description"] = desc;
+			if (member.Nullable)
+				schema["type"] = new JArray { schema["type"], "null" };
+			if (member.DefaultValue != null)
+				schema["default"] = JToken.FromObject(member.DefaultValue);
+
 			return schema;
 		}
 

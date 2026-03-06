@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using Newtonsoft.Json;
+using RCLargeLanguageModels.Metadata;
 
 namespace RCLargeLanguageModels.Embeddings
 {
@@ -19,43 +19,36 @@ namespace RCLargeLanguageModels.Embeddings
 		/// <summary>
 		/// The embedding vector values as array.
 		/// </summary>
-		[JsonProperty]
 		public ImmutableArray<float> Vector { get; }
 
 		/// <summary>
 		/// The source model that embedding was created with. Can be <see langword="null"/> if unknown.
 		/// </summary>
-		[JsonProperty]
-		public string SourceModel { get; }
+		public LLModelDescriptor SourceModel { get; }
 
 		/// <summary>
 		/// The count of dimensions of the embedding vector.
 		/// </summary>
-		[JsonIgnore]
 		public int Dimensions => Vector.Length;
 
 		/// <summary>
 		/// Gets the length of the embedding vector.
 		/// </summary>
-		[JsonIgnore]
 		public float Length => _lengthLazy.Value;
 
 		/// <summary>
 		/// Gets the value indicating whether vector is zero vector.
 		/// </summary>
-		[JsonIgnore]
 		public bool IsZeroVector => Length < Tolerance;
 
 		/// <summary>
 		/// Gets the value indicating whether the embedding vector is normalized.
 		/// </summary>
-		[JsonIgnore]
 		public bool IsNormalized => _lengthLazy.Value == 1.0f;
 
 		/// <summary>
 		/// Get the normalized version of embedding.
 		/// </summary>
-		[JsonIgnore]
 		public Embedding Normalized => _normalizedLazy.Value;
 
 
@@ -114,7 +107,7 @@ namespace RCLargeLanguageModels.Embeddings
 		/// </summary>
 		/// <param name="vector">The embedding vector.</param>
 		/// <param name="sourceModel">The source model that embedding was created with.</param>
-		public Embedding(IEnumerable<float> vector, string sourceModel)
+		public Embedding(IEnumerable<float> vector, LLModelDescriptor sourceModel)
 		{
 			Vector = vector.ToImmutableArray();
 			SourceModel = sourceModel;
@@ -141,8 +134,7 @@ namespace RCLargeLanguageModels.Embeddings
 		/// </summary>
 		/// <param name="vector">The embedding vector.</param>
 		/// <param name="sourceModel">The source model that embedding was created with.</param>
-		[JsonConstructor]
-		public Embedding(ImmutableArray<float> vector, string sourceModel)
+		public Embedding(ImmutableArray<float> vector, LLModelDescriptor sourceModel)
 		{
 			Vector = vector;
 			SourceModel = sourceModel;
@@ -226,8 +218,8 @@ namespace RCLargeLanguageModels.Embeddings
 				vectorString += "...";
 
 			string sourceModelStr = string.Empty;
-			if (!string.IsNullOrEmpty(SourceModel))
-				sourceModelStr += ", " + SourceModel;
+			if (SourceModel != null)
+				sourceModelStr += ", " + SourceModel.DisplayName;
 
 			return $"Embedding: Dimensions={Dimensions}, Vector=[{vectorString}]{sourceModelStr}";
 		}

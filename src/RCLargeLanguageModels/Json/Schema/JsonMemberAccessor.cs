@@ -5,8 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
-using System.Xml.Linq;
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 using RCLargeLanguageModels.Reflection;
 
 namespace RCLargeLanguageModels.Json.Schema
@@ -70,7 +69,7 @@ namespace RCLargeLanguageModels.Json.Schema
 					Type = type;
 					Name = GetName(Attributes, type.Name);
 					Include = GetIsPublic(Attributes, type.IsPublic);
-					Required = Include && GetRequired(Attributes, false);
+					Required = GetRequired(Attributes, false);
 					DefaultValue = GetDefaultValue(Attributes, null);
 					(Nullable, NullableUnderlyingType) = GetNullable(Attributes, Type);
 					break;
@@ -79,7 +78,7 @@ namespace RCLargeLanguageModels.Json.Schema
 					Type = propertyInfo.PropertyType;
 					Name = GetName(Attributes, propertyInfo.Name);
 					Include = GetIsPublic(Attributes, propertyInfo.GetAccessors().All(a => a.IsPublic));
-					Required = Include && GetRequired(Attributes, false);
+					Required = GetRequired(Attributes, false);
 					DefaultValue = GetDefaultValue(Attributes, null);
 					(Nullable, NullableUnderlyingType) = GetNullable(Attributes, Type);
 					break;
@@ -88,7 +87,7 @@ namespace RCLargeLanguageModels.Json.Schema
 					Type = fieldInfo.FieldType;
 					Name = GetName(Attributes, fieldInfo.Name);
 					Include = GetIsPublic(Attributes, fieldInfo.IsPublic);
-					Required = Include && GetRequired(Attributes, false);
+					Required = GetRequired(Attributes, false);
 					DefaultValue = GetDefaultValue(Attributes, null);
 					(Nullable, NullableUnderlyingType) = GetNullable(Attributes, Type);
 					break;
@@ -97,7 +96,7 @@ namespace RCLargeLanguageModels.Json.Schema
 					Type = methodBase.DeclaringType;
 					Name = GetName(Attributes, methodBase.Name);
 					Include = GetIsPublic(Attributes, methodBase.IsPublic);
-					Required = Include && GetRequired(Attributes, false);
+					Required = GetRequired(Attributes, false);
 					DefaultValue = GetDefaultValue(Attributes, null);
 					(Nullable, NullableUnderlyingType) = GetNullable(Attributes, Type);
 					break;
@@ -137,7 +136,7 @@ namespace RCLargeLanguageModels.Json.Schema
 			Attributes = attributes;
 			Name = GetName(Attributes, parameter.Name);
 			Include = GetIsPublic(Attributes, true);
-			Required = Include && GetRequired(Attributes, !parameter.HasDefaultValue);
+			Required = GetRequired(Attributes, !parameter.HasDefaultValue);
 			DefaultValue = GetDefaultValue(Attributes, parameter.DefaultValue);
 			(Nullable, NullableUnderlyingType) = GetNullable(Attributes, Type);
 		}
@@ -154,7 +153,7 @@ namespace RCLargeLanguageModels.Json.Schema
 
 		private static string GetName(AttributeCollection<Attribute> attributes, string fallbackName)
 		{
-			if (attributes.Get<JsonPropertyAttribute>()?.PropertyName is string result1)
+			if (attributes.Get<JsonPropertyNameAttribute>()?.Name is string result1)
 				return result1;
 			if (attributes.Get<DisplayNameAttribute>()?.DisplayName is string result2)
 				return result2;

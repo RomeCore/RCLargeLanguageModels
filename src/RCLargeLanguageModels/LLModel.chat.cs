@@ -18,15 +18,20 @@ namespace RCLargeLanguageModels
 		private async Task<ChatCompletionResult> ChatPrivateAsync(
 			IEnumerable<IMessage> messages,
 			int count,
-			IEnumerable<CompletionProperty> properties = null,
-			OutputFormatDefinition outputFormatDefinition = null,
-			IEnumerable<ITool> tools = null,
-			IEnumerable<ILLModelPropertyInjector> injectors = null,
-			TaskQueueParameters queueParameters = null,
-			CancellationToken cancellationToken	= default)
+			IEnumerable<CompletionProperty> properties,
+			OutputFormatDefinition outputFormatDefinition,
+			IEnumerable<ITool> tools,
+			IEnumerable<ILLModelPropertyInjector> injectors,
+			TaskQueueParameters queueParameters,
+			bool validateCapabilities,
+			CancellationToken cancellationToken)
 		{
-			if (Capabilities != LLMCapabilities.Unknown && !Capabilities.HasFlag(LLMCapabilities.ChatCompletions))
-				throw new InvalidOperationException("Chat completions are not supported by this model.");
+			if (validateCapabilities)
+			{
+				if (Capabilities != LLMCapabilities.Unknown && !Capabilities.HasFlag(LLMCapabilities.ChatCompletions))
+					throw new InvalidOperationException("Chat completions are not supported by this model.");
+			}
+
 			if (messages == null)
 				throw new ArgumentNullException(nameof(messages));
 			if (!messages.Any())
@@ -45,6 +50,7 @@ namespace RCLargeLanguageModels
 					properties,
 					outputFormatDefinition,
 					tools,
+					validateCapabilities,
 					cancellationToken);
 			}, cancellationToken: cancellationToken);
 		}
@@ -52,15 +58,20 @@ namespace RCLargeLanguageModels
 		private async Task<PartialChatCompletionResult> ChatStreamingPrivateAsync(
 			IEnumerable<IMessage> messages,
 			int count,
-			IEnumerable<CompletionProperty> properties = null,
-			OutputFormatDefinition outputFormatDefinition = null,
-			IEnumerable<ITool> tools = null,
-			IEnumerable<ILLModelPropertyInjector> injectors = null,
-			TaskQueueParameters queueParameters = null,
-			CancellationToken cancellationToken	= default)
+			IEnumerable<CompletionProperty> properties,
+			OutputFormatDefinition outputFormatDefinition,
+			IEnumerable<ITool> tools,
+			IEnumerable<ILLModelPropertyInjector> injectors,
+			TaskQueueParameters queueParameters,
+			bool validateCapabilities,
+			CancellationToken cancellationToken)
 		{
-			if (Capabilities != LLMCapabilities.Unknown && !Capabilities.HasFlag(LLMCapabilities.ChatCompletions))
-				throw new InvalidOperationException("Chat completions are not supported by this model.");
+			if (validateCapabilities)
+			{
+				if (Capabilities != LLMCapabilities.Unknown && !Capabilities.HasFlag(LLMCapabilities.ChatCompletions))
+					throw new InvalidOperationException("Chat completions are not supported by this model.");
+			}
+
 			if (messages == null)
 				throw new ArgumentNullException(nameof(messages));
 			if (!messages.Any())
@@ -79,6 +90,7 @@ namespace RCLargeLanguageModels
 					properties,
 					outputFormatDefinition,
 					tools,
+					validateCapabilities,
 					cancellationToken);
 			}, cancellationToken: cancellationToken);
 		}
@@ -87,30 +99,11 @@ namespace RCLargeLanguageModels
 		/// Creates a chat completion using the provided messages.
 		/// </summary>
 		/// <param name="messages">The messages to send to the model.</param>
-		/// <returns>The chat completion result.</returns>
-		public Task<ChatCompletionResult> ChatAsync(
-			IEnumerable<IMessage> messages)
-		{
-			return ChatPrivateAsync(
-				messages,
-				1,
-				CompletionProperties,
-				OutputFormatDefinition,
-				Tools,
-				Injectors,
-				QueueParameters,
-				default);
-		}
-		
-		/// <summary>
-		/// Creates a chat completion using the provided messages.
-		/// </summary>
-		/// <param name="messages">The messages to send to the model.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <returns>The chat completion result.</returns>
 		public Task<ChatCompletionResult> ChatAsync(
 			IEnumerable<IMessage> messages,
-			CancellationToken cancellationToken)
+			CancellationToken cancellationToken = default)
 		{
 			return ChatPrivateAsync(
 				messages,
@@ -120,30 +113,10 @@ namespace RCLargeLanguageModels
 				Tools,
 				Injectors,
 				QueueParameters,
+				false,
 				cancellationToken);
 		}
 
-		/// <summary>
-		/// Creates multiple chat completions using the provided messages.
-		/// </summary>
-		/// <param name="messages">The messages to send to the model.</param>
-		/// <param name="count">The number of completions to generate.</param>
-		/// <returns>The assistant's response messages.</returns>
-		public async Task<ChatCompletionResult> ChatAsync(
-			IEnumerable<IMessage> messages,
-			int count)
-		{
-			return await ChatPrivateAsync(
-				messages,
-				count,
-				CompletionProperties,
-				OutputFormatDefinition,
-				Tools,
-				Injectors,
-				QueueParameters,
-				default);
-		}
-		
 		/// <summary>
 		/// Creates multiple chat completions using the provided messages.
 		/// </summary>
@@ -154,7 +127,7 @@ namespace RCLargeLanguageModels
 		public async Task<ChatCompletionResult> ChatAsync(
 			IEnumerable<IMessage> messages,
 			int count,
-			CancellationToken cancellationToken)
+			CancellationToken cancellationToken = default)
 		{
 			return await ChatPrivateAsync(
 				messages,
@@ -164,37 +137,7 @@ namespace RCLargeLanguageModels
 				Tools,
 				Injectors,
 				QueueParameters,
-				cancellationToken);
-		}
-
-		/// <summary>
-		/// Creates a chat completion with all parameters.
-		/// </summary>
-		/// <param name="messages">The messages to send to the model.</param>
-		/// <param name="properties">The custom chat properties to use for this request.</param>
-		/// <param name="outputFormatDefinition">The native output format definition to use for this request.</param>
-		/// <param name="tools">The tools to make available to the model.</param>
-		/// <param name="injectors">Additional property injectors to use for this request.</param>
-		/// <param name="queueParameters">The custom queue parameters to use for this request.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <returns>The chat completion result.</returns>
-		public Task<ChatCompletionResult> ChatAsync(
-			IEnumerable<IMessage> messages,
-			OptionalParameter<IEnumerable<CompletionProperty>> properties = null,
-			OptionalParameter<OutputFormatDefinition> outputFormatDefinition = null,
-			OptionalParameter<IEnumerable<ITool>> tools = null,
-			OptionalParameter<IEnumerable<ILLModelPropertyInjector>> injectors = null,
-			OptionalParameter<TaskQueueParameters> queueParameters = null,
-			CancellationToken cancellationToken = default)
-		{
-			return ChatPrivateAsync(
-				messages,
-				1,
-				properties.GetValue(CompletionProperties),
-				outputFormatDefinition.GetValue(OutputFormatDefinition),
-				tools.GetValue(Tools),
-				injectors.GetValue(Injectors),
-				queueParameters.GetValue(QueueParameters),
+				false,
 				cancellationToken);
 		}
 
@@ -208,48 +151,32 @@ namespace RCLargeLanguageModels
 		/// <param name="tools">The tools to make available to the model.</param>
 		/// <param name="injectors">Additional property injectors to use for this request.</param>
 		/// <param name="queueParameters">The custom queue parameters to use for this request.</param>
+		/// <param name="validateCapabilities">Whether to validate the model's and client's capabilities before making this request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <returns>The assistant's response messages.</returns>
-		public async Task<ChatCompletionResult> ChatAsync(
+		public Task<ChatCompletionResult> ChatAsync(
 			IEnumerable<IMessage> messages,
-			int count,
-			OptionalParameter<IEnumerable<CompletionProperty>> properties = null,
-			OptionalParameter<OutputFormatDefinition> outputFormatDefinition = null,
-			OptionalParameter<IEnumerable<ITool>> tools = null,
-			OptionalParameter<IEnumerable<ILLModelPropertyInjector>> injectors = null,
-			OptionalParameter<TaskQueueParameters> queueParameters = null,
+			int count = 1,
+			IEnumerable<CompletionProperty> properties = null,
+			OutputFormatDefinition outputFormatDefinition = null,
+			IEnumerable<ITool> tools = null,
+			IEnumerable<ILLModelPropertyInjector> injectors = null,
+			TaskQueueParameters queueParameters = null,
+			bool validateCapabilities = false,
 			CancellationToken cancellationToken = default)
 		{
-			return await ChatPrivateAsync(
+			return ChatPrivateAsync(
 				messages,
 				count,
-				properties.GetValue(CompletionProperties),
-				outputFormatDefinition.GetValue(OutputFormatDefinition),
-				tools.GetValue(Tools),
-				injectors.GetValue(Injectors),
-				queueParameters.GetValue(QueueParameters),
+				properties ?? CompletionProperties,
+				outputFormatDefinition ?? OutputFormatDefinition,
+				tools ?? Tools,
+				injectors ?? Injectors,
+				queueParameters ?? QueueParameters,
+				validateCapabilities,
 				cancellationToken);
 		}
 
-		/// <summary>
-		/// Creates a astreaming chat completion using the provided messages.
-		/// </summary>
-		/// <param name="messages">The messages to send to the model.</param>
-		/// <returns>The streaming partial chat completion result.</returns>
-		public Task<PartialChatCompletionResult> ChatStreamingAsync(
-			IEnumerable<IMessage> messages)
-		{
-			return ChatStreamingPrivateAsync(
-				messages,
-				1,
-				CompletionProperties,
-				OutputFormatDefinition,
-				Tools,
-				Injectors,
-				QueueParameters,
-				default);
-		}
-		
 		/// <summary>
 		/// Creates a astreaming chat completion using the provided messages.
 		/// </summary>
@@ -258,91 +185,41 @@ namespace RCLargeLanguageModels
 		/// <returns>The streaming partial chat completion result.</returns>
 		public Task<PartialChatCompletionResult> ChatStreamingAsync(
 			IEnumerable<IMessage> messages,
-			CancellationToken cancellationToken)
-		{
-			return ChatStreamingPrivateAsync(
-				messages,
-				1,
-				CompletionProperties,
-				OutputFormatDefinition,
-				Tools,
-				Injectors,
-				QueueParameters,
-				cancellationToken);
-		}
-
-		/// <summary>
-		/// Creates multiple streaming chat completions using the provided messages.
-		/// </summary>
-		/// <param name="messages">The messages to send to the model.</param>
-		/// <param name="count">The number of completions to generate.</param>
-		/// <returns>The streaming partial assistant's response messages.</returns>
-		public async Task<PartialChatCompletionResult> ChatStreamingAsync(
-			IEnumerable<IMessage> messages,
-			int count)
-		{
-			return await ChatStreamingPrivateAsync(
-				messages,
-				count,
-				CompletionProperties,
-				OutputFormatDefinition,
-				Tools,
-				Injectors,
-				QueueParameters,
-				default);
-		}
-		
-		/// <summary>
-		/// Creates multiple streaming chat completions using the provided messages.
-		/// </summary>
-		/// <param name="messages">The messages to send to the model.</param>
-		/// <param name="count">The number of completions to generate.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <returns>The streaming partial assistant's response messages.</returns>
-		public async Task<PartialChatCompletionResult> ChatStreamingAsync(
-			IEnumerable<IMessage> messages,
-			int count,
-			CancellationToken cancellationToken)
-		{
-			return await ChatStreamingPrivateAsync(
-				messages,
-				count,
-				CompletionProperties,
-				OutputFormatDefinition,
-				Tools,
-				Injectors,
-				QueueParameters,
-				cancellationToken);
-		}
-
-		/// <summary>
-		/// Creates a streaming chat completion with all parameters.
-		/// </summary>
-		/// <param name="messages">The messages to send to the model.</param>
-		/// <param name="properties">The custom chat properties to use for this request.</param>
-		/// <param name="outputFormatDefinition">The native output format definition to use for this request.</param>
-		/// <param name="tools">The tools to make available to the model.</param>
-		/// <param name="injectors">Additional property injectors to use for this request.</param>
-		/// <param name="queueParameters">The custom queue parameters to use for this request.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <returns>The streaming partial chat completion result.</returns>
-		public Task<PartialChatCompletionResult> ChatStreamingAsync(
-			IEnumerable<IMessage> messages,
-			OptionalParameter<IEnumerable<CompletionProperty>> properties = null,
-			OptionalParameter<OutputFormatDefinition> outputFormatDefinition = null,
-			OptionalParameter<IEnumerable<ITool>> tools = null,
-			OptionalParameter<IEnumerable<ILLModelPropertyInjector>> injectors = null,
-			OptionalParameter<TaskQueueParameters> queueParameters = null,
 			CancellationToken cancellationToken = default)
 		{
 			return ChatStreamingPrivateAsync(
 				messages,
 				1,
-				properties.GetValue(CompletionProperties),
-				outputFormatDefinition.GetValue(OutputFormatDefinition),
-				tools.GetValue(Tools),
-				injectors.GetValue(Injectors),
-				queueParameters.GetValue(QueueParameters),
+				CompletionProperties,
+				OutputFormatDefinition,
+				Tools,
+				Injectors,
+				QueueParameters,
+				false,
+				cancellationToken);
+		}
+
+		/// <summary>
+		/// Creates multiple streaming chat completions using the provided messages.
+		/// </summary>
+		/// <param name="messages">The messages to send to the model.</param>
+		/// <param name="count">The number of completions to generate.</param>
+		/// <param name="cancellationToken">The cancellation token.</param>
+		/// <returns>The streaming partial assistant's response messages.</returns>
+		public Task<PartialChatCompletionResult> ChatStreamingAsync(
+			IEnumerable<IMessage> messages,
+			int count,
+			CancellationToken cancellationToken = default)
+		{
+			return ChatStreamingPrivateAsync(
+				messages,
+				count,
+				CompletionProperties,
+				OutputFormatDefinition,
+				Tools,
+				Injectors,
+				QueueParameters,
+				false,
 				cancellationToken);
 		}
 
@@ -356,26 +233,29 @@ namespace RCLargeLanguageModels
 		/// <param name="tools">The tools to make available to the model.</param>
 		/// <param name="injectors">Additional property injectors to use for this request.</param>
 		/// <param name="queueParameters">The custom queue parameters to use for this request.</param>
+		/// <param name="validateCapabilities">Whether to validate the model's and client's capabilities before making this request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <returns>The streaming partial assistant's response messages.</returns>
-		public async Task<PartialChatCompletionResult> ChatStreamingAsync(
+		public Task<PartialChatCompletionResult> ChatStreamingAsync(
 			IEnumerable<IMessage> messages,
-			int count,
-			OptionalParameter<IEnumerable<CompletionProperty>> properties = null,
-			OptionalParameter<OutputFormatDefinition> outputFormatDefinition = null,
-			OptionalParameter<IEnumerable<ITool>> tools = null,
-			OptionalParameter<IEnumerable<ILLModelPropertyInjector>> injectors = null,
-			OptionalParameter<TaskQueueParameters> queueParameters = null,
+			int count = 1,
+			IEnumerable<CompletionProperty> properties = null,
+			OutputFormatDefinition outputFormatDefinition = null,
+			IEnumerable<ITool> tools = null,
+			IEnumerable<ILLModelPropertyInjector> injectors = null,
+			TaskQueueParameters queueParameters = null,
+			bool validateCapabilities = false,
 			CancellationToken cancellationToken = default)
 		{
-			return await ChatStreamingPrivateAsync(
+			return ChatStreamingPrivateAsync(
 				messages,
 				count,
-				properties.GetValue(CompletionProperties),
-				outputFormatDefinition.GetValue(OutputFormatDefinition),
-				tools.GetValue(Tools),
-				injectors.GetValue(Injectors),
-				queueParameters.GetValue(QueueParameters),
+				properties ?? CompletionProperties,
+				outputFormatDefinition ?? OutputFormatDefinition,
+				tools ?? Tools,
+				injectors ?? Injectors,
+				queueParameters ?? QueueParameters,
+				validateCapabilities,
 				cancellationToken);
 		}
 	}

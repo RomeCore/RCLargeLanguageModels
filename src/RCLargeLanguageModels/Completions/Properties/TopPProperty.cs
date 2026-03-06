@@ -12,5 +12,4 @@
 
 		public TopPProperty(float value) : base(value) { }
 	}
-
 }

@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Schema;
 using Serilog;
 
 namespace RCLargeLanguageModels.Tools
@@ -18,11 +18,11 @@ namespace RCLargeLanguageModels.Tools
 	/// </remarks>
 	public class FunctionTool : ITool
 	{
-		private readonly Func<JToken, CancellationToken, Task<ToolResult>> _function;
+		private readonly Func<JsonNode, CancellationToken, Task<ToolResult>> _function;
 
 		public string Name { get; }
 		public string Description { get; }
-		public JObject ArgumentSchema { get; }
+		public JsonObject ArgumentSchema { get; }
 
 		/// <summary>
 		/// Initializes a new AI-callable function.
@@ -31,7 +31,7 @@ namespace RCLargeLanguageModels.Tools
 		/// <param name="description">LLM-readable description.</param>
 		/// <param name="argumentSchema">Input argument JSON schema.</param>
 		/// <param name="function">Execution implementation.</param>
-		public FunctionTool(string name, string description, JObject argumentSchema, Func<JToken, CancellationToken, Task<ToolResult>> function)
+		public FunctionTool(string name, string description, JsonObject argumentSchema, Func<JsonNode, CancellationToken, Task<ToolResult>> function)
 		{
 			Name = name ?? throw new ArgumentNullException(nameof(name));
 			Description = description ?? throw new ArgumentNullException(nameof(description));
@@ -46,7 +46,7 @@ namespace RCLargeLanguageModels.Tools
 		/// <param name="cancellationToken">The cancellation token to use for the operation. </param>
 		/// <returns>The result of the function execution.</returns>
 		/// <exception cref="ArgumentNullException">Thrown when the arguments are null.</exception>
-		public async Task<ToolResult> ExecuteAsync(JToken args, CancellationToken cancellationToken = default)
+		public async Task<ToolResult> ExecuteAsync(JsonNode args, CancellationToken cancellationToken = default)
 		{
 			if (args == null)
 				throw new ArgumentNullException(nameof(args));
@@ -126,15 +126,15 @@ namespace RCLargeLanguageModels.Tools
 				}
 				else
 				{
-					var argName = param.GetCustomAttribute<JsonPropertyAttribute>()?.PropertyName ?? param.Name;
+					var argName = param.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name ?? param.Name;
 
 					mappings.Add(argName, param.Position);
 				}
 			}
 
-			async Task<ToolResult> Func(JToken args, CancellationToken cancellationToken)
+			async Task<ToolResult> Func(JsonNode args, CancellationToken cancellationToken)
 			{
-				var obj = args as JObject;
+				var obj = args as JsonObject;
 				var inParams = new object[parameters.Length];
 
 				for (int i = 0; i < parameters.Length; i++)
@@ -148,7 +148,7 @@ namespace RCLargeLanguageModels.Tools
 						continue;
 
 					var type = parameters[kvp.Value].ParameterType;
-					inParams[kvp.Value] = arg.ToObject(type);
+					inParams[kvp.Value] = JsonSerializer.Deserialize(arg, type);
 				}
 
 				if (ctMapping != -1)
@@ -251,27 +251,27 @@ namespace RCLargeLanguageModels.Tools
 		{
 		}
 
-		private static JObject GetSchema()
+		private static JsonObject GetSchema()
 		{
 			return Json.JsonSchemaGenerator.Generate(typeof(TArg));
 		}
 
-		private static Func<JToken, CancellationToken, Task<ToolResult>> WrapFunction(
+		private static Func<JsonNode, CancellationToken, Task<ToolResult>> WrapFunction(
 			Func<TArg, CancellationToken, Task<ToolResult>> function)
 		{
 			return async (jObj, ct) =>
 			{
-				var obj = jObj.ToObject<TArg>();
+				var obj = jObj.Deserialize<TArg>();
 				return await function.Invoke(obj, ct);
 			};
 		}
 
-		private static Func<JToken, CancellationToken, Task<ToolResult>> WrapFunction(
+		private static Func<JsonNode, CancellationToken, Task<ToolResult>> WrapFunction(
 			Func<TArg, Task<ToolResult>> function)
 		{
 			return async (jObj, ct) =>
 			{
-				var obj = jObj.ToObject<TArg>();
+				var obj = jObj.Deserialize<TArg>();
 				return await function.Invoke(obj);
 			};
 		}

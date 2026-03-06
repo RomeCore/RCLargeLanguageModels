@@ -41,15 +41,13 @@ namespace RCLargeLanguageModels.Completions
 		/// Gets the list of available partial message completion choices. Will contain at least one message.
 		/// </summary>
 		public ImmutableArray<PartialAssistantMessage> Choices { get; }
-		IReadOnlyList<IAssistantMessage> IChatCompletionResult.Choices => Choices;
-		IReadOnlyList<ICompletion> ICompletionResult.Choices => Choices;
+		IReadOnlyList<IAssistantMessage> IGenerationResult<IAssistantMessage>.Choices => Choices;
 
 		/// <summary>
 		/// Gets the first partial assistant message from the choices.
 		/// </summary>
 		public PartialAssistantMessage Message => Choices[0];
-		IAssistantMessage IChatCompletionResult.Message => Message;
-		ICompletion ICompletionResult.Completion => Message;
+		IAssistantMessage IGenerationResult<IAssistantMessage>.Completion => Message;
 
 		/// <inheritdoc/>
 		public string Content => Message.Content;
@@ -58,8 +56,8 @@ namespace RCLargeLanguageModels.Completions
 		/// Get the completion metadata (such as usage stats: <see cref="IUsageMetadata"/>). Will be empty until completed.
 		/// </summary>
 		public MetadataCollection Metadata => _metadata;
-		IMetadataCollection IMetadataProvider.Metadata => _metadata;
-		IMetadataCollection ICompletionResult.Metadata => _metadata;
+		IMetadataCollection IMetadataProvider.Metadata => Metadata;
+		IMetadataCollection IGenerationResult<IAssistantMessage>.Metadata => Metadata;
 
 		/// <inheritdoc/>
 		public IUsageMetadata? UsageMetadata => _metadata.TryGet<IUsageMetadata>();

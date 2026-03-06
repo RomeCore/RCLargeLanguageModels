@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Newtonsoft.Json;
 using RCLargeLanguageModels.Messages.Attachments;
 
 namespace RCLargeLanguageModels.Messages
@@ -62,7 +61,6 @@ namespace RCLargeLanguageModels.Messages
 		/// <param name="sender">The sender identifier of this message.</param>
 		/// <param name="content">The content of the user message.</param>
 		/// <param name="attachments">The attachments of the message.</param>
-		[JsonConstructor]
 		public UserMessage(string sender, string content, IEnumerable<IAttachment> attachments)
 		{
 			Sender = sender ?? throw new ArgumentNullException(nameof(sender));

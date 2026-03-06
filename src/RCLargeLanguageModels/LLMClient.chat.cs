@@ -96,6 +96,7 @@ namespace RCLargeLanguageModels
 		/// <param name="properties"></param>
 		/// <param name="outputFormatDefinition"></param>
 		/// <param name="tools"></param>
+		/// <param name="validateCapabilities"></param>
 		/// <exception cref="ArgumentNullException"></exception>
 		/// <exception cref="LLMException"></exception>
 		/// <exception cref="ArgumentException"></exception>
@@ -107,70 +108,73 @@ namespace RCLargeLanguageModels
 			int count,
 			ref IEnumerable<CompletionProperty> properties,
 			ref OutputFormatDefinition outputFormatDefinition,
-			ref IEnumerable<ITool> tools)
+			ref IEnumerable<ITool> tools,
+			bool validateCapabilities)
 		{
 			if (model == null)
 				throw new ArgumentNullException(nameof(model));
-
-			var selfCaps = Capabilities;
-			bool selfCapsKnown = !selfCaps.IsUnknown();
-
-			if (selfCapsKnown && !selfCaps.HasFlag(LLMCapabilities.ChatCompletions))
-				throw new LLMException("Client does not support chat completions.", this);
-
-			var caps = model.Capabilities;
-			bool capsKnown = !caps.IsUnknown();
-
-			if (capsKnown && !caps.HasFlag(LLMCapabilities.ChatCompletions))
-				throw new LLMException("Model does not support chat completions.", model);
-
-			if (streaming)
-			{
-				if (selfCapsKnown && !selfCaps.HasFlag(LLMCapabilities.StreamingCompletions))
-					throw new LLMException("Client does not support streaming completions.", this);
-				if (capsKnown && !caps.HasFlag(LLMCapabilities.StreamingCompletions))
-					throw new LLMException("Model does not support streaming completions.", model);
-			}
 
 			var messagesList = messages?.ToList() ?? throw new ArgumentNullException(nameof(messages));
 			if (messagesList.Count == 0)
 				throw new ArgumentException("Messages cannot be empty.", nameof(messages));
 			messages = messagesList;
 
-			if (count < 1)
-				throw new ArgumentOutOfRangeException(nameof(count), "Count of completions must be at least 1.");
-
-			if (count > 1)
-			{
-				if (selfCapsKnown && !selfCaps.HasFlag(LLMCapabilities.MultipleCompletions))
-					throw new LLMException($"Client does not support multiple completions per one request. (count:{count} > 1)", this);
-				if (capsKnown && !caps.HasFlag(LLMCapabilities.MultipleCompletions))
-					throw new LLMException($"Model does not support multiple completions per one request. (count:{count} > 1)", model);
-			}
-
 			properties ??= Enumerable.Empty<CompletionProperty>();
+
+			var toolList = tools?.ToList() ?? Enumerable.Empty<ITool>();
 
 			if (outputFormatDefinition == null)
 				outputFormatDefinition = OutputFormatDefinition.Empty;
 
-			if (outputFormatDefinition != OutputFormatDefinition.Empty)
+			if (validateCapabilities)
 			{
-				if (!ReferenceEquals(SupportedOutputFormats, OutputFormatSupportSet.All) &&
-					!SupportedOutputFormats.Supports(outputFormatDefinition.Type))
-					throw new LLMException($"Output format type {outputFormatDefinition.Type} is not supported by the client.", this);
-				if (!ReferenceEquals(model.SupportedOutputFormats, OutputFormatSupportSet.All) &&
-					!model.SupportedOutputFormats.Supports(outputFormatDefinition.Type))
-					throw new LLMException($"Output format type {outputFormatDefinition.Type} is not supported by the model.", model);
-			}
+				var selfCaps = Capabilities;
+				bool selfCapsKnown = !selfCaps.IsUnknown();
+				var caps = model.Capabilities;
+				bool capsKnown = !caps.IsUnknown();
 
-			var toolList = tools?.ToList() ?? Enumerable.Empty<ITool>();
+				if (selfCapsKnown && !selfCaps.HasFlag(LLMCapabilities.ChatCompletions))
+					throw new LLMException("Client does not support chat completions.", this);
 
-			if (toolList.Any())
-			{
-				if (selfCapsKnown && !selfCaps.HasFlag(LLMCapabilities.ToolSupport))
-					throw new LLMException("Client does not support tools.", this);
-				if (capsKnown && !caps.HasFlag(LLMCapabilities.ToolSupport))
-					throw new LLMException("Model does not support tools.", model);
+				if (capsKnown && !caps.HasFlag(LLMCapabilities.ChatCompletions))
+					throw new LLMException("Model does not support chat completions.", model);
+
+				if (streaming)
+				{
+					if (selfCapsKnown && !selfCaps.HasFlag(LLMCapabilities.StreamingCompletions))
+						throw new LLMException("Client does not support streaming completions.", this);
+					if (capsKnown && !caps.HasFlag(LLMCapabilities.StreamingCompletions))
+						throw new LLMException("Model does not support streaming completions.", model);
+				}
+
+				if (count < 1)
+					throw new ArgumentOutOfRangeException(nameof(count), "Count of completions must be at least 1.");
+
+				if (count > 1)
+				{
+					if (selfCapsKnown && !selfCaps.HasFlag(LLMCapabilities.MultipleCompletions))
+						throw new LLMException($"Client does not support multiple completions per one request. (count:{count} > 1)", this);
+					if (capsKnown && !caps.HasFlag(LLMCapabilities.MultipleCompletions))
+						throw new LLMException($"Model does not support multiple completions per one request. (count:{count} > 1)", model);
+				}
+
+				if (toolList.Any())
+				{
+					if (selfCapsKnown && !selfCaps.HasFlag(LLMCapabilities.ToolSupport))
+						throw new LLMException("Client does not support tools.", this);
+					if (capsKnown && !caps.HasFlag(LLMCapabilities.ToolSupport))
+						throw new LLMException("Model does not support tools.", model);
+				}
+
+				if (outputFormatDefinition != OutputFormatDefinition.Empty)
+				{
+					if (!ReferenceEquals(SupportedOutputFormats, OutputFormatSupportSet.All) &&
+						!SupportedOutputFormats.Supports(outputFormatDefinition.Type))
+						throw new LLMException($"Output format type {outputFormatDefinition.Type} is not supported by the client.", this);
+					if (!ReferenceEquals(model.SupportedOutputFormats, OutputFormatSupportSet.All) &&
+						!model.SupportedOutputFormats.Supports(outputFormatDefinition.Type))
+						throw new LLMException($"Output format type {outputFormatDefinition.Type} is not supported by the model.", model);
+				}
 			}
 
 			tools = toolList;
@@ -187,6 +191,7 @@ namespace RCLargeLanguageModels
 		/// Can be <see langword="null"/> to use the empty output format definition.
 		/// </param>
 		/// <param name="tools">The available tools that can be called by model. Can be <see langword="null"/> to provide no tools.</param>
+		/// <param name="validateCapabilities">Whether to validate the capabilities of the client and model before creating the completions. Default is <see langword="false"/>.</param>
 		/// <param name="cancellationToken">The cancellation token used to cancel the operation.</param>
 		/// <returns>The <see cref="ChatCompletionResult"/> that contains the chat completion.</returns>
 		public async Task<ChatCompletionResult> CreateChatCompletionAsync(
@@ -195,9 +200,17 @@ namespace RCLargeLanguageModels
 			IEnumerable<CompletionProperty>? properties = null,
 			OutputFormatDefinition? outputFormatDefinition = null,
 			IEnumerable<ITool>? tools = null,
+			bool validateCapabilities = false,
 			CancellationToken cancellationToken = default)
 		{
-			ValidateChatCompletionParameters(model, ref messages, false, 1, ref properties, ref outputFormatDefinition, ref tools);
+			ValidateChatCompletionParameters(model,
+				ref messages,
+				false,
+				1,
+				ref properties,
+				ref outputFormatDefinition,
+				ref tools,
+				validateCapabilities);
 
 			return await CreateChatCompletionsOverrideAsync(
 				model,
@@ -220,6 +233,7 @@ namespace RCLargeLanguageModels
 		/// Can be <see langword="null"/> to use the empty output format definition.
 		/// </param>
 		/// <param name="tools">The available tools that can be called by model. Can be <see langword="null"/> to provide no tools.</param>
+		/// <param name="validateCapabilities">Whether to validate the capabilities of the client and model before creating the completions. Default is <see langword="false"/>.</param>
 		/// <param name="cancellationToken">The cancellation token used to cancel the operation.</param>
 		/// <returns>The <see cref="PartialAssistantMessage"/> that contains the streaming chat completion.</returns>
 		public async Task<PartialChatCompletionResult> CreateStreamingChatCompletionAsync(
@@ -228,9 +242,17 @@ namespace RCLargeLanguageModels
 			IEnumerable<CompletionProperty>? properties = null,
 			OutputFormatDefinition? outputFormatDefinition = null,
 			IEnumerable<ITool>? tools = null,
+			bool validateCapabilities = false,
 			CancellationToken cancellationToken = default)
 		{
-			ValidateChatCompletionParameters(model, ref messages, true, 1, ref properties, ref outputFormatDefinition, ref tools);
+			ValidateChatCompletionParameters(model,
+				ref messages,
+				true,
+				1,
+				ref properties,
+				ref outputFormatDefinition,
+				ref tools,
+				validateCapabilities);
 
 			return await CreateStreamingChatCompletionsOverrideAsync(
 				model,
@@ -254,6 +276,7 @@ namespace RCLargeLanguageModels
 		/// Can be <see langword="null"/> to use the empty output format definition.
 		/// </param>
 		/// <param name="tools">The available tools that can be called by model. Can be <see langword="null"/> to provide no tools.</param>
+		/// <param name="validateCapabilities">Whether to validate the capabilities of the client and model before creating the completions. Default is <see langword="false"/>.</param>
 		/// <param name="cancellationToken">The cancellation token used to cancel the operation.</param>
 		/// <returns>The <see cref="ChatCompletionResult"/> that contains the chat completions.</returns>
 		public async Task<ChatCompletionResult> CreateChatCompletionsAsync(
@@ -263,9 +286,17 @@ namespace RCLargeLanguageModels
 			IEnumerable<CompletionProperty>? properties = null,
 			OutputFormatDefinition? outputFormatDefinition = null,
 			IEnumerable<ITool>? tools = null,
+			bool validateCapabilities = false,
 			CancellationToken cancellationToken = default)
 		{
-			ValidateChatCompletionParameters(model, ref messages, false, count, ref properties, ref outputFormatDefinition, ref tools);
+			ValidateChatCompletionParameters(model,
+				ref messages,
+				false,
+				count,
+				ref properties,
+				ref outputFormatDefinition,
+				ref tools,
+				validateCapabilities);
 
 			return await CreateChatCompletionsOverrideAsync(
 				model,
@@ -289,6 +320,7 @@ namespace RCLargeLanguageModels
 		/// Can be <see langword="null"/> to use the empty output format definition.
 		/// </param>
 		/// <param name="tools">The available tools that can be called by model. Can be <see langword="null"/> to provide no tools.</param>
+		/// <param name="validateCapabilities">Whether to validate the capabilities of the client and model before creating the completions. Default is <see langword="false"/>.</param>
 		/// <param name="cancellationToken">The cancellation token used to cancel the operation.</param>
 		/// <returns>The <see cref="PartialChatCompletionResult"/> that contains the streaming chat completions.</returns>
 		public async Task<PartialChatCompletionResult> CreateStreamingChatCompletionsAsync(
@@ -298,9 +330,17 @@ namespace RCLargeLanguageModels
 			IEnumerable<CompletionProperty>? properties = null,
 			OutputFormatDefinition? outputFormatDefinition = null,
 			IEnumerable<ITool>? tools = null,
+			bool validateCapabilities = false,
 			CancellationToken cancellationToken = default)
 		{
-			ValidateChatCompletionParameters(model, ref messages, true, count, ref properties, ref outputFormatDefinition, ref tools);
+			ValidateChatCompletionParameters(model,
+				ref messages,
+				true,
+				count,
+				ref properties,
+				ref outputFormatDefinition,
+				ref tools,
+				validateCapabilities);
 
 			return await CreateStreamingChatCompletionsOverrideAsync(
 				model,

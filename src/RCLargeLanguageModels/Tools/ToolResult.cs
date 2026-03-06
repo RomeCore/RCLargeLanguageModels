@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -9,11 +10,40 @@ using RCLargeLanguageModels.Messages.Attachments;
 namespace RCLargeLanguageModels.Tools
 {
 	/// <summary>
+	/// Represents the status of a tool execution.
+	/// </summary>
+	public enum ToolResultStatus
+	{
+		/// <summary>
+		/// The tool execution was cancelled.
+		/// </summary>
+		Cancelled,
+
+		/// <summary>
+		/// The tool execution resulted in an error.
+		/// </summary>
+		Error,
+
+		/// <summary>
+		/// The tool execution was successful.
+		/// </summary>
+		Success,
+
+		/// <summary>
+		/// The tool did not produce any result.
+		/// </summary>
+		NoResult
+	}
+
+	/// <summary>
 	/// Represents the result of a tool execution, containing the main content and optional attachments.
 	/// </summary>
 	public class ToolResult
 	{
-		private readonly List<IAttachment> _attachments = new List<IAttachment>();
+		/// <summary>
+		/// Gets the status of the tool execution.
+		/// </summary>
+		public ToolResultStatus Status { get; }
 
 		/// <summary>
 		/// Gets or sets the main content of the tool result.
@@ -23,13 +53,14 @@ namespace RCLargeLanguageModels.Tools
 		/// <summary>
 		/// Gets the collection of attachments associated with this tool result.
 		/// </summary>
-		public IReadOnlyCollection<IAttachment> Attachments => _attachments.AsReadOnly();
+		public ImmutableList<IAttachment> Attachments { get; }
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="ToolResult"/> class.
 		/// </summary>
 		public ToolResult()
 		{
+			Attachments = ImmutableList<IAttachment>.Empty;
 		}
 
 		/// <summary>
@@ -39,6 +70,7 @@ namespace RCLargeLanguageModels.Tools
 		public ToolResult(string content)
 		{
 			Content = content ?? string.Empty;
+			Attachments = ImmutableList<IAttachment>.Empty;
 		}
 
 		/// <summary>
@@ -48,8 +80,7 @@ namespace RCLargeLanguageModels.Tools
 		public ToolResult(IEnumerable<IAttachment> attachments)
 		{
 			Content = string.Empty;
-			if (attachments != null)
-				_attachments.AddRange(attachments);
+			Attachments = attachments.ToImmutableList();
 		}
 		
 		/// <summary>
@@ -59,8 +90,7 @@ namespace RCLargeLanguageModels.Tools
 		public ToolResult(params IAttachment[] attachments)
 		{
 			Content = string.Empty;
-			if (attachments != null)
-				_attachments.AddRange(attachments);
+			Attachments = attachments.ToImmutableList();
 		}
 
 		/// <summary>
@@ -71,32 +101,7 @@ namespace RCLargeLanguageModels.Tools
 		public ToolResult(string content, IEnumerable<IAttachment> attachments)
 		{
 			Content = content ?? string.Empty;
-			if (attachments != null)
-				_attachments.AddRange(attachments);
-		}
-
-		/// <summary>
-		/// Adds an attachment to the tool result.
-		/// </summary>
-		/// <param name="attachment">The attachment to add.</param>
-		public void AddAttachment(IAttachment attachment)
-		{
-			if (attachment == null)
-				throw new ArgumentNullException(nameof(attachment));
-
-			_attachments.Add(attachment);
-		}
-
-		/// <summary>
-		/// Adds multiple attachments to the tool result.
-		/// </summary>
-		/// <param name="attachments">The attachments to add.</param>
-		public void AddAttachments(IEnumerable<IAttachment> attachments)
-		{
-			if (attachments == null)
-				throw new ArgumentNullException(nameof(attachments));
-
-			_attachments.AddRange(attachments);
+			Attachments = attachments.ToImmutableList();
 		}
 
 		/// <summary>

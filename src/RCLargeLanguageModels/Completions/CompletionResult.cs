@@ -18,21 +18,21 @@ namespace RCLargeLanguageModels.Completions
 		/// <inheritdoc/>
 		public LLModelDescriptor Model { get; }
 
-		/// <inheritdoc cref="ICompletionResult.Choices"/>
+		/// <inheritdoc cref="IGenerationResult{T}.Choices"/>
 		public ImmutableArray<Completion> Choices { get; }
-		IReadOnlyList<ICompletion> ICompletionResult.Choices => Choices;
+		IReadOnlyList<ICompletion> IGenerationResult<ICompletion>.Choices => Choices;
 
-		/// <inheritdoc cref="ICompletionResult.Completion"/>
+		/// <inheritdoc cref="IGenerationResult{T}.Completion"/>
 		public Completion Completion => Choices[0];
-		ICompletion ICompletionResult.Completion => Completion;
+		ICompletion IGenerationResult<ICompletion>.Completion => Completion;
 
 		/// <inheritdoc/>
 		public string? Content => Completion.Content;
 
-		/// <inheritdoc cref="ICompletionResult.Metadata"/>
+		/// <inheritdoc cref="IGenerationResult{T}.Metadata"/>
 		public MetadataCollection Metadata { get; }
 		IMetadataCollection IMetadataProvider.Metadata => Metadata;
-		IMetadataCollection ICompletionResult.Metadata => Metadata;
+		IMetadataCollection IGenerationResult<ICompletion>.Metadata => Metadata;
 
 		/// <inheritdoc/>
 		public IUsageMetadata? UsageMetadata => Metadata.TryGet<IUsageMetadata>();
@@ -50,9 +50,12 @@ namespace RCLargeLanguageModels.Completions
 			Completion choice,
 			IEnumerable<IMetadata>? metadata = null)
 		{
+			if (choice == null)
+				throw new ArgumentNullException(nameof(choice));
+
 			Client = client ?? throw new ArgumentNullException(nameof(client));
 			Model = model ?? throw new ArgumentNullException(nameof(model));
-			Choices = choice?.WrapIntoImmutableArray() ?? throw new ArgumentNullException(nameof(choice));
+			Choices = new Completion[] { choice }.ToImmutableArray();
 			Metadata = metadata?.ToMetadataCollection() ?? MetadataCollection.Empty;
 		}
 		

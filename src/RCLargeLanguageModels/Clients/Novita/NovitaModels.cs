@@ -2,11 +2,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
-using RCLargeLanguageModels.Clients.Ollama;
 using RCLargeLanguageModels.Formats;
 
 namespace RCLargeLanguageModels.Clients.Novita
@@ -61,7 +56,6 @@ namespace RCLargeLanguageModels.Clients.Novita
 		/// <param name="name">The name identifier of the model.</param>
 		/// <param name="displayName">The human-readable name of the model.</param>
 		/// <param name="capabilities">The capabilities of the model.</param>
-		[JsonConstructor]
 		public NovitaModelInfo(string name, string displayName, NovitaModelCapabilities capabilities)
 		{
 			Name = name ?? throw new ArgumentNullException(nameof(name));

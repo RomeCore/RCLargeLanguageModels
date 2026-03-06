@@ -4,19 +4,18 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
-using RCLargeLanguageModels.Json;
 using RCLargeLanguageModels.Messages;
 using RCLargeLanguageModels.Formats;
 using RCLargeLanguageModels.Statistics;
-using RCLargeLanguageModels.Tasks;
 using RCLargeLanguageModels.Tools;
 using RCLargeLanguageModels.Utilities;
 using Serilog;
 using System.Net.Http;
 using RCLargeLanguageModels.Completions;
-using System.IO;
 using RCLargeLanguageModels.Completions.Properties;
+using System.Text.Json.Nodes;
+using System.Text.Json;
+using RCLargeLanguageModels.Embeddings;
 
 namespace RCLargeLanguageModels.Clients.Ollama
 {
@@ -24,6 +23,7 @@ namespace RCLargeLanguageModels.Clients.Ollama
 	{
 		public override string GenerateChatCompletion => BaseUri + "/api/chat";
 		public override string GenerateCompletion => BaseUri + "/api/generate";
+		public override string GenerateEmbedding => BaseUri + "/api/embed";
 		public override string ListModels => BaseUri + "/api/tags";
 		public virtual string GetVersion => BaseUri + "/api/version";
 
@@ -67,12 +67,34 @@ namespace RCLargeLanguageModels.Clients.Ollama
 		}
 
 		/// <summary>
+		/// Creates a new instance of the Ollama client using the default base URI.
+		/// </summary>
+		/// <param name="http">The HTTP client to use for making requests.</param>
+		public OllamaClient(HttpClient? http)
+		{
+			_http = http ?? CreateHttpClient();
+			_endpoint = new OllamaEndpointConfig(DefaultBaseUri);
+		}
+
+		/// <summary>
+		/// Creates a new instance of the Ollama client using the specified base URI.
+		/// </summary>
+		/// <param name="baseUri">The base URI of the Ollama server.</param>
+		/// <param name="http">The HTTP client to use for making requests.</param>
+		public OllamaClient(string baseUri, HttpClient? http)
+		{
+			_http = http ?? CreateHttpClient();
+			_endpoint = new OllamaEndpointConfig(baseUri ?? throw new ArgumentNullException(nameof(baseUri)));
+		}
+
+		/// <summary>
 		/// Creates a new instance of the Ollama client using the specified endpoint configuration.
 		/// </summary>
 		/// <param name="endpointConfig">The endpoint configuration for the Ollama client.</param>
-		public OllamaClient(OllamaEndpointConfig endpointConfig)
+		/// <param name="http">The HTTP client to use for making requests.</param>
+		public OllamaClient(OllamaEndpointConfig endpointConfig, HttpClient? http = null)
 		{
-			_http = CreateHttpClient();
+			_http = http ?? CreateHttpClient();
 			_endpoint = endpointConfig ?? throw new ArgumentNullException(nameof(endpointConfig));
 		}
 
@@ -91,15 +113,15 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			if (string.IsNullOrEmpty(_endpoint.ListModels))
 				return Array.Empty<LLModelDescriptor>();
 
-			var response = await RequestUtility.GetResponseAsync<JObject>(
+			var response = await RequestUtility.GetResponseAsync<JsonObject>(
 				RequestType.Get, _endpoint.ListModels, null, cancellationToken: cancellationToken);
 
 			var result = new List<LLModelDescriptor>();
 
-			var models = response["models"] as JArray;
+			var models = response["models"] as JsonArray;
 			foreach (var model in models)
 			{
-				var name = model["name"]?.Value<string>();
+				var name = model["name"]?.GetValue<string>();
 				if (name != null)
 				{
 					try
@@ -126,10 +148,10 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			if (version != null)
 				return version;
 
-			var response = await RequestUtility.GetResponseAsync<JObject>(
+			var response = await RequestUtility.GetResponseAsync<JsonObject>(
 				RequestType.Get, _endpoint.GetVersion, null, _http, cancellationToken: CancellationToken.None);
 
-			var versionStr = response["version"]?.Value<string>();
+			var versionStr = response["version"]?.GetValue<string>();
 			if (versionStr == null)
 				throw new InvalidOperationException("Could not get version from response");
 
@@ -150,7 +172,7 @@ namespace RCLargeLanguageModels.Clients.Ollama
 
 			var body = BuildChatRequestBody(model, messages, false, properties, outputFormatDefinition, tools);
 
-			var response = await RequestUtility.GetResponseAsync<JObject>(
+			var response = await RequestUtility.GetResponseAsync<JsonObject>(
 				RequestType.Post,
 				_endpoint.GenerateChatCompletion,
 				body, _http, cancellationToken: cancellationToken);
@@ -180,7 +202,7 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			bool gettingThinking = false;
 			var message = new PartialAssistantMessage();
 
-			void OnStreamResponse(JObject response)
+			void OnStreamResponse(JsonObject response)
 			{
 				var parsed = ParseChatResponse(response, model, tools, false, ref gettingThinking);
 				message.Add(parsed.Delta);
@@ -190,7 +212,7 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			}
 
 			// Damn Visual Studio warnings...
-			var _ = RequestUtility.ProcessStreamingJsonResponseAsync<JObject>(
+			var _ = RequestUtility.ProcessStreamingJsonResponseAsync<JsonObject>(
 				RequestType.Post,
 				_endpoint.GenerateChatCompletion,
 				body, OnStreamResponse, _http, cancellationToken: cancellationToken)
@@ -200,7 +222,7 @@ namespace RCLargeLanguageModels.Clients.Ollama
 						message.Fail(t.Exception);
 					else if (t.IsCanceled)
 						message.Cancel();
-				});
+				}, cancellationToken);
 
 			return new PartialChatCompletionResult(this, model, message);
 		}
@@ -217,7 +239,7 @@ namespace RCLargeLanguageModels.Clients.Ollama
 
 			var body = BuildRequestBody(model, prompt, suffix, false, properties);
 
-			var response = await RequestUtility.GetResponseAsync<JObject>(
+			var response = await RequestUtility.GetResponseAsync<JsonObject>(
 				RequestType.Post,
 				_endpoint.GenerateCompletion,
 				body, _http, cancellationToken: cancellationToken);
@@ -244,7 +266,7 @@ namespace RCLargeLanguageModels.Clients.Ollama
 
 			var completion = new PartialCompletion();
 
-			void OnStreamResponse(JObject response)
+			void OnStreamResponse(JsonObject response)
 			{
 				var parsed = ParseResponse(response, model, false);
 				var delta = parsed.Delta;
@@ -255,7 +277,7 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			}
 
 			// Damn Visual Studio warnings...
-			var _ = RequestUtility.ProcessStreamingJsonResponseAsync<JObject>(
+			var _ = RequestUtility.ProcessStreamingJsonResponseAsync<JsonObject>(
 				RequestType.Post,
 				_endpoint.GenerateChatCompletion,
 				body, OnStreamResponse, _http, cancellationToken: cancellationToken)
@@ -265,17 +287,17 @@ namespace RCLargeLanguageModels.Clients.Ollama
 						completion.Fail(t.Exception);
 					else if (t.IsCanceled)
 						completion.Cancel();
-				});
+				}, cancellationToken);
 
 			return new PartialCompletionResult(this, model, completion);
 		}
 
-		private JObject BuildRequestBody(LLModelDescriptor model, string prompt, string suffix,
+		private JsonObject BuildRequestBody(LLModelDescriptor model, string prompt, string suffix,
 			bool stream, IEnumerable<CompletionProperty> _properties)
 		{
 			var properties = _properties as List<CompletionProperty> ?? _properties.ToList();
 
-			var result = new JObject
+			var result = new JsonObject
 			{
 				["model"] = model.Name,
 				["prompt"] = prompt,
@@ -291,11 +313,11 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			return result;
 		}
 
-		private (CompletionDelta Delta, bool Done) ParseResponse(JObject response, LLModelDescriptor model, bool stream)
+		private (CompletionDelta Delta, bool Done) ParseResponse(JsonObject response, LLModelDescriptor model, bool stream)
 		{
-			var content = response["response"]?.Value<string>();
+			var content = response["response"]?.GetValue<string>();
 
-			var done = response["done"]?.Value<bool>() ?? false;
+			var done = response["done"]?.GetValue<bool>() ?? false;
 			if (done)
 				AppendUsage(response, model);
 
@@ -306,9 +328,9 @@ namespace RCLargeLanguageModels.Clients.Ollama
 		private const string ThinkingTagClose = "</think>";
 
 		protected virtual (string content, string reasoningContent) ParseMessageContent(
-			JObject message, LLModelDescriptor model, bool stream, ref bool gettingThinking)
+			JsonObject message, LLModelDescriptor model, bool stream, ref bool gettingThinking)
 		{
-			var content = message["content"]?.Value<string>() ?? string.Empty;
+			var content = message["content"]?.GetValue<string>() ?? string.Empty;
 			var reasoningContent = string.Empty;
 
 			if (model.Capabilities.IsReasoning())
@@ -317,7 +339,7 @@ namespace RCLargeLanguageModels.Clients.Ollama
 				{
 					// Ollama 0.9.x and later sends the explicit reasoning content in the message
 
-					reasoningContent = message["thinking"]?.Value<string>() ?? string.Empty;
+					reasoningContent = message["thinking"]?.GetValue<string>() ?? string.Empty;
 				}
 				else if (stream)
 				{
@@ -365,15 +387,15 @@ namespace RCLargeLanguageModels.Clients.Ollama
 		}
 
 		protected virtual IEnumerable<IToolCall> ParseToolCalls(
-			JArray toolCalls, LLModelDescriptor model, IEnumerable<ITool> tools)
+			JsonArray toolCalls, LLModelDescriptor model, IEnumerable<ITool> tools)
 		{
 			List<IToolCall> result = new List<IToolCall>(toolCalls.Count);
 			foreach (var toolCall in toolCalls)
 			{
-				var function = toolCall["function"] as JObject;
+				var function = toolCall["function"] as JsonObject;
 				if (function != null)
 				{
-					var name = function["name"]?.Value<string>() ?? string.Empty;
+					var name = function["name"]?.GetValue<string>() ?? string.Empty;
 					var tool = tools.FirstOrDefault(t => t.Name == name);
 					if (tool is FunctionTool functionTool)
 					{
@@ -385,29 +407,29 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			return result;
 		}
 
-		protected virtual void AppendUsage(JObject response, LLModelDescriptor model)
+		protected virtual void AppendUsage(JsonObject response, LLModelDescriptor model)
 		{
-			var promptEvalCount = response["prompt_eval_count"]?.Value<int>() ?? -1;
-			var evalCount = response["eval_count"]?.Value<int>() ?? -1;
+			var promptEvalCount = response["prompt_eval_count"]?.GetValue<int>() ?? -1;
+			var evalCount = response["eval_count"]?.GetValue<int>() ?? -1;
 
 			if (promptEvalCount != -1 && evalCount != -1)
 				TokenUsageStatsCollector.AppendUsage(Name, model.Name, promptEvalCount, evalCount);
 		}
 
 		protected virtual (AssistantMessageDelta Delta, bool Done) ParseChatResponse(
-			JObject response, LLModelDescriptor model, IEnumerable<ITool> tools, bool stream, ref bool gettingThinking)
+			JsonObject response, LLModelDescriptor model, IEnumerable<ITool> tools, bool stream, ref bool gettingThinking)
 		{
-			var message = response["message"] as JObject;
+			var message = response["message"] as JsonObject;
 			if (message == null)
 				throw new LLMException("Could not get message from response.", model);
 
-			var done = response["done"]?.Value<bool>() ?? false;
+			var done = response["done"]?.GetValue<bool>() ?? false;
 			if (done)
 				AppendUsage(response, model);
 
 			var (content, reasoningContent) = ParseMessageContent(message, model, stream, ref gettingThinking);
 
-			var toolCalls = message["tool_calls"] as JArray;
+			var toolCalls = message["tool_calls"] as JsonArray;
 			IEnumerable<IToolCall> toolCallsParsed = Enumerable.Empty<IToolCall>();
 			if (toolCalls != null)
 				toolCallsParsed = ParseToolCalls(toolCalls, model, tools);
@@ -415,7 +437,7 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			return (new AssistantMessageDelta(content, reasoningContent, toolCallsParsed), done);
 		}
 
-		protected virtual JObject BuildChatRequestBody(
+		protected virtual JsonObject BuildChatRequestBody(
 			LLModelDescriptor model,
 			IEnumerable<IMessage> _messages,
 			bool stream,
@@ -424,7 +446,7 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			IEnumerable<ITool> tools)
 		{
 			var messages = _messages as List<IMessage> ?? _messages.ToList();
-			var builtMessages = new List<JObject>(messages.Count);
+			var builtMessages = new List<JsonObject>(messages.Count);
 			int c = 0, lastIndex = messages.Count - 1;
 			var properties = _properties as List<CompletionProperty> ?? _properties.ToList();
 
@@ -434,10 +456,10 @@ namespace RCLargeLanguageModels.Clients.Ollama
 				c++;
 			}
 
-			var result = new JObject
+			var result = new JsonObject
 			{
 				["model"] = model.Name,
-				["messages"] = new JArray(builtMessages),
+				["messages"] = new JsonArray(builtMessages.ToArray()),
 				["stream"] = stream,
 				["options"] = BuildOptions(properties)
 			};
@@ -446,7 +468,7 @@ namespace RCLargeLanguageModels.Clients.Ollama
 
 			if (tools.Any())
 			{
-				result["tools"] = new JArray(tools.Select(BuildTool));
+				result["tools"] = new JsonArray(tools.Select(BuildTool).ToArray());
 			}
 
 			// The 0.9.0 version of Ollama introduced explicit thinking support (no need to parse <think> tags)
@@ -459,9 +481,9 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			return result;
 		}
 
-		protected virtual JObject BuildOptions(List<CompletionProperty> properties)
+		protected virtual JsonObject BuildOptions(List<CompletionProperty> properties)
 		{
-			var body = new JObject();
+			var body = new JsonObject();
 
 			foreach (var property in properties)
 			{
@@ -482,13 +504,13 @@ namespace RCLargeLanguageModels.Clients.Ollama
 						continue;
 				}
 
-				body.Add(propertyName, JToken.FromObject(value));
+				body.Add(propertyName, JsonSerializer.SerializeToNode(value));
 			}
 
 			return body;
 		}
 
-		protected virtual void PopulateBodyWithProperties(JObject body,
+		protected virtual void PopulateBodyWithProperties(JsonObject body,
 			LLModelDescriptor model,
 			List<CompletionProperty> properties,
 			OutputFormatDefinition outputFormatDefinition)
@@ -524,15 +546,15 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			}
 		}
 
-		protected virtual JObject BuildTool(ITool tool)
+		protected virtual JsonObject BuildTool(ITool tool)
 		{
 			switch (tool)
 			{
 				case FunctionTool functionTool:
-					return new JObject
+					return new JsonObject
 					{
 						["type"] = "function",
-						["function"] = new JObject
+						["function"] = new JsonObject
 						{
 							["name"] = functionTool.Name,
 							["description"] = functionTool.Description,
@@ -545,20 +567,20 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			}
 		}
 
-		protected virtual JObject BuildToolCall(IToolCall toolCall)
+		protected virtual JsonObject BuildToolCall(IToolCall toolCall)
 		{
 			switch (toolCall)
 			{
 				case FunctionToolCall functionCall:
 
-					return new JObject
+					return new JsonObject
 					{
 						["id"] = functionCall.Id,
 						["type"] = "function",
-						["function"] = new JObject
+						["function"] = new JsonObject
 						{
 							["name"] = functionCall.ToolName,
-							["arguments"] = JObject.FromObject(functionCall.Args)
+							["arguments"] = functionCall.Args
 						}
 					};
 
@@ -567,39 +589,39 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			}
 		}
 
-		protected virtual JObject BuildMessage(IMessage message, bool isLast)
+		protected virtual JsonObject BuildMessage(IMessage message, bool isLast)
 		{
 			switch (message)
 			{
-				case SystemMessage systemMessage:
-					return new JObject
+				case ISystemMessage systemMessage:
+					return new JsonObject
 					{
 						["role"] = "system",
 						["content"] = systemMessage.Content
 					};
 
-				case UserMessage userMessage:
-					return new JObject
+				case IUserMessage userMessage:
+					return new JsonObject
 					{
 						["role"] = "user",
 						["content"] = userMessage.BuildContentWithTextAttachments()
 					};
 
 				case IAssistantMessage assistantMessage:
-					var res = new JObject
+					var res = new JsonObject
 					{
 						["role"] = "assistant",
 						["content"] = assistantMessage.BuildContentWithTextAttachments()
 					};
 
-					var toolCalls = new JArray(assistantMessage.ToolCalls.Select(BuildToolCall));
+					var toolCalls = new JsonArray(assistantMessage.ToolCalls.Select(BuildToolCall).ToArray());
 					if (toolCalls.Count > 0)
 						res["tool_calls"] = toolCalls;
 
 					return res;
 
-				case ToolMessage toolMessage:
-					return new JObject
+				case IToolMessage toolMessage:
+					return new JsonObject
 					{
 						["role"] = "tool",
 						["tool_call_id"] = toolMessage.ToolCallId,
@@ -608,6 +630,131 @@ namespace RCLargeLanguageModels.Clients.Ollama
 
 				default:
 					throw new InvalidOperationException("Unknown message type.");
+			}
+		}
+
+		protected override async Task<EmbeddingResult> CreateEmbeddingsOverrideAsync(
+			LLModelDescriptor model,
+			IEnumerable<string> inputs,
+			IEnumerable<CompletionProperty>? properties,
+			CancellationToken cancellationToken)
+		{
+			await GetVersionAsync(cancellationToken);
+
+			var body = BuildEmbeddingRequestBody(model, inputs, properties);
+			var response = await RequestUtility.GetResponseAsync<JsonObject>(
+				RequestType.Post,
+				_endpoint.GenerateEmbedding,
+				body, _http, cancellationToken: cancellationToken);
+
+			var embeddings = ParseEmbeddingsResponse(response, model);
+			AppendEmbeddingUsage(response, model);
+
+			return new EmbeddingResult(this, model, embeddings);
+		}
+
+		protected virtual JsonObject BuildEmbeddingRequestBody(
+			LLModelDescriptor model,
+			IEnumerable<string> inputs,
+			IEnumerable<CompletionProperty>? properties)
+		{
+			var inputsList = inputs.ToList();
+			var propertiesList = properties?.ToList() ?? new List<CompletionProperty>();
+
+			var result = new JsonObject
+			{
+				["model"] = model.Name,
+				["options"] = BuildOptions(propertiesList)
+			};
+
+			if (inputsList.Count == 1)
+			{
+				result["input"] = inputsList[0];
+			}
+			else
+			{
+				result["input"] = new JsonArray(inputsList.Select(i => JsonValue.Create(i)).ToArray());
+			}
+
+			var keepAlive = propertiesList.OfType<KeepAliveProperty>().FirstOrDefault()?.Value;
+			if (keepAlive.HasValue)
+			{
+				result["keep_alive"] = FormatKeepAlive(keepAlive.Value);
+			}
+
+			var truncate = propertiesList.OfType<TruncateProperty>().FirstOrDefault()?.Value;
+			if (truncate.HasValue)
+			{
+				result["truncate"] = truncate.Value;
+			}
+
+			return result;
+		}
+
+		protected virtual List<Embedding> ParseEmbeddingsResponse(JsonObject response, LLModelDescriptor model)
+		{
+			var embeddings = new List<Embedding>();
+
+			if (response["embeddings"] is JsonArray embeddingsArray)
+			{
+				foreach (var embeddingNode in embeddingsArray)
+				{
+					if (embeddingNode is JsonArray vectorArray)
+					{
+						var vector = ParseEmbeddingVector(vectorArray);
+						embeddings.Add(new Embedding(vector, model));
+					}
+				}
+			}
+			else if (response["embedding"] is JsonArray singleEmbeddingArray)
+			{
+				var vector = ParseEmbeddingVector(singleEmbeddingArray);
+				embeddings.Add(new Embedding(vector, model));
+			}
+			else
+			{
+				throw new LLMException("No embeddings found in response.", model);
+			}
+
+			return embeddings;
+		}
+
+		protected virtual float[] ParseEmbeddingVector(JsonArray vectorArray)
+		{
+			var vector = new float[vectorArray.Count];
+			for (int i = 0; i < vectorArray.Count; i++)
+			{
+				vector[i] = vectorArray[i].GetValue<float>();
+			}
+			return vector;
+		}
+
+		protected virtual string FormatKeepAlive(TimeSpan timeSpan)
+		{
+			if (timeSpan.TotalSeconds < 1)
+			{
+				return "0s";
+			}
+
+			var parts = new List<string>();
+
+			if (timeSpan.Hours > 0)
+				parts.Add($"{Math.Floor(timeSpan.TotalHours)}h");
+			if (timeSpan.Minutes > 0)
+				parts.Add($"{timeSpan.Minutes}m");
+			if (timeSpan.Seconds > 0)
+				parts.Add($"{timeSpan.Seconds}s");
+
+			return string.Join(" ", parts);
+		}
+
+		protected virtual void AppendEmbeddingUsage(JsonObject response, LLModelDescriptor model)
+		{
+			var promptEvalCount = response["prompt_eval_count"]?.GetValue<int>() ?? -1;
+
+			if (promptEvalCount != -1)
+			{
+				TokenUsageStatsCollector.AppendUsage(Name, model.Name, promptEvalCount, 0);
 			}
 		}
 	}

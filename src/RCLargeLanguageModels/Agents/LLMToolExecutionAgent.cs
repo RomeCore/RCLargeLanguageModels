@@ -1,321 +1,217 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using RCLargeLanguageModels.Messages;
-using RCLargeLanguageModels.Messages.Attachments;
-using RCLargeLanguageModels.Tasks;
 using RCLargeLanguageModels.Tools;
-using Serilog;
 
 namespace RCLargeLanguageModels.Agents
 {
 	/// <summary>
 	/// Represents a tool execution agent that simply gets responses from LLM and executes tool calls.
+	/// This class provides a convenient implementation with configurable properties.
 	/// </summary>
-	public abstract class LLMToolExecutionAgent
+	public class LLMToolExecutionAgent : LLMToolExecutionAgentBase
 	{
-		/// <summary>
-		/// Gets the maximum number of tool calls that can be received from language model before block it from tool use. If set to -1, there is no limit.
-		/// </summary>
-		protected virtual int MaxToolCalls => -1;
+		private LLModel _llm;
+		private readonly List<IMessage> _messages;
+		private readonly Func<IUserMessage, IEnumerable<IMessage>>? _messageProvider;
+		private int _maxToolCalls = -1;
+		private int _maxToolMessages = -1;
 
 		/// <summary>
-		/// Gets the maximum number of tool messages that can be received from language model before block it from tool use. If set to -1, there is no limit.
+		/// Initializes a new instance of the <see cref="LLMToolExecutionAgent"/> class.
 		/// </summary>
-		protected virtual int MaxToolMessages => -1;
+		/// <param name="llm">The language model to use for generating responses.</param>
+		/// <param name="messages">Initial messages (e.g., system message, conversation history).</param>
+		public LLMToolExecutionAgent(LLModel llm, List<IMessage>? messages = null)
+		{
+			_llm = llm ?? throw new ArgumentNullException(nameof(llm));
+			_messages = messages ?? new List<IMessage>();
+		}
 
 		/// <summary>
-		/// Gets the previous messages that may contain memory data, e.g. a conversation history or just a system message with instructions.
+		/// Initializes a new instance of the <see cref="LLMToolExecutionAgent"/> class with a custom message provider.
+		/// </summary>
+		/// <param name="llm">The language model to use for generating responses.</param>
+		/// <param name="messageProvider">Function that provides messages based on the user message.</param>
+		public LLMToolExecutionAgent(LLModel llm, Func<IUserMessage, IEnumerable<IMessage>> messageProvider)
+		{
+			_llm = llm ?? throw new ArgumentNullException(nameof(llm));
+			_messageProvider = messageProvider ?? throw new ArgumentNullException(nameof(messageProvider));
+			_messages = new List<IMessage>();
+		}
+
+		/// <summary>
+		/// Gets or sets the maximum number of tool calls allowed (-1 for unlimited).
+		/// </summary>
+		public int MaxToolCallsCount
+		{
+			get => _maxToolCalls;
+			set => _maxToolCalls = value;
+		}
+
+		/// <summary>
+		/// Gets or sets the maximum number of tool messages allowed (-1 for unlimited).
+		/// </summary>
+		public int MaxToolMessagesCount
+		{
+			get => _maxToolMessages;
+			set => _maxToolMessages = value;
+		}
+
+		/// <summary>
+		/// Gets the list of messages (conversation history, system messages, etc.).
+		/// </summary>
+		public List<IMessage> Messages => _messages;
+
+		/// <summary>
+		/// Gets the language model used by this agent.
+		/// </summary>
+		public LLModel LLM
+		{
+			get => _llm;
+			set => _llm = value ?? throw new ArgumentNullException(nameof(value));
+		}
+
+		/// <summary>
+		/// Event triggered when a new message is received.
+		/// </summary>
+		public event EventHandler<IMessage>? MessageReceived;
+
+		/// <summary>
+		/// Event triggered when a tool execution begins.
+		/// </summary>
+		public event EventHandler<ToolExecutionBeginEventArgs>? ToolExecutionBegin;
+
+		/// <summary>
+		/// Event triggered when a tool execution ends.
+		/// </summary>
+		public event EventHandler<ToolExecutionEndEventArgs>? ToolExecutionEnd;
+
+		/// <summary>
+		/// Gets the maximum number of tool calls that can be received.
+		/// </summary>
+		protected override int MaxToolCalls => _maxToolCalls;
+
+		/// <summary>
+		/// Gets the maximum number of tool messages that can be received.
+		/// </summary>
+		protected override int MaxToolMessages => _maxToolMessages;
+
+		/// <summary>
+		/// Gets the configured language model.
+		/// </summary>
+		protected override LLModel GetLLM() => _llm;
+
+		/// <summary>
+		/// Gets the messages including the current user message.
 		/// </summary>
 		/// <param name="userMessage">The current user's message.</param>
-		/// <returns>The previous messages with current user's message appended to the end.</returns>
-		protected abstract IEnumerable<IMessage> GetMessages(IUserMessage userMessage);
-
-		/// <summary>
-		/// Gets the configured language model that will be used to generate responses.
-		/// </summary>
-		/// <returns>The language model that include tools, completion properties and other stuff.</returns>
-		protected abstract LLModel GetLLM();
-
-		/// <summary>
-		/// Callback method that is invoked when a new message is received. This can be used to perform additional actions or logging.
-		/// </summary>
-		/// <param name="message">The new message that was received.</param>
-		protected virtual void OnMessageReceived(IMessage message)
+		/// <returns>The messages with user message appended.</returns>
+		protected override IEnumerable<IMessage> GetMessages(IUserMessage userMessage)
 		{
-		}
-
-		/// <summary>
-		/// Callback method that is invoked when a tool execution begins. This can be used to perform additional actions or logging.
-		/// </summary>
-		/// <param name="tool">The tool that is being executed.</param>
-		/// <param name="toolCall">The tool call that is being executed.</param>
-		/// <returns>The result of the tool execution to replace with actual tool result, or null if the tool should be executed normally.</returns>
-		protected virtual Task<ToolResult?> OnToolExecutionBegin(ITool tool, IToolCall toolCall)
-		{
-			return Task.FromResult<ToolResult?>(null);
-		}
-
-		/// <summary>
-		/// Callback method that is invoked when a tool execution ends. This can be used to perform additional actions or logging.
-		/// </summary>
-		/// <param name="tool">The tool that was executed.</param>
-		/// <param name="toolCall">The tool call that was executed.</param>
-		/// <param name="resultTask">The task that contains the result of the tool execution.</param>
-		/// <returns>The result of the tool execution.</returns>
-		protected virtual ToolResult OnToolExecutionEnd(ITool tool, IToolCall toolCall, Task<ToolResult> resultTask)
-		{
-			ToolResult toolMsgContent;
-
-			if (resultTask.IsCanceled)
-				toolMsgContent = "CANCELLED";
-			else if (resultTask.IsFaulted)
-				toolMsgContent = "ERROR";
-			else
-				toolMsgContent = resultTask.Result;
-
-			return toolMsgContent;
-		}
-
-		/// <summary>
-		/// Generates a response to the provided user message using the configured language model.
-		/// </summary>
-		/// <param name="userMessage">The current user's message.</param>
-		/// <param name="cancellationToken">The cancellation token used to cancel the operation.</param>
-		/// <returns>The generated assistant messages mixed with tool messages as an asynchronous enumerable.</returns>
-		public async Task<IEnumerable<IMessage>> GenerateResponseAsync(IUserMessage userMessage, CancellationToken cancellationToken = default)
-		{
-			var result = new List<IMessage>();
-
-			var llm = GetLLM();
-			var messages = GetMessages(userMessage).ToList();
-			var toolset = llm.Tools;
-
-			var response = await llm.ChatAsync(messages, cancellationToken);
-			var message = response.Message;
-
-			messages.Add(message);
-			OnMessageReceived(message);
-			result.Add(message);
-
-			int toolCalls = 0, toolMessages = 0;
-
-			while (true)
+			if (_messageProvider != null)
 			{
-				ConcurrentDictionary<IToolCall, IToolMessage> toolMessageMap = new();
-				List<Task> toolExecutionTasks = new();
-				object toolExecutionTasksLock = new();
-
-				async Task ProcessToolCallAsync(IToolCall toolCall)
-				{
-					toolCalls++;
-
-					switch (toolCall)
-					{
-						case FunctionToolCall functionCall:
-
-							var tool = toolset.Get(toolCall.ToolName) as FunctionTool ??
-								throw new InvalidOperationException($"FunctionTool '{functionCall.ToolName}' not found in the current toolset.");
-
-							var toolResult = await OnToolExecutionBegin(tool, toolCall);
-
-							if (toolResult != null)
-							{
-								toolResult = OnToolExecutionEnd(tool, toolCall, Task.FromResult(toolResult));
-								toolMessageMap[toolCall] = new ToolMessage(toolResult, toolCall.Id, toolCall.ToolName);
-							}
-							else
-							{
-								await tool.ExecuteAsync(functionCall.Args, cancellationToken)
-									.ContinueWith(t =>
-									{
-										ToolResult toolResult = OnToolExecutionEnd(tool, toolCall, t);
-										toolMessageMap[toolCall] = new ToolMessage(toolResult, toolCall.Id, toolCall.ToolName);
-									}, cancellationToken);
-							}
-
-							break;
-
-						default:
-							throw new InvalidOperationException($"Unknown tool call type: {toolCall.GetType()}.");
-					}
-				}
-
-				foreach (var toolCall in message.ToolCalls)
-				{
-					toolExecutionTasks.Add(ProcessToolCallAsync(toolCall));
-				}
-
-				if (toolExecutionTasks.Count > 0)
-				{
-					toolMessages++;
-				}
-				if ((MaxToolCalls >= 0 && toolCalls >= MaxToolCalls) ||
-					(MaxToolMessages >= 0 && toolMessages >= MaxToolMessages))
-				{
-					llm = llm.WithoutTools();
-				}
-				if (toolExecutionTasks.Count > 0)
-				{
-					await Task.WhenAll(toolExecutionTasks);
-
-					// Send the tool results back to the LLM.
-
-					foreach (var toolCall in message.ToolCalls)
-					{
-						var toolMessage = toolMessageMap[toolCall];
-						messages.Add(toolMessage);
-						OnMessageReceived(toolMessage);
-						result.Add(toolMessage);
-					}
-
-					response = await llm.ChatAsync(messages, cancellationToken);
-					message = response.Message;
-					messages.Add(message);
-					OnMessageReceived(message);
-					result.Add(message);
-				}
-				else
-				{
-					break;
-				}
+				return _messageProvider(userMessage);
 			}
 
+			var result = new List<IMessage>(_messages) { userMessage };
 			return result;
 		}
 
 		/// <summary>
-		/// Generates a response to the provided user message using the configured language model.
+		/// Callback for when a message is received.
 		/// </summary>
-		/// <param name="userMessage">The current user's message.</param>
-		/// <param name="cancellationToken">The cancellation token used to cancel the operation.</param>
-		/// <returns>The generated assistant messages mixed with tool messages as an asynchronous enumerable.</returns>
-		public async IAsyncEnumerable<IMessage> GenerateStreamingResponseAsync(IUserMessage userMessage, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+		protected override void OnMessageReceived(IMessage message)
 		{
-			var llm = GetLLM();
-			var messages = GetMessages(userMessage).ToList();
-			var toolset = llm.Tools;
+			base.OnMessageReceived(message);
+			MessageReceived?.Invoke(this, message);
+		}
 
-			var response = await llm.ChatStreamingAsync(messages, cancellationToken);
-			var message = response.Message;
+		/// <summary>
+		/// Callback for when a tool execution begins.
+		/// </summary>
+		protected override async Task<ToolResult?> OnToolExecutionBegin(ITool tool, IToolCall toolCall)
+		{
+			var args = new ToolExecutionBeginEventArgs(tool, toolCall);
+			ToolExecutionBegin?.Invoke(this, args);
 
-			messages.Add(message);
-			OnMessageReceived(message);
-			yield return message;
-
-			int toolCalls = 0, toolMessages = 0;
-
-			while (true)
+			if (args.Result != null)
 			{
-				ConcurrentDictionary<IToolCall, IToolMessage> toolMessageMap = new();
-				List<Task> toolExecutionTasks = new();
-				object toolExecutionTasksLock = new();
-
-				async Task ProcessToolCallAsync(IToolCall toolCall)
-				{
-					toolCalls++;
-
-					switch (toolCall)
-					{
-						case FunctionToolCall functionCall:
-
-							var tool = toolset.Get(toolCall.ToolName) as FunctionTool ??
-								throw new InvalidOperationException($"FunctionTool '{functionCall.ToolName}' not found in the current toolset.");
-
-							var toolResult = await OnToolExecutionBegin(tool, toolCall);
-
-							if (toolResult != null)
-							{
-								toolResult = OnToolExecutionEnd(tool, toolCall, Task.FromResult(toolResult));
-								toolMessageMap[toolCall] = new ToolMessage(toolResult, toolCall.Id, toolCall.ToolName);
-							}
-							else
-							{
-								await tool.ExecuteAsync(functionCall.Args, cancellationToken)
-									.ContinueWith(t =>
-									{
-										ToolResult toolResult = OnToolExecutionEnd(tool, toolCall, t);
-										toolMessageMap[toolCall] = new ToolMessage(toolResult, toolCall.Id, toolCall.ToolName);
-									}, cancellationToken);
-							}
-
-							break;
-
-						default:
-							throw new InvalidOperationException($"Unknown tool call type: {toolCall.GetType()}.");
-					}
-				}
-
-				foreach (var toolCall in message.ToolCalls)
-				{
-					toolExecutionTasks.Add(ProcessToolCallAsync(toolCall));
-				}
-
-				void PartHandler(object? s, AssistantMessageDelta e)
-				{
-					if (e.NewToolCalls?.Count > 0)
-						foreach (var toolCall in e.NewToolCalls)
-							toolExecutionTasks.Add(ProcessToolCallAsync(toolCall));
-				}
-				void CompletedHandler(object? s, CompletedEventArgs e)
-				{
-					message.PartAdded -= PartHandler;
-					message.Completed -= CompletedHandler;
-				}
-
-				try
-				{
-					message.PartAdded += PartHandler;
-					message.Completed += CompletedHandler;
-					await message;
-				}
-				finally
-				{
-					message.PartAdded -= PartHandler;
-					message.Completed -= CompletedHandler;
-				}
-
-				if (toolExecutionTasks.Count > 0)
-				{
-					toolMessages++;
-				}
-				if ((MaxToolCalls >= 0 && toolCalls >= MaxToolCalls) ||
-					(MaxToolMessages >= 0 && toolMessages >= MaxToolMessages))
-				{
-					llm = llm.WithoutTools();
-				}
-				if (toolExecutionTasks.Count > 0)
-				{
-					await Task.WhenAll(toolExecutionTasks);
-
-					// Send the tool results back to the LLM.
-
-					foreach (var toolCall in message.ToolCalls)
-					{
-						var toolMessage = toolMessageMap[toolCall];
-						messages.Add(toolMessage);
-						OnMessageReceived(toolMessage);
-						yield return toolMessage;
-					}
-
-					response = await llm.ChatStreamingAsync(messages, cancellationToken);
-					message = response.Message;
-					messages.Add(message);
-					OnMessageReceived(message);
-					yield return message;
-				}
-				else
-				{
-					break;
-				}
+				return args.Result;
 			}
 
-			yield break;
+			return await base.OnToolExecutionBegin(tool, toolCall);
+		}
+
+		/// <summary>
+		/// Callback for when a tool execution ends.
+		/// </summary>
+		protected override ToolResult OnToolExecutionEnd(ITool tool, IToolCall toolCall, Task<ToolResult> resultTask)
+		{
+			var result = base.OnToolExecutionEnd(tool, toolCall, resultTask);
+			var args = new ToolExecutionEndEventArgs(tool, toolCall, resultTask, result);
+			ToolExecutionEnd?.Invoke(this, args);
+			return args.Result ?? result;
+		}
+
+		/// <summary>
+		/// Adds a message to the conversation history.
+		/// </summary>
+		/// <param name="message">The message to add.</param>
+		public void AddMessage(IMessage message)
+		{
+			_messages.Add(message);
+		}
+
+		/// <summary>
+		/// Adds multiple messages to the conversation history.
+		/// </summary>
+		/// <param name="messages">The messages to add.</param>
+		public void AddMessages(IEnumerable<IMessage> messages)
+		{
+			_messages.AddRange(messages);
+		}
+
+		/// <summary>
+		/// Clears all messages from the conversation history.
+		/// </summary>
+		public void ClearMessages()
+		{
+			_messages.Clear();
+		}
+
+		/// <summary>
+		/// Creates a new agent with the same configuration but a clean message history.
+		/// </summary>
+		public LLMToolExecutionAgent CreateCleanCopy()
+		{
+			return new LLMToolExecutionAgent(_llm, new List<IMessage>())
+			{
+				MaxToolCallsCount = this.MaxToolCalls,
+				MaxToolMessagesCount = this.MaxToolMessages
+			};
+		}
+
+		/// <summary>
+		/// Creates a new agent with the same configuration and a copy of the message history.
+		/// </summary>
+		public LLMToolExecutionAgent CreateDeepCopy()
+		{
+			var messagesCopy = _messages.Select(m =>
+			{
+				if (m is PartialAssistantMessage pam)
+					return pam.AsAssistantMessage();
+				return m;
+			}).ToList();
+
+			return new LLMToolExecutionAgent(_llm, messagesCopy)
+			{
+				MaxToolCallsCount = this.MaxToolCalls,
+				MaxToolMessagesCount = this.MaxToolMessages
+			};
 		}
 	}
 }

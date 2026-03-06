@@ -1,6 +1,5 @@
 ﻿using System;
-using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Schema;
+using System.Text.Json.Nodes;
 
 namespace RCLargeLanguageModels.Formats
 {
@@ -46,13 +45,13 @@ namespace RCLargeLanguageModels.Formats
 		/// <summary>
 		/// Gets the JSON schema that will be sent as parameter in API with LLM.
 		/// </summary>
-		public JObject Schema { get; }
+		public JsonObject Schema { get; }
 
 		/// <summary>
 		/// Creates a new instance of <see cref="JsonSchemaOutputFormatDefinition"/> class using JSON schema object.
 		/// </summary>
 		/// <param name="schema">The JSON schema.</param>
-		public JsonSchemaOutputFormatDefinition(JObject schema)
+		public JsonSchemaOutputFormatDefinition(JsonObject schema)
 		{
 			Schema = schema ?? throw new ArgumentNullException(nameof(schema));
 		}

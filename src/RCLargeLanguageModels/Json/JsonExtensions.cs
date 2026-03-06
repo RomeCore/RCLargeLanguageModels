@@ -1,20 +1,17 @@
 ﻿using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Schema;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace RCLargeLanguageModels.Json
 {
 	public static class JsonExtensions
 	{
 		/// <summary>
-		/// Adds a key-value pair to a <see cref="JObject"/> if the key does not already exist
+		/// Adds a key-value pair to a <see cref="JsonObject"/> if the key does not already exist
 		/// </summary>
-		public static bool TryAdd(this JObject obj, string key, JToken value)
+		public static bool TryAdd(this JsonObject obj, string key, JsonNode value)
 		{
 			if (obj.ContainsKey(key))
 				return false;
@@ -24,54 +21,54 @@ namespace RCLargeLanguageModels.Json
 		}
 
 		/// <summary>
-		/// Adds a key-value pair to a <see cref="JObject"/> if the key does not already exist
+		/// Adds a key-value pair to a <see cref="JsonObject"/> if the key does not already exist
 		/// </summary>
-		public static bool TryAdd(this JObject obj, string key, object value)
+		public static bool TryAdd(this JsonObject obj, string key, object value)
 		{
 			if (obj.ContainsKey(key))
 				return false;
 
-			obj.Add(key, new JValue(value));
+			obj.Add(key, JsonValue.Create(value));
 			return true;
 		}
 
 		/// <summary>
-		/// Adds a key-value pair to a <see cref="JObject"/> if the key does not already exist
+		/// Adds a key-value pair to a <see cref="JsonObject"/> if the key does not already exist
 		/// </summary>
-		public static bool TryAdd(this JObject obj, string key, IEnumerable value)
+		public static bool TryAdd(this JsonObject obj, string key, IEnumerable value)
 		{
 			if (obj.ContainsKey(key))
 				return false;
 
-			obj.Add(key, new JArray(value));
+			obj.Add(key, new JsonArray(value.Cast<object>().Select(o => JsonSerializer.SerializeToNode(o)).ToArray()));
 			return true;
 		}
 
 		/// <summary>
-		/// Adds a key-value pair to a <see cref="JObject"/> if the value is not null
+		/// Adds a key-value pair to a <see cref="JsonObject"/> if the value is not null
 		/// </summary>
-		public static void AddIfNotNull(this JObject obj, string key, JToken value)
+		public static void AddIfNotNull(this JsonObject obj, string key, JsonNode value)
 		{
-			if (value != null && value.Type != JTokenType.Null)
+			if (value != null && value.GetValueKind() != JsonValueKind.Null)
 				obj.Add(key, value);
 		}
 
 		/// <summary>
-		/// Adds a key-value pair to a <see cref="JObject"/> if the value is not null
+		/// Adds a key-value pair to a <see cref="JsonObject"/> if the value is not null
 		/// </summary>
-		public static void AddIfNotNull(this JObject obj, string key, object value)
+		public static void AddIfNotNull(this JsonObject obj, string key, object value)
 		{
 			if (value != null)
-				obj.Add(key, new JValue(value));
+				obj.Add(key, JsonValue.Create(value));
 		}
 		
 		/// <summary>
-		/// Adds a key-value pair to a <see cref="JObject"/> if the value is not null
+		/// Adds a key-value pair to a <see cref="JsonObject"/> if the value is not null
 		/// </summary>
-		public static void AddIfNotNull(this JObject obj, string key, IEnumerable value)
+		public static void AddIfNotNull(this JsonObject obj, string key, IEnumerable value)
 		{
 			if (value != null)
-				obj.Add(key, new JArray(value));
+				obj.Add(key, new JsonArray(value.Cast<object>().Select(o => JsonSerializer.SerializeToNode(o)).ToArray()));
 		}
 
 		/// <summary>

@@ -6,7 +6,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
 using RCLargeLanguageModels.Clients.OpenAI;
 using RCLargeLanguageModels.Messages;
 using RCLargeLanguageModels.Formats;
@@ -14,6 +13,7 @@ using RCLargeLanguageModels.Security;
 using RCLargeLanguageModels.Tools;
 using RCLargeLanguageModels.Json;
 using RCLargeLanguageModels.Completions;
+using System.Text.Json.Nodes;
 
 namespace RCLargeLanguageModels.Clients.Deepseek
 {
@@ -63,9 +63,28 @@ namespace RCLargeLanguageModels.Clients.Deepseek
 		/// <summary>
 		/// Creates a new instance of the DeepSeek client.
 		/// </summary>
+		/// <param name="apiKey">The API key for authentication.</param>
+		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
+		public DeepSeekClient(string apiKey, HttpClient? http) : base(BaseUri, apiKey, http)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new instance of the DeepSeek client.
+		/// </summary>
+		/// <param name="tokenAccessor">The API key accessor for authentication.</param>
+		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
+		public DeepSeekClient(ITokenAccessor tokenAccessor, HttpClient? http) : base(BaseUri, tokenAccessor, http)
+		{
+		}
+
+		/// <summary>
+		/// Creates a new instance of the DeepSeek client.
+		/// </summary>
 		/// <param name="endpointUri">The endpoint URI.</param>
 		/// <param name="apiKey">The API key for authentication.</param>
-		public DeepSeekClient(string endpointUri, string apiKey) : base(endpointUri, apiKey)
+		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
+		public DeepSeekClient(string endpointUri, string apiKey, HttpClient? http = null) : base(endpointUri, apiKey, http)
 		{
 		}
 
@@ -74,7 +93,8 @@ namespace RCLargeLanguageModels.Clients.Deepseek
 		/// </summary>
 		/// <param name="endpointUri">The endpoint URI.</param>
 		/// <param name="tokenAccessor">The API key accessor for authentication.</param>
-		public DeepSeekClient(string endpointUri, ITokenAccessor tokenAccessor) : base(endpointUri, tokenAccessor)
+		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
+		public DeepSeekClient(string endpointUri, ITokenAccessor tokenAccessor, HttpClient? http = null) : base(endpointUri, tokenAccessor, http)
 		{
 		}
 
@@ -83,7 +103,8 @@ namespace RCLargeLanguageModels.Clients.Deepseek
 		/// </summary>
 		/// <param name="endpointConfig">The endpoint config.</param>
 		/// <param name="apiKey">The API key for authentication.</param>
-		public DeepSeekClient(LLMEndpointConfig endpointConfig, string apiKey) : base(endpointConfig, apiKey)
+		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
+		public DeepSeekClient(LLMEndpointConfig endpointConfig, string apiKey, HttpClient? http = null) : base(endpointConfig, apiKey, http)
 		{
 		}
 
@@ -92,7 +113,8 @@ namespace RCLargeLanguageModels.Clients.Deepseek
 		/// </summary>
 		/// <param name="endpointConfig">The endpoint config.</param>
 		/// <param name="tokenAccessor">The API key accessor for authentication.</param>
-		public DeepSeekClient(LLMEndpointConfig endpointConfig, ITokenAccessor tokenAccessor) : base(endpointConfig, tokenAccessor)
+		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
+		public DeepSeekClient(LLMEndpointConfig endpointConfig, ITokenAccessor tokenAccessor, HttpClient? http = null) : base(endpointConfig, tokenAccessor, http)
 		{
 		}
 
@@ -113,17 +135,17 @@ namespace RCLargeLanguageModels.Clients.Deepseek
 			});
 		}
 
-		protected override void PopulateBodyWithProperties(JObject body, LLModelDescriptor model,
+		protected override void PopulateBodyWithProperties(JsonObject body, LLModelDescriptor model,
 			OutputFormatDefinition outputFormatDefinition, IEnumerable<ITool> tools, IEnumerable<CompletionProperty> properties)
 		{
 			if (outputFormatDefinition.Type == OutputFormatType.Json)
-				body["response_format"] = new JObject
+				body["response_format"] = new JsonObject
 				{
 					["type"] = "json_object"
 				};
 		}
 
-		protected override JObject BuildMessage(IMessage message, bool isLast)
+		protected override JsonObject BuildMessage(IMessage message, bool isLast)
 		{
 			var obj = base.BuildMessage(message, isLast);
 

@@ -1,4 +1,6 @@
-﻿namespace RCLargeLanguageModels.Messages
+﻿using System;
+
+namespace RCLargeLanguageModels.Messages
 {
 	/// <summary>
 	/// Represents a message in chat with LLM.

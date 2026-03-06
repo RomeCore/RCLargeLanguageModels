@@ -2,10 +2,6 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
 using RCLargeLanguageModels.Formats;
 
 namespace RCLargeLanguageModels.Clients.Ollama
@@ -94,7 +90,6 @@ namespace RCLargeLanguageModels.Clients.Ollama
 		/// <param name="displayName">The human-readable name of the model.</param>
 		/// <param name="capabilities">The capabilities of the model.</param>
 		/// <param name="tags">The additional version tags associated with the model.</param>
-		[JsonConstructor]
 		public OllamaModelInfo(string name, string displayName, OllamaModelCapabilities capabilities, IReadOnlyList<string> tags)
 			: this(name, displayName, capabilities, tags?.ToList())
 		{

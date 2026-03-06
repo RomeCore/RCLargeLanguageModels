@@ -1,24 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 using System.Reflection;
-using System.Text;
-using Newtonsoft.Json.Linq;
+using System.Text.Json.Nodes;
 
 namespace RCLargeLanguageModels.Json.Schema
 {
 	public class JsonSchemaObjectGenerator : JsonSchemaGeneratorBase
 	{
-		public override JObject? GenerateSchema(JsonMemberAccessor member)
+		public override JsonObject? GenerateSchema(JsonMemberAccessor member)
 		{
 			var bindingAttr = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
 			var properties = member.Type.GetMembers(bindingAttr)
 				.Where(m => m.MemberType == MemberTypes.Property || m.MemberType == MemberTypes.Field)
 				.ToList();
 
-			var propertiesSchema = new JObject();
-			var requiredProperties = new JArray();
-			var resultSchema = new JObject
+			var propertiesSchema = new JsonObject();
+			var requiredProperties = new JsonArray();
+			var resultSchema = new JsonObject
 			{
 				["type"] = "object",
 				["properties"] = propertiesSchema,
@@ -32,7 +29,7 @@ namespace RCLargeLanguageModels.Json.Schema
 				if (!propertyAccessor.Include)
 					continue;
 
-				var propertySchema = JsonSchemaGenerator.Generate(property);
+				var propertySchema = JsonSchemaGenerator.Generate(propertyAccessor);
 				propertiesSchema.Add(propertyAccessor.Name, propertySchema);
 				if (propertyAccessor.Required)
 					requiredProperties.Add(propertyAccessor.Name);

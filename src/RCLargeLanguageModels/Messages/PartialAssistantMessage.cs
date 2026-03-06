@@ -1,16 +1,8 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using System.Net.Mail;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading;
-using System.Threading.Channels;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
 using RCLargeLanguageModels.Completions;
 using RCLargeLanguageModels.Messages.Attachments;
 using RCLargeLanguageModels.Metadata;

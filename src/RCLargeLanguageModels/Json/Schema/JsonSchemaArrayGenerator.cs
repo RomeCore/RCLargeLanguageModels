@@ -1,10 +1,8 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel;
 using System;
-using Newtonsoft.Json.Linq;
 using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
+using System.Text.Json.Nodes;
 
 namespace RCLargeLanguageModels.Json.Schema
 {
@@ -13,7 +11,7 @@ namespace RCLargeLanguageModels.Json.Schema
 	/// </summary>
 	public class JsonSchemaArrayGenerator : JsonSchemaGeneratorBase
 	{
-		public override JObject? GenerateSchema(JsonMemberAccessor member)
+		public override JsonObject? GenerateSchema(JsonMemberAccessor member)
 		{
 			var type = member.Type;
 			Type? elementType = null;
@@ -43,7 +41,7 @@ namespace RCLargeLanguageModels.Json.Schema
 			if (elementType == null || type == typeof(string))
 				return null;
 
-			var resultSchema = new JObject
+			var resultSchema = new JsonObject
 			{
 				["type"] = "array"
 			};

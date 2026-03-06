@@ -5,15 +5,15 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Text;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Schema;
 using RCLargeLanguageModels.Json.Schema;
+using RCLargeLanguageModels.Tests.JsonAssertion;
 
 namespace RCLargeLanguageModels.Tests
 {
-	#nullable disable
+#nullable disable
 
 	public class JsonSchemaGenerationTests
 	{
@@ -64,16 +64,13 @@ namespace RCLargeLanguageModels.Tests
 			public ICollection<bool> BoolCollection { get; set; }
 			public int[][] JaggedArray { get; set; }
 			public List<List<string>> NestedList { get; set; }
-			public System.Collections.ArrayList NonGenericList { get; set; }
 		}
 
 		private class ConstrainedArrayTypesClass
 		{
 			[MinLength(2)]
 			[MaxLength(5)]
-
 			[Items]
-
 			[Range(1, 10)]
 			public int[] BoundedArray { get; set; }
 
@@ -97,7 +94,7 @@ namespace RCLargeLanguageModels.Tests
 
 		private class AttributedPropertiesClass
 		{
-			[JsonProperty("custom_name")]
+			[JsonPropertyName("custom_name")]
 			public string RenamedProperty { get; set; }
 
 			[DisplayName("Display Name")]
@@ -127,50 +124,25 @@ namespace RCLargeLanguageModels.Tests
 			var schema = Json.JsonSchemaGenerator.Generate(member);
 
 			// Assert
-			Assert.NotNull(schema);
-			Assert.Equal("object", schema["type"]);
+			var expected = """
+				{
+				  "type": "object",
+				  "properties": {
+					"StringProperty": { "type": "string" },
+					"IntProperty": { "type": "integer" },
+					"DoubleProperty": { "type": "number" },
+					"BoolProperty": { "type": "boolean" },
+					"DateTimeProperty": { "type": "string", "format": "date-time" },
+					"GuidProperty": { "type": "string", "format": "uuid" },
+					"EnumProperty": { "type": "string", "enum": ["Value1", "Value2", "Value3"] },
+					"NullableIntProperty": { "type": ["integer", "null"] }
+				  },
+				  "required": [],
+				  "additionalProperties": false
+				}
+				""";
 
-			var properties = schema["properties"] as JObject;
-			Assert.NotNull(properties);
-
-			// Test string property
-			var stringProp = properties["StringProperty"] as JObject;
-			Assert.Equal("string", stringProp["type"]);
-
-			// Test int property
-			var intProp = properties["IntProperty"] as JObject;
-			Assert.Equal("integer", intProp["type"]);
-
-			// Test double property
-			var doubleProp = properties["DoubleProperty"] as JObject;
-			Assert.Equal("number", doubleProp["type"]);
-
-			// Test bool property
-			var boolProp = properties["BoolProperty"] as JObject;
-			Assert.Equal("boolean", boolProp["type"]);
-
-			// Test DateTime property
-			var dateTimeProp = properties["DateTimeProperty"] as JObject;
-			Assert.Equal("string", dateTimeProp["type"]);
-			Assert.Equal("date-time", dateTimeProp["format"]);
-
-			// Test Guid property
-			var guidProp = properties["GuidProperty"] as JObject;
-			Assert.Equal("string", guidProp["type"]);
-			Assert.Equal("uuid", guidProp["format"]);
-
-			// Test Enum property
-			var enumProp = properties["EnumProperty"] as JObject;
-			Assert.Equal("string", enumProp["type"]);
-			var enumValues = enumProp["enum"] as JArray;
-			Assert.NotNull(enumValues);
-			Assert.Contains("Value1", enumValues);
-			Assert.Contains("Value2", enumValues);
-			Assert.Contains("Value3", enumValues);
-
-			// Test nullable property
-			var nullableProp = properties["NullableIntProperty"] as JObject;
-			Assert.Equal(["integer", "null"], nullableProp["type"]);
+			JsonAssert.Equal(JsonNode.Parse(expected), schema);
 		}
 
 		[Fact]
@@ -182,25 +154,24 @@ namespace RCLargeLanguageModels.Tests
 
 			// Act
 			var schema = Json.JsonSchemaGenerator.Generate(member);
-			var properties = schema["properties"] as JObject;
 
 			// Assert
-			var constrainedString = properties["ConstrainedString"] as JObject;
-			Assert.Equal(3, constrainedString["minLength"]);
-			Assert.Equal(10, constrainedString["maxLength"]);
+			var expected = """
+				{
+				  "type": "object",
+				  "properties": {
+					"ConstrainedString": { "type": "string", "minLength": 3, "maxLength": 10 },
+					"ConstrainedInt": { "type": "integer", "minimum": 1, "maximum": 100 },
+					"Ssn": { "type": "string", "pattern": "^\\d{3}-\\d{2}-\\d{4}$" },
+					"DefaultValueProperty": { "type": "string", "default": "Default Value" },
+					"DescribedProperty": { "type": "string", "description": "This is a test description" }
+				  },
+				  "required": [],
+				  "additionalProperties": false
+				}
+				""";
 
-			var constrainedInt = properties["ConstrainedInt"] as JObject;
-			Assert.Equal(1, constrainedInt["minimum"]);
-			Assert.Equal(100, constrainedInt["maximum"]);
-
-			var ssnProp = properties["Ssn"] as JObject;
-			Assert.Equal(@"^\d{3}-\d{2}-\d{4}$", ssnProp["pattern"]);
-
-			var defaultValueProp = properties["DefaultValueProperty"] as JObject;
-			Assert.Equal("Default Value", defaultValueProp["default"]);
-
-			var describedProp = properties["DescribedProperty"] as JObject;
-			Assert.Equal("This is a test description", describedProp["description"]);
+			JsonAssert.Equal(JsonNode.Parse(expected), schema);
 		}
 
 		[Fact]
@@ -212,62 +183,25 @@ namespace RCLargeLanguageModels.Tests
 
 			// Act
 			var schema = Json.JsonSchemaGenerator.Generate(member);
-			var properties = schema["properties"] as JObject;
 
 			// Assert
-			var intArray = properties["IntArray"] as JObject;
-			Assert.Equal("array", intArray["type"]);
-			var intArrayItems = intArray["items"] as JObject;
-			Assert.Equal("integer", intArrayItems["type"]);
+			var expected = """
+				{
+				  "type": "object",
+				  "properties": {
+					"IntArray": { "type": "array", "items": { "type": "integer" } },
+					"StringList": { "type": "array", "items": { "type": "string" } },
+					"DoubleEnumerable": { "type": "array", "items": { "type": "number" } },
+					"BoolCollection": { "type": "array", "items": { "type": "boolean" } },
+					"JaggedArray": { "type": "array", "items": { "type": "array", "items": { "type": "integer" } } },
+					"NestedList": { "type": "array", "items": { "type": "array", "items": { "type": "string" } } }
+				  },
+				  "required": [],
+				  "additionalProperties": false
+				}
+				""";
 
-			var stringList = properties["StringList"] as JObject;
-			Assert.Equal("array", stringList["type"]);
-			var stringListItems = stringList["items"] as JObject;
-			Assert.Equal("string", stringListItems["type"]);
-
-			var doubleEnumerable = properties["DoubleEnumerable"] as JObject;
-			Assert.Equal("array", doubleEnumerable["type"]);
-			var doubleItems = doubleEnumerable["items"] as JObject;
-			Assert.Equal("number", doubleItems["type"]);
-
-			var boolCollection = properties["BoolCollection"] as JObject;
-			Assert.Equal("array", boolCollection["type"]);
-			var boolItems = boolCollection["items"] as JObject;
-			Assert.Equal("boolean", boolItems["type"]);
-		}
-
-		[Fact]
-		public void ArrayGenerator_NestedArrays_GeneratesCorrectSchema()
-		{
-			// Arrange
-			var type = typeof(ArrayTypesClass);
-			var member = new JsonMemberAccessor(type);
-
-			// Act
-			var schema = Json.JsonSchemaGenerator.Generate(member);
-			var properties = schema["properties"] as JObject;
-
-			// Assert jagged array
-			var jaggedArray = properties["JaggedArray"] as JObject;
-			Assert.Equal("array", jaggedArray["type"]);
-			var innerArray = jaggedArray["items"] as JObject;
-			Assert.Equal("array", innerArray["type"]);
-			var intItems = innerArray["items"] as JObject;
-			Assert.Equal("integer", intItems["type"]);
-
-			// Assert nested list
-			var nestedList = properties["NestedList"] as JObject;
-			Assert.Equal("array", nestedList["type"]);
-			var innerList = nestedList["items"] as JObject;
-			Assert.Equal("array", innerList["type"]);
-			var stringItems = innerList["items"] as JObject;
-			Assert.Equal("string", stringItems["type"]);
-
-			// Assert non-generic list
-			var nonGenericList = properties["NonGenericList"] as JObject;
-			Assert.Equal("array", nonGenericList["type"]);
-			var objectItems = nonGenericList["items"] as JObject;
-			Assert.Equal("string", objectItems["type"]); // Default fallback
+			JsonAssert.Equal(JsonNode.Parse(expected), schema);
 		}
 
 		[Fact]
@@ -279,31 +213,41 @@ namespace RCLargeLanguageModels.Tests
 
 			// Act
 			var schema = Json.JsonSchemaGenerator.Generate(member);
-			var properties = schema["properties"] as JObject;
 
 			// Assert
-			var boundedArray = properties["BoundedArray"] as JObject;
-			Assert.Equal("array", boundedArray["type"]);
-			Assert.Equal(2, boundedArray["minItems"]);
-			Assert.Equal(5, boundedArray["maxItems"]);
+			var expected = """
+				{
+				  "type": "object",
+				  "properties": {
+					"BoundedArray": {
+					  "type": "array",
+					  "minItems": 2,
+					  "maxItems": 5,
+					  "items": { "type": "integer", "minimum": 1, "maximum": 10 }
+					},
+					"UniqueItemsList": {
+					  "type": "array",
+					  "uniqueItems": true,
+					  "items": { "type": "string" }
+					},
+					"DescribedArray": {
+					  "type": "array",
+					  "minItems": 1,
+					  "description": "Array with minimum items",
+					  "items": { "type": "string" }
+					},
+					"ArrayWithDefault": {
+					  "type": "array",
+					  "default": [1, 2, 3],
+					  "items": { "type": "integer" }
+					}
+				  },
+				  "required": [],
+				  "additionalProperties": false
+				}
+				""";
 
-			var boundedArrayItems = boundedArray["items"] as JObject;
-			Assert.Equal("integer", boundedArrayItems["type"]);
-			Assert.Equal(1, boundedArrayItems["minimum"]);
-			Assert.Equal(10, boundedArrayItems["maximum"]);
-
-			var uniqueList = properties["UniqueItemsList"] as JObject;
-			Assert.Equal("array", uniqueList["type"]);
-			Assert.True((bool)uniqueList["uniqueItems"]);
-
-			var describedArray = properties["DescribedArray"] as JObject;
-			Assert.Equal("array", describedArray["type"]);
-			Assert.Equal(1, describedArray["minItems"]);
-			Assert.Equal("Array with minimum items", describedArray["description"]);
-
-			var arrayWithDefault = properties["ArrayWithDefault"] as JObject;
-			Assert.Equal("array", arrayWithDefault["type"]);
-			// Note: Default value comparison might need special handling for arrays
+			JsonAssert.Equal(JsonNode.Parse(expected), schema);
 		}
 
 		[Fact]
@@ -315,25 +259,51 @@ namespace RCLargeLanguageModels.Tests
 			var generator = new JsonSchemaObjectGenerator();
 
 			// Act
-			var schema = generator.GenerateSchema(member) as JObject;
-			var properties = schema["properties"] as JObject;
+			var schema = generator.GenerateSchema(member) as JsonObject;
 
 			// Assert
-			var nestedObject = properties["NestedObject"] as JObject;
-			Assert.Equal("object", nestedObject["type"]);
-			var nestedProperties = nestedObject["properties"] as JObject;
-			Assert.NotNull(nestedProperties);
-			Assert.Contains("StringProperty", nestedProperties.Properties().Select(p => p.Name));
+			var expected = """
+				{
+				  "type": "object",
+				  "properties": {
+					"NestedObject": {
+					  "type": "object",
+					  "properties": {
+						"StringProperty": { "type": "string" },
+						"IntProperty": { "type": "integer" },
+						"DoubleProperty": { "type": "number" },
+						"BoolProperty": { "type": "boolean" },
+						"DateTimeProperty": { "type": "string", "format": "date-time" },
+						"GuidProperty": { "type": "string", "format": "uuid" },
+						"EnumProperty": { "type": "string", "enum": ["Value1", "Value2", "Value3"] },
+						"NullableIntProperty": { "type": ["integer", "null"] }
+					  },
+					  "required": [],
+					  "additionalProperties": false
+					},
+					"ListOfObjects": {
+					  "type": "array",
+					  "items": {
+						"type": "object",
+						"properties": {
+						  "ConstrainedString": { "type": "string", "minLength": 3, "maxLength": 10 },
+						  "ConstrainedInt": { "type": "integer", "minimum": 1, "maximum": 100 },
+						  "Ssn": { "type": "string", "pattern": "^\\d{3}-\\d{2}-\\d{4}$" },
+						  "DefaultValueProperty": { "type": "string", "default": "Default Value" },
+						  "DescribedProperty": { "type": "string", "description": "This is a test description" }
+						},
+						"required": [],
+						"additionalProperties": false
+					  }
+					},
+					"DictionaryProperty": { "type": "object", "additionalProperties": { "type": "integer" } }
+				  },
+				  "required": [],
+				  "additionalProperties": false
+				}
+				""";
 
-			var listOfObjects = properties["ListOfObjects"] as JObject;
-			Assert.Equal("array", listOfObjects["type"]);
-			var arrayItems = listOfObjects["items"] as JObject;
-			Assert.Equal("object", arrayItems["type"]);
-			var itemProperties = arrayItems["properties"] as JObject;
-			Assert.Contains("ConstrainedString", itemProperties.Properties().Select(p => p.Name));
-
-			var dictionaryProp = properties["DictionaryProperty"] as JObject;
-			Assert.Equal("object", dictionaryProp["type"]); // Dictionary should be treated as object
+			JsonAssert.Equal(JsonNode.Parse(expected), schema);
 		}
 
 		[Fact]
@@ -345,24 +315,23 @@ namespace RCLargeLanguageModels.Tests
 			var generator = new JsonSchemaObjectGenerator();
 
 			// Act
-			var schema = generator.GenerateSchema(member) as JObject;
-			var properties = schema["properties"] as JObject;
-			var required = schema["required"] as JArray;
+			var schema = generator.GenerateSchema(member);
 
 			// Assert
-			// Renamed property should use custom name
-			Assert.Contains("custom_name", properties.Properties().Select(p => p.Name));
-			Assert.DoesNotContain("RenamedProperty", properties.Properties().Select(p => p.Name));
+			var expected = """
+				{
+				  "type": "object",
+				  "properties": {
+					"custom_name": { "type": "string" },
+					"Display Name": { "type": "string" },
+					"RequiredProperty": { "type": "string" }
+				  },
+				  "required": ["RequiredProperty"],
+				  "additionalProperties": false
+				}
+				""";
 
-			// DisplayName property
-			Assert.Contains("Display Name", properties.Properties().Select(p => p.Name));
-
-			// Ignored properties should not be in schema
-			Assert.DoesNotContain("IgnoredProperty", properties.Properties().Select(p => p.Name));
-			Assert.DoesNotContain("IgnoredDataMemberProperty", properties.Properties().Select(p => p.Name));
-
-			// Required property should be in required array
-			Assert.Contains("custom_name", required);
+			JsonAssert.Equal(JsonNode.Parse(expected), schema);
 		}
 
 		[Fact]
@@ -373,34 +342,17 @@ namespace RCLargeLanguageModels.Tests
 			var generator = new JsonSchemaValueGenerator();
 
 			// Act
-			var schema = generator.GenerateSchema(member) as JObject;
+			var schema = generator.GenerateSchema(member) as JsonObject;
 
 			// Assert
-			Assert.Equal("string", schema["type"]);
-			var enumValues = schema["enum"] as JArray;
-			Assert.Equal(3, enumValues.Count);
-			Assert.Contains("Value1", enumValues);
-			Assert.Contains("Value2", enumValues);
-			Assert.Contains("Value3", enumValues);
-		}
+			var expected = """
+				{
+				  "type": "string",
+				  "enum": ["Value1", "Value2", "Value3"]
+				}
+				""";
 
-		[Fact]
-		public void CombinedGenerator_CompleteObject_GeneratesFullSchema()
-		{
-			// Arrange
-			var type = typeof(SimpleValueTypesClass);
-			var member = new JsonMemberAccessor(type);
-
-			// Act
-			var schema = Json.JsonSchemaGenerator.Generate(member);
-
-			// Assert
-			Assert.NotNull(schema);
-			Assert.Equal("object", schema["type"]);
-
-			var properties = schema["properties"] as JObject;
-			Assert.NotNull(properties);
-			Assert.Equal(8, properties.Count); // All 8 properties from SimpleValueTypesClass
+			JsonAssert.Equal(JsonNode.Parse(expected), schema);
 		}
 
 		[Fact]
@@ -420,26 +372,32 @@ namespace RCLargeLanguageModels.Tests
 		[Fact]
 		public void ValueGenerator_WithDateTimeTypes_AddsCorrectFormat()
 		{
-			// Arrange & Act
-			var dateTimeMember = new JsonMemberAccessor(typeof(DateTime));
-			var dateTimeOffsetMember = new JsonMemberAccessor(typeof(DateTimeOffset));
-			var dateOnlyMember = new JsonMemberAccessor(typeof(DateOnly));
-			var timeOnlyMember = new JsonMemberAccessor(typeof(TimeOnly));
-
+			// Arrange
 			var generator = new JsonSchemaValueGenerator();
 
-			// Assert
-			var dateTimeSchema = generator.GenerateSchema(dateTimeMember) as JObject;
-			Assert.Equal("date-time", dateTimeSchema["format"]);
+			// Act & Assert for DateTime
+			var dateTimeMember = new JsonMemberAccessor(typeof(DateTime));
+			var dateTimeSchema = generator.GenerateSchema(dateTimeMember) as JsonObject;
+			var expectedDateTime = """{ "type": "string", "format": "date-time" }""";
+			JsonAssert.Equal(JsonNode.Parse(expectedDateTime), dateTimeSchema);
 
-			var dateTimeOffsetSchema = generator.GenerateSchema(dateTimeOffsetMember) as JObject;
-			Assert.Equal("date-time", dateTimeOffsetSchema["format"]);
+			// Act & Assert for DateTimeOffset
+			var dateTimeOffsetMember = new JsonMemberAccessor(typeof(DateTimeOffset));
+			var dateTimeOffsetSchema = generator.GenerateSchema(dateTimeOffsetMember) as JsonObject;
+			var expectedDateTimeOffset = """{ "type": "string", "format": "date-time" }""";
+			JsonAssert.Equal(JsonNode.Parse(expectedDateTimeOffset), dateTimeOffsetSchema);
 
-			var dateOnlySchema = generator.GenerateSchema(dateOnlyMember) as JObject;
-			Assert.Equal("date", dateOnlySchema["format"]);
+			// Act & Assert for DateOnly
+			var dateOnlyMember = new JsonMemberAccessor(typeof(DateOnly));
+			var dateOnlySchema = generator.GenerateSchema(dateOnlyMember) as JsonObject;
+			var expectedDateOnly = """{ "type": "string", "format": "date" }""";
+			JsonAssert.Equal(JsonNode.Parse(expectedDateOnly), dateOnlySchema);
 
-			var timeOnlySchema = generator.GenerateSchema(timeOnlyMember) as JObject;
-			Assert.Equal("time", timeOnlySchema["format"]);
+			// Act & Assert for TimeOnly
+			var timeOnlyMember = new JsonMemberAccessor(typeof(TimeOnly));
+			var timeOnlySchema = generator.GenerateSchema(timeOnlyMember) as JsonObject;
+			var expectedTimeOnly = """{ "type": "string", "format": "time" }""";
+			JsonAssert.Equal(JsonNode.Parse(expectedTimeOnly), timeOnlySchema);
 		}
 	}
 }

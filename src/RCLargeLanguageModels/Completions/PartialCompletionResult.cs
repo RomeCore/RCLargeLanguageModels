@@ -40,13 +40,13 @@ namespace RCLargeLanguageModels.Completions
 		/// Gets the list of available partial completion choices. Will contain at least one completion.
 		/// </summary>
 		public ImmutableArray<PartialCompletion> Choices { get; }
-		IReadOnlyList<ICompletion> ICompletionResult.Choices => Choices;
+		IReadOnlyList<ICompletion> IGenerationResult<ICompletion>.Choices => Choices;
 
 		/// <summary>
 		/// Gets the first partial completion from the choices.
 		/// </summary>
 		public PartialCompletion Completion => Choices[0];
-		ICompletion ICompletionResult.Completion => Completion;
+		ICompletion IGenerationResult<ICompletion>.Completion => Completion;
 
 		/// <inheritdoc/>
 		public string Content => Completion.Content;
@@ -55,8 +55,8 @@ namespace RCLargeLanguageModels.Completions
 		/// Get the completion metadata (such as usage stats: <see cref="IUsageMetadata"/>). Will be empty until completed.
 		/// </summary>
 		public MetadataCollection Metadata => _metadata;
-		IMetadataCollection IMetadataProvider.Metadata => _metadata;
-		IMetadataCollection ICompletionResult.Metadata => _metadata;
+		IMetadataCollection IMetadataProvider.Metadata => Metadata;
+		IMetadataCollection IGenerationResult<ICompletion>.Metadata => Metadata;
 
 		/// <inheritdoc/>
 		public IUsageMetadata? UsageMetadata => _metadata.TryGet<IUsageMetadata>();

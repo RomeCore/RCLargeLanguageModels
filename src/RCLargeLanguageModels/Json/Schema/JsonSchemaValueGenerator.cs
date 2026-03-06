@@ -1,7 +1,7 @@
-﻿using System.ComponentModel;
-using System;
-using Newtonsoft.Json.Linq;
+﻿using System;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace RCLargeLanguageModels.Json.Schema
 {
@@ -10,10 +10,10 @@ namespace RCLargeLanguageModels.Json.Schema
 	/// </summary>
 	public class JsonSchemaValueGenerator : JsonSchemaGeneratorBase
 	{
-		public override JObject? GenerateSchema(JsonMemberAccessor member)
+		public override JsonObject? GenerateSchema(JsonMemberAccessor member)
 		{
 			var type = member.NullableUnderlyingType;
-			var typeSchema = new JObject();
+			var typeSchema = new JsonObject();
 
 			string? jsonType = null;
 
@@ -21,7 +21,7 @@ namespace RCLargeLanguageModels.Json.Schema
 			var enumAttr = member.Attributes.Get<EnumAttribute>();
 			if (type.IsEnum || (type == typeof(string) && enumAttr != null))
 			{
-				var enumValues = new JArray();
+				var enumValues = new JsonArray();
 				if (enumAttr != null)
 				{
 					foreach (var enumValue in enumAttr.Values)
@@ -84,9 +84,9 @@ namespace RCLargeLanguageModels.Json.Schema
 			if (member.Attributes.Get<RangeAttribute>() is RangeAttribute range)
 			{
 				if (range.Minimum is IComparable)
-					typeSchema["minimum"] = JToken.FromObject(range.Minimum);
+					typeSchema["minimum"] = JsonSerializer.SerializeToNode(range.Minimum);
 				if (range.Maximum is IComparable)
-					typeSchema["maximum"] = JToken.FromObject(range.Maximum);
+					typeSchema["maximum"] = JsonSerializer.SerializeToNode(range.Maximum);
 			}
 
 			if (member.Attributes.Get<RegularExpressionAttribute>() is RegularExpressionAttribute regex)

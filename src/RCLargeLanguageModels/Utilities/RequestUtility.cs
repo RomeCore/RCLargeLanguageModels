@@ -5,11 +5,11 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
 
 namespace RCLargeLanguageModels.Utilities
 {
@@ -64,12 +64,12 @@ namespace RCLargeLanguageModels.Utilities
 		/// <param name="body">The object to serialize as the JSON body of the request. Can be null for bodyless requests.</param>
 		/// <param name="client">A <see cref="HttpClient"/> to use for requesting. Can be null</param>
 		/// <param name="headers">Optional dictionary of headers to include in the request.</param>
-		/// <returns>A <see cref="JToken"/> representing the JSON response.</returns>
-		public static async Task<JToken> GetJsonResponseAsync(RequestType requestType, string uri, object body, HttpClient client = null, Dictionary<string, string> headers = null)
+		/// <returns>A <see cref="JsonNode"/> representing the JSON response.</returns>
+		public static async Task<JsonNode> GetJsonResponseAsync(RequestType requestType, string uri, object body, HttpClient client = null, Dictionary<string, string> headers = null)
 		{
 			HttpResponseMessage response = await GetResponseAsync(requestType, uri, body, client, headers);
 			string responseContent = await response.Content.ReadAsStringAsync();
-			return JToken.Parse(responseContent);
+			return JsonNode.Parse(responseContent);
 		}
 
 		/// <summary>
@@ -89,7 +89,7 @@ namespace RCLargeLanguageModels.Utilities
 			HttpResponseMessage response = await GetResponseAsync(requestType, uri, body, client, headers, cancellationToken);
 			string responseContent = await response.Content.ReadAsStringAsync();
 			response.EnsureSuccessStatusCode();
-			return JToken.Parse(responseContent).ToObject<T>();
+			return JsonSerializer.Deserialize<T>(responseContent);
 		}
 
 		/// <summary>
@@ -109,7 +109,7 @@ namespace RCLargeLanguageModels.Utilities
 
 			if (body != null)
 			{
-				string jsonContent = Newtonsoft.Json.JsonConvert.SerializeObject(body);
+				string jsonContent = JsonSerializer.Serialize(body);
 				request.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 			}
 
@@ -151,9 +151,9 @@ namespace RCLargeLanguageModels.Utilities
 			Dictionary<string, string> headers = null,
 			CancellationToken cancellationToken = default)
 		{
-			void OnDataReceived(JToken token)
+			void OnDataReceived(JsonNode token)
 			{
-				var obj = token.ToObject<T>();
+				var obj = JsonSerializer.Deserialize<T>(token);
 				onDataReceived(obj);
 			}
 
@@ -178,12 +178,12 @@ namespace RCLargeLanguageModels.Utilities
 			RequestType requestType,
 			string uri,
 			object body,
-			Action<JToken> onDataReceived,
+			Action<JsonNode> onDataReceived,
 			HttpClient client,
 			Dictionary<string, string> headers,
 			CancellationToken cancellationToken = default)
 		{
-			return ProcessStreamingResponseAsync(requestType, uri, body, l => onDataReceived(JToken.Parse(l)),
+			return ProcessStreamingResponseAsync(requestType, uri, body, l => onDataReceived(JsonNode.Parse(l)),
 				client, headers, cancellationToken);
 		}
 
@@ -271,7 +271,7 @@ namespace RCLargeLanguageModels.Utilities
 #else
 			var content = await message.Content.ReadAsStringAsync();
 #endif
-			return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(content);
+			return JsonSerializer.Deserialize<T>(content);
 		}
 	}
 }

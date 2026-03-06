@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Newtonsoft.Json.Linq;
+﻿using System.Text.Json.Nodes;
 
 namespace RCLargeLanguageModels.Json.Schema
 {
@@ -15,6 +12,6 @@ namespace RCLargeLanguageModels.Json.Schema
 		/// </summary>
 		/// <param name="member">The member to generate a schema for.</param>
 		/// <returns>A JSON schema object, or null if no schema can be generated.</returns>
-		public abstract JObject? GenerateSchema(JsonMemberAccessor member);
+		public abstract JsonObject? GenerateSchema(JsonMemberAccessor member);
 	}
 }

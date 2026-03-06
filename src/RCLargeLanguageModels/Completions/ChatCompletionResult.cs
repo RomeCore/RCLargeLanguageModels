@@ -19,23 +19,21 @@ namespace RCLargeLanguageModels.Completions
 		/// <inheritdoc/>
 		public LLModelDescriptor Model { get; }
 
-		/// <inheritdoc cref="IChatCompletionResult.Choices"/>
+		/// <inheritdoc cref="IGenerationResult{T}.Choices"/>
 		public ImmutableArray<AssistantMessage> Choices { get; }
-		IReadOnlyList<IAssistantMessage> IChatCompletionResult.Choices => Choices;
-		IReadOnlyList<ICompletion> ICompletionResult.Choices => Choices;
+		IReadOnlyList<IAssistantMessage> IGenerationResult<IAssistantMessage>.Choices => Choices;
 
-		/// <inheritdoc cref="IChatCompletionResult.Message"/>
+		/// <inheritdoc cref="IGenerationResult{T}.Completion"/>
 		public AssistantMessage Message => Choices[0];
-		IAssistantMessage IChatCompletionResult.Message => Message;
-		ICompletion ICompletionResult.Completion => Message;
+		IAssistantMessage IGenerationResult<IAssistantMessage>.Completion => Message;
 
 		/// <inheritdoc/>
 		public string? Content => Message.Content;
 
-		/// <inheritdoc cref="ICompletionResult.Metadata"/>
+		/// <inheritdoc cref="IGenerationResult{T}.Metadata"/>
 		public MetadataCollection Metadata { get; }
 		IMetadataCollection IMetadataProvider.Metadata => Metadata;
-		IMetadataCollection ICompletionResult.Metadata => Metadata;
+		IMetadataCollection IGenerationResult<IAssistantMessage>.Metadata => Metadata;
 
 		/// <inheritdoc/>
 		public IUsageMetadata UsageMetadata => Metadata?.TryGet<IUsageMetadata>();

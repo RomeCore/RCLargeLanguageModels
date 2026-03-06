@@ -4,8 +4,6 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Schema;
 
 namespace RCLargeLanguageModels.Tools
 {
@@ -15,7 +13,7 @@ namespace RCLargeLanguageModels.Tools
 	{
 		public string name = null;
 		public bool required = false;
-		public JObject schema = null;
+		public JsonObject schema = null;
 	}
 
 	/// <summary>
@@ -186,7 +184,7 @@ namespace RCLargeLanguageModels.Tools
 				schema,
 				(t, ct) =>
 				{
-					var args = (JObject)t;
+					var args = (JsonObject)t;
 					var arg1 = args[_parameter1.name].ToObject<T1>();
 					return executor.Invoke(arg1);
 				});
@@ -217,7 +215,7 @@ namespace RCLargeLanguageModels.Tools
 				schema,
 				(t, ct) =>
 				{
-					var args = (JObject)t;
+					var args = (JsonObject)t;
 					var arg1 = args[_parameter1.name].ToObject<T1>();
 					return executor.Invoke(arg1, ct);
 				});
@@ -305,7 +303,7 @@ namespace RCLargeLanguageModels.Tools
 				schema,
 				(t, ct) =>
 				{
-					var args = (JObject)t;
+					var args = (JsonObject)t;
 					var arg1 = args[_parameter1.name].ToObject<T1>();
 					var arg2 = args[_parameter2.name].ToObject<T2>();
 					return executor.Invoke(arg1, arg2);
@@ -341,7 +339,7 @@ namespace RCLargeLanguageModels.Tools
 				schema,
 				(t, ct) =>
 				{
-					var args = (JObject)t;
+					var args = (JsonObject)t;
 					var arg1 = args[_parameter1.name].ToObject<T1>();
 					var arg2 = args[_parameter2.name].ToObject<T2>();
 					return executor.Invoke(arg1, arg2, ct);
@@ -434,7 +432,7 @@ namespace RCLargeLanguageModels.Tools
 				schema,
 				(t, ct) =>
 				{
-					var args = (JObject)t;
+					var args = (JsonObject)t;
 					var arg1 = args[_parameter1.name].ToObject<T1>();
 					var arg2 = args[_parameter2.name].ToObject<T2>();
 					var arg3 = args[_parameter3.name].ToObject<T3>();
@@ -475,7 +473,7 @@ namespace RCLargeLanguageModels.Tools
 				schema,
 				(t, ct) =>
 				{
-					var args = (JObject)t;
+					var args = (JsonObject)t;
 					var arg1 = args[_parameter1.name].ToObject<T1>();
 					var arg2 = args[_parameter2.name].ToObject<T2>();
 					var arg3 = args[_parameter3.name].ToObject<T3>();
@@ -560,7 +558,7 @@ namespace RCLargeLanguageModels.Tools
 				schema,
 				(t, ct) =>
 				{
-					var args = (JObject)t;
+					var args = (JsonObject)t;
 					var arg1 = args[_parameter1.name].ToObject<T1>();
 					var arg2 = args[_parameter2.name].ToObject<T2>();
 					var arg3 = args[_parameter3.name].ToObject<T3>();
@@ -606,7 +604,7 @@ namespace RCLargeLanguageModels.Tools
 				schema,
 				(t, ct) =>
 				{
-					var args = (JObject)t;
+					var args = (JsonObject)t;
 					var arg1 = args[_parameter1.name].ToObject<T1>();
 					var arg2 = args[_parameter2.name].ToObject<T2>();
 					var arg3 = args[_parameter3.name].ToObject<T3>();

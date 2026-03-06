@@ -1,9 +1,9 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System;
-using Newtonsoft.Json.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json.Nodes;
 
 namespace RCLargeLanguageModels.Json.Schema
 {
@@ -13,7 +13,7 @@ namespace RCLargeLanguageModels.Json.Schema
 	/// </summary>
 	public class JsonSchemaDictionaryGenerator : JsonSchemaGeneratorBase
 	{
-		public override JObject? GenerateSchema(JsonMemberAccessor member)
+		public override JsonObject? GenerateSchema(JsonMemberAccessor member)
 		{
 			var type = member.Type;
 			Type? keyType = null;
@@ -67,7 +67,7 @@ namespace RCLargeLanguageModels.Json.Schema
 				throw new InvalidOperationException($"Dictionary keys must be strings for JSON Schema. Type: {type}");
 			}
 
-			var resultSchema = new JObject
+			var resultSchema = new JsonObject
 			{
 				["type"] = "object"
 			};
@@ -100,8 +100,8 @@ namespace RCLargeLanguageModels.Json.Schema
 			// Key pattern validation via regex
 			if (member.Attributes.Get<DictionaryKeyPatternAttribute>() is DictionaryKeyPatternAttribute keyPattern)
 			{
-				var patternProperties = new JObject();
-				patternProperties[keyPattern.Pattern] = valueSchema ?? new JObject();
+				var patternProperties = new JsonObject();
+				patternProperties[keyPattern.Pattern] = valueSchema ?? new JsonObject();
 				resultSchema["patternProperties"] = patternProperties;
 				resultSchema.Remove("additionalProperties"); // patternProperties overrides additionalProperties
 			}
@@ -111,12 +111,12 @@ namespace RCLargeLanguageModels.Json.Schema
 			{
 				if (dictKeys.AllowedKeys != null && dictKeys.AllowedKeys.Length > 0)
 				{
-					var propertyNames = new JArray();
+					var propertyNames = new JsonArray();
 					foreach (var key in dictKeys.AllowedKeys)
 					{
 						propertyNames.Add(key);
 					}
-					resultSchema["propertyNames"] = new JObject
+					resultSchema["propertyNames"] = new JsonObject
 					{
 						["enum"] = propertyNames
 					};

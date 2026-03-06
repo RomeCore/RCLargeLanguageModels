@@ -15,15 +15,19 @@ namespace RCLargeLanguageModels
 			string prompt,
 			string suffix,
 			int count,
-			IEnumerable<CompletionProperty> properties = null,
-			IEnumerable<ILLModelPropertyInjector> injectors = null,
-			TaskQueueParameters queueParameters = null,
-			CancellationToken cancellationToken = default)
+			IEnumerable<CompletionProperty> properties,
+			IEnumerable<ILLModelPropertyInjector> injectors,
+			TaskQueueParameters queueParameters,
+			bool validateCapabilities,
+			CancellationToken cancellationToken)
 		{
-			if (Capabilities != LLMCapabilities.Unknown && !Capabilities.HasFlag(LLMCapabilities.Completions))
-				throw new InvalidOperationException("Chat completions are not supported by this model.");
-			if (!string.IsNullOrEmpty(suffix) && Capabilities != LLMCapabilities.Unknown && !Capabilities.HasFlag(LLMCapabilities.SuffixCompletions))
-				throw new InvalidOperationException("Suffix (fill-in-the-middle) completions are not supported by this model.");
+			if (validateCapabilities)
+			{
+				if (Capabilities != LLMCapabilities.Unknown && !Capabilities.HasFlag(LLMCapabilities.Completions))
+					throw new InvalidOperationException("General completions are not supported by this model.");
+				if (!string.IsNullOrEmpty(suffix) && Capabilities != LLMCapabilities.Unknown && !Capabilities.HasFlag(LLMCapabilities.SuffixCompletions))
+					throw new InvalidOperationException("Suffix (fill-in-the-middle) completions are not supported by this model.");
+			}
 
 			if (prompt == null)
 				throw new ArgumentNullException(nameof(prompt));
@@ -40,6 +44,7 @@ namespace RCLargeLanguageModels
 					suffix,
 					count,
 					properties,
+					validateCapabilities,
 					cancellationToken);
 			}, cancellationToken: cancellationToken);
 		}
@@ -48,15 +53,19 @@ namespace RCLargeLanguageModels
 			string prompt,
 			string suffix,
 			int count,
-			IEnumerable<CompletionProperty> properties = null,
-			IEnumerable<ILLModelPropertyInjector> injectors = null,
-			TaskQueueParameters queueParameters = null,
-			CancellationToken cancellationToken = default)
+			IEnumerable<CompletionProperty> properties,
+			IEnumerable<ILLModelPropertyInjector> injectors,
+			TaskQueueParameters queueParameters,
+			bool validateCapabilities,
+			CancellationToken cancellationToken)
 		{
-			if (Capabilities != LLMCapabilities.Unknown && !Capabilities.HasFlag(LLMCapabilities.Completions))
-				throw new InvalidOperationException("Chat completions are not supported by this model.");
-			if (!string.IsNullOrEmpty(suffix) && Capabilities != LLMCapabilities.Unknown && !Capabilities.HasFlag(LLMCapabilities.SuffixCompletions))
-				throw new InvalidOperationException("Suffix (fill-in-the-middle) completions are not supported by this model.");
+			if (validateCapabilities)
+			{
+				if (Capabilities != LLMCapabilities.Unknown && !Capabilities.HasFlag(LLMCapabilities.Completions))
+					throw new InvalidOperationException("General completions are not supported by this model.");
+				if (!string.IsNullOrEmpty(suffix) && Capabilities != LLMCapabilities.Unknown && !Capabilities.HasFlag(LLMCapabilities.SuffixCompletions))
+					throw new InvalidOperationException("Suffix (fill-in-the-middle) completions are not supported by this model.");
+			}
 
 			if (prompt == null)
 				throw new ArgumentNullException(nameof(prompt));
@@ -73,6 +82,7 @@ namespace RCLargeLanguageModels
 					suffix,
 					count,
 					properties,
+					validateCapabilities,
 					cancellationToken);
 			}, cancellationToken: cancellationToken);
 		}
@@ -81,29 +91,11 @@ namespace RCLargeLanguageModels
 		/// Creates a completion using the provided prompt.
 		/// </summary>
 		/// <param name="prompt">The prompt to send to the model.</param>
-		/// <returns>The completion result.</returns>
-		public async Task<CompletionResult> CompleteAsync(
-			string prompt)
-		{
-			return await CompletePrivateAsync(
-				prompt,
-				null,
-				1,
-				CompletionProperties,
-				Injectors,
-				QueueParameters,
-				default);
-		}
-		
-		/// <summary>
-		/// Creates a completion using the provided prompt.
-		/// </summary>
-		/// <param name="prompt">The prompt to send to the model.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <returns>The completion result.</returns>
 		public async Task<CompletionResult> CompleteAsync(
 			string prompt,
-			CancellationToken cancellationToken)
+			CancellationToken cancellationToken = default)
 		{
 			return await CompletePrivateAsync(
 				prompt,
@@ -112,29 +104,10 @@ namespace RCLargeLanguageModels
 				CompletionProperties,
 				Injectors,
 				QueueParameters,
+				false,
 				cancellationToken);
 		}
 
-		/// <summary>
-		/// Creates multiple completions using the provided prompt.
-		/// </summary>
-		/// <param name="prompt">The prompt to send to the model.</param>
-		/// <param name="count">The number of completions to generate.</param>
-		/// <returns>The completion results.</returns>
-		public async Task<CompletionResult> CompleteAsync(
-			string prompt,
-			int count)
-		{
-			return await CompletePrivateAsync(
-				prompt,
-				null,
-				count,
-				CompletionProperties,
-				Injectors,
-				QueueParameters,
-				default);
-		}
-		
 		/// <summary>
 		/// Creates multiple completions using the provided prompt.
 		/// </summary>
@@ -145,7 +118,7 @@ namespace RCLargeLanguageModels
 		public async Task<CompletionResult> CompleteAsync(
 			string prompt,
 			int count,
-			CancellationToken cancellationToken)
+			CancellationToken cancellationToken = default)
 		{
 			return await CompletePrivateAsync(
 				prompt,
@@ -154,32 +127,7 @@ namespace RCLargeLanguageModels
 				CompletionProperties,
 				Injectors,
 				QueueParameters,
-				cancellationToken);
-		}
-
-		/// <summary>
-		/// Creates a completion with all parameters.
-		/// </summary>
-		/// <param name="prompt">The prompt to send to the model.</param>
-		/// <param name="properties">The custom completion properties to use for this request.</param>
-		/// <param name="injectors">Additional property injectors to use for this request.</param>
-		/// <param name="queueParameters">The custom queue parameters to use for this request.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <returns>The completion result.</returns>
-		public async Task<CompletionResult> CompleteAsync(
-			string prompt,
-			OptionalParameter<IEnumerable<CompletionProperty>> properties = null,
-			OptionalParameter<IEnumerable<ILLModelPropertyInjector>> injectors = null,
-			OptionalParameter<TaskQueueParameters> queueParameters = null,
-			CancellationToken cancellationToken = default)
-		{
-			return await CompletePrivateAsync(
-				prompt,
-				null,
-				1,
-				properties.GetValue(CompletionProperties),
-				injectors.GetValue(Injectors),
-				queueParameters.GetValue(QueueParameters),
+				false,
 				cancellationToken);
 		}
 
@@ -191,46 +139,29 @@ namespace RCLargeLanguageModels
 		/// <param name="properties">The custom completion properties to use for this request.</param>
 		/// <param name="injectors">Additional property injectors to use for this request.</param>
 		/// <param name="queueParameters">The custom queue parameters to use for this request.</param>
+		/// <param name="validateCapabilities">Whether to validate the model's and client's capabilities before making this request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <returns>The completion results.</returns>
 		public async Task<CompletionResult> CompleteAsync(
 			string prompt,
-			int count,
-			OptionalParameter<IEnumerable<CompletionProperty>> properties = null,
-			OptionalParameter<IEnumerable<ILLModelPropertyInjector>> injectors = null,
-			OptionalParameter<TaskQueueParameters> queueParameters = null,
+			int count = 1,
+			IEnumerable<CompletionProperty> properties = null,
+			IEnumerable<ILLModelPropertyInjector> injectors = null,
+			TaskQueueParameters queueParameters = null,
+			bool validateCapabilities = false,
 			CancellationToken cancellationToken = default)
 		{
 			return await CompletePrivateAsync(
 				prompt,
 				null,
 				count,
-				properties.GetValue(CompletionProperties),
-				injectors.GetValue(Injectors),
-				queueParameters.GetValue(QueueParameters),
+				properties ?? CompletionProperties,
+				injectors ?? Injectors,
+				queueParameters ?? QueueParameters,
+				validateCapabilities,
 				cancellationToken);
 		}
 
-		/// <summary>
-		/// Creates a suffix completion (fill-in-the-middle) using the provided prompt and suffix.
-		/// </summary>
-		/// <param name="prompt">The prompt to send to the model.</param>
-		/// <param name="suffix">The suffix for fill-in-the-middle completion.</param>
-		/// <returns>The completion result.</returns>
-		public async Task<CompletionResult> CompleteAsync(
-			string prompt,
-			string suffix)
-		{
-			return await CompletePrivateAsync(
-				prompt,
-				suffix,
-				1,
-				CompletionProperties,
-				Injectors,
-				QueueParameters,
-				default);
-		}
-		
 		/// <summary>
 		/// Creates a suffix completion (fill-in-the-middle) using the provided prompt and suffix.
 		/// </summary>
@@ -241,7 +172,7 @@ namespace RCLargeLanguageModels
 		public async Task<CompletionResult> CompleteAsync(
 			string prompt,
 			string suffix,
-			CancellationToken cancellationToken)
+			CancellationToken cancellationToken = default)
 		{
 			return await CompletePrivateAsync(
 				prompt,
@@ -250,31 +181,10 @@ namespace RCLargeLanguageModels
 				CompletionProperties,
 				Injectors,
 				QueueParameters,
+				false,
 				cancellationToken);
 		}
 
-		/// <summary>
-		/// Creates multiple suffix completions (fill-in-the-middle) using the provided prompt and suffix.
-		/// </summary>
-		/// <param name="prompt">The prompt to send to the model.</param>
-		/// <param name="suffix">The suffix for fill-in-the-middle completion.</param>
-		/// <param name="count">The number of completions to generate.</param>
-		/// <returns>The completion results.</returns>
-		public async Task<CompletionResult> CompleteAsync(
-			string prompt,
-			string suffix,
-			int count)
-		{
-			return await CompletePrivateAsync(
-				prompt,
-				suffix,
-				count,
-				CompletionProperties,
-				Injectors,
-				QueueParameters,
-				default);
-		}
-		
 		/// <summary>
 		/// Creates multiple suffix completions (fill-in-the-middle) using the provided prompt and suffix.
 		/// </summary>
@@ -287,7 +197,7 @@ namespace RCLargeLanguageModels
 			string prompt,
 			string suffix,
 			int count,
-			CancellationToken cancellationToken)
+			CancellationToken cancellationToken = default)
 		{
 			return await CompletePrivateAsync(
 				prompt,
@@ -296,34 +206,7 @@ namespace RCLargeLanguageModels
 				CompletionProperties,
 				Injectors,
 				QueueParameters,
-				cancellationToken);
-		}
-
-		/// <summary>
-		/// Creates a suffix completion (fill-in-the-middle) with all parameters.
-		/// </summary>
-		/// <param name="prompt">The prompt to send to the model.</param>
-		/// <param name="suffix">The suffix for fill-in-the-middle completion.</param>
-		/// <param name="properties">The custom completion properties to use for this request.</param>
-		/// <param name="injectors">Additional property injectors to use for this request.</param>
-		/// <param name="queueParameters">The custom queue parameters to use for this request.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <returns>The completion result.</returns>
-		public async Task<CompletionResult> CompleteAsync(
-			string prompt,
-			string suffix,
-			OptionalParameter<IEnumerable<CompletionProperty>> properties = null,
-			OptionalParameter<IEnumerable<ILLModelPropertyInjector>> injectors = null,
-			OptionalParameter<TaskQueueParameters> queueParameters = null,
-			CancellationToken cancellationToken = default)
-		{
-			return await CompletePrivateAsync(
-				prompt,
-				suffix,
-				1,
-				properties.GetValue(CompletionProperties),
-				injectors.GetValue(Injectors),
-				queueParameters.GetValue(QueueParameters),
+				false,
 				cancellationToken);
 		}
 
@@ -336,45 +219,30 @@ namespace RCLargeLanguageModels
 		/// <param name="properties">The custom completion properties to use for this request.</param>
 		/// <param name="injectors">Additional property injectors to use for this request.</param>
 		/// <param name="queueParameters">The custom queue parameters to use for this request.</param>
+		/// <param name="validateCapabilities">Whether to validate the model's and client's capabilities before making this request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <returns>The completion results.</returns>
 		public async Task<CompletionResult> CompleteAsync(
 			string prompt,
 			string suffix,
-			int count,
-			OptionalParameter<IEnumerable<CompletionProperty>> properties = null,
-			OptionalParameter<IEnumerable<ILLModelPropertyInjector>> injectors = null,
-			OptionalParameter<TaskQueueParameters> queueParameters = null,
+			int count = 1,
+			IEnumerable<CompletionProperty> properties = null,
+			IEnumerable<ILLModelPropertyInjector> injectors = null,
+			TaskQueueParameters queueParameters = null,
+			bool validateCapabilities = false,
 			CancellationToken cancellationToken = default)
 		{
 			return await CompletePrivateAsync(
 				prompt,
 				suffix,
 				count,
-				properties.GetValue(CompletionProperties),
-				injectors.GetValue(Injectors),
-				queueParameters.GetValue(QueueParameters),
+				properties ?? CompletionProperties,
+				injectors ?? Injectors,
+				queueParameters ?? QueueParameters,
+				validateCapabilities,
 				cancellationToken);
 		}
 
-		/// <summary>
-		/// Creates a streaming completion using the provided prompt.
-		/// </summary>
-		/// <param name="prompt">The prompt to send to the model.</param>
-		/// <returns>The streaming partial completion result.</returns>
-		public async Task<PartialCompletionResult> CompleteStreamingAsync(
-			string prompt)
-		{
-			return await CompleteStreamingPrivateAsync(
-				prompt,
-				null,
-				1,
-				CompletionProperties,
-				Injectors,
-				QueueParameters,
-				default);
-		}
-		
 		/// <summary>
 		/// Creates a streaming completion using the provided prompt.
 		/// </summary>
@@ -383,7 +251,7 @@ namespace RCLargeLanguageModels
 		/// <returns>The streaming partial completion result.</returns>
 		public async Task<PartialCompletionResult> CompleteStreamingAsync(
 			string prompt,
-			CancellationToken cancellationToken)
+			CancellationToken cancellationToken = default)
 		{
 			return await CompleteStreamingPrivateAsync(
 				prompt,
@@ -392,29 +260,10 @@ namespace RCLargeLanguageModels
 				CompletionProperties,
 				Injectors,
 				QueueParameters,
+				false,
 				cancellationToken);
 		}
 
-		/// <summary>
-		/// Creates multiple streaming completions using the provided prompt.
-		/// </summary>
-		/// <param name="prompt">The prompt to send to the model.</param>
-		/// <param name="count">The number of completions to generate.</param>
-		/// <returns>The streaming partial completion results.</returns>
-		public async Task<PartialCompletionResult> CompleteStreamingAsync(
-			string prompt,
-			int count)
-		{
-			return await CompleteStreamingPrivateAsync(
-				prompt,
-				null,
-				count,
-				CompletionProperties,
-				Injectors,
-				QueueParameters,
-				default);
-		}
-		
 		/// <summary>
 		/// Creates multiple streaming completions using the provided prompt.
 		/// </summary>
@@ -425,7 +274,7 @@ namespace RCLargeLanguageModels
 		public async Task<PartialCompletionResult> CompleteStreamingAsync(
 			string prompt,
 			int count,
-			CancellationToken cancellationToken)
+			CancellationToken cancellationToken = default)
 		{
 			return await CompleteStreamingPrivateAsync(
 				prompt,
@@ -434,32 +283,7 @@ namespace RCLargeLanguageModels
 				CompletionProperties,
 				Injectors,
 				QueueParameters,
-				cancellationToken);
-		}
-
-		/// <summary>
-		/// Creates a streaming completion with all parameters.
-		/// </summary>
-		/// <param name="prompt">The prompt to send to the model.</param>
-		/// <param name="properties">The custom completion properties to use for this request.</param>
-		/// <param name="injectors">Additional property injectors to use for this request.</param>
-		/// <param name="queueParameters">The custom queue parameters to use for this request.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <returns>The streaming partial completion result.</returns>
-		public async Task<PartialCompletionResult> CompleteStreamingAsync(
-			string prompt,
-			OptionalParameter<IEnumerable<CompletionProperty>> properties = null,
-			OptionalParameter<IEnumerable<ILLModelPropertyInjector>> injectors = null,
-			OptionalParameter<TaskQueueParameters> queueParameters = null,
-			CancellationToken cancellationToken = default)
-		{
-			return await CompleteStreamingPrivateAsync(
-				prompt,
-				null,
-				1,
-				properties.GetValue(CompletionProperties),
-				injectors.GetValue(Injectors),
-				queueParameters.GetValue(QueueParameters),
+				false,
 				cancellationToken);
 		}
 
@@ -471,46 +295,29 @@ namespace RCLargeLanguageModels
 		/// <param name="properties">The custom completion properties to use for this request.</param>
 		/// <param name="injectors">Additional property injectors to use for this request.</param>
 		/// <param name="queueParameters">The custom queue parameters to use for this request.</param>
+		/// <param name="validateCapabilities">Whether to validate the model's and client's capabilities before making this request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <returns>The streaming partial completion results.</returns>
 		public async Task<PartialCompletionResult> CompleteStreamingAsync(
 			string prompt,
-			int count,
-			OptionalParameter<IEnumerable<CompletionProperty>> properties = null,
-			OptionalParameter<IEnumerable<ILLModelPropertyInjector>> injectors = null,
-			OptionalParameter<TaskQueueParameters> queueParameters = null,
+			int count = 1,
+			IEnumerable<CompletionProperty> properties = null,
+			IEnumerable<ILLModelPropertyInjector> injectors = null,
+			TaskQueueParameters queueParameters = null,
+			bool validateCapabilities = false,
 			CancellationToken cancellationToken = default)
 		{
 			return await CompleteStreamingPrivateAsync(
 				prompt,
 				null,
 				count,
-				properties.GetValue(CompletionProperties),
-				injectors.GetValue(Injectors),
-				queueParameters.GetValue(QueueParameters),
+				properties ?? CompletionProperties,
+				injectors ?? Injectors,
+				queueParameters ?? QueueParameters,
+				validateCapabilities,
 				cancellationToken);
 		}
 
-		/// <summary>
-		/// Creates a streaming suffix completion (fill-in-the-middle) using the provided prompt and suffix.
-		/// </summary>
-		/// <param name="prompt">The prompt to send to the model.</param>
-		/// <param name="suffix">The suffix for fill-in-the-middle completion.</param>
-		/// <returns>The streaming partial completion result.</returns>
-		public async Task<PartialCompletionResult> CompleteStreamingAsync(
-			string prompt,
-			string suffix)
-		{
-			return await CompleteStreamingPrivateAsync(
-				prompt,
-				suffix,
-				1,
-				CompletionProperties,
-				Injectors,
-				QueueParameters,
-				default);
-		}
-		
 		/// <summary>
 		/// Creates a streaming suffix completion (fill-in-the-middle) using the provided prompt and suffix.
 		/// </summary>
@@ -521,7 +328,7 @@ namespace RCLargeLanguageModels
 		public async Task<PartialCompletionResult> CompleteStreamingAsync(
 			string prompt,
 			string suffix,
-			CancellationToken cancellationToken)
+			CancellationToken cancellationToken = default)
 		{
 			return await CompleteStreamingPrivateAsync(
 				prompt,
@@ -530,31 +337,10 @@ namespace RCLargeLanguageModels
 				CompletionProperties,
 				Injectors,
 				QueueParameters,
+				false,
 				cancellationToken);
 		}
 
-		/// <summary>
-		/// Creates multiple streaming suffix completions (fill-in-the-middle) using the provided prompt and suffix.
-		/// </summary>
-		/// <param name="prompt">The prompt to send to the model.</param>
-		/// <param name="suffix">The suffix for fill-in-the-middle completion.</param>
-		/// <param name="count">The number of completions to generate.</param>
-		/// <returns>The streaming partial completion results.</returns>
-		public async Task<PartialCompletionResult> CompleteStreamingAsync(
-			string prompt,
-			string suffix,
-			int count)
-		{
-			return await CompleteStreamingPrivateAsync(
-				prompt,
-				suffix,
-				count,
-				CompletionProperties,
-				Injectors,
-				QueueParameters,
-				default);
-		}
-		
 		/// <summary>
 		/// Creates multiple streaming suffix completions (fill-in-the-middle) using the provided prompt and suffix.
 		/// </summary>
@@ -567,7 +353,7 @@ namespace RCLargeLanguageModels
 			string prompt,
 			string suffix,
 			int count,
-			CancellationToken cancellationToken)
+			CancellationToken cancellationToken = default)
 		{
 			return await CompleteStreamingPrivateAsync(
 				prompt,
@@ -576,34 +362,7 @@ namespace RCLargeLanguageModels
 				CompletionProperties,
 				Injectors,
 				QueueParameters,
-				cancellationToken);
-		}
-
-		/// <summary>
-		/// Creates a streaming suffix completion (fill-in-the-middle) with all parameters.
-		/// </summary>
-		/// <param name="prompt">The prompt to send to the model.</param>
-		/// <param name="suffix">The suffix for fill-in-the-middle completion.</param>
-		/// <param name="properties">The custom completion properties to use for this request.</param>
-		/// <param name="injectors">Additional property injectors to use for this request.</param>
-		/// <param name="queueParameters">The custom queue parameters to use for this request.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <returns>The streaming partial completion result.</returns>
-		public async Task<PartialCompletionResult> CompleteStreamingAsync(
-			string prompt,
-			string suffix,
-			OptionalParameter<IEnumerable<CompletionProperty>> properties = null,
-			OptionalParameter<IEnumerable<ILLModelPropertyInjector>> injectors = null,
-			OptionalParameter<TaskQueueParameters> queueParameters = null,
-			CancellationToken cancellationToken = default)
-		{
-			return await CompleteStreamingPrivateAsync(
-				prompt,
-				suffix,
-				1,
-				properties.GetValue(CompletionProperties),
-				injectors.GetValue(Injectors),
-				queueParameters.GetValue(QueueParameters),
+				false,
 				cancellationToken);
 		}
 
@@ -616,24 +375,27 @@ namespace RCLargeLanguageModels
 		/// <param name="properties">The custom completion properties to use for this request.</param>
 		/// <param name="injectors">Additional property injectors to use for this request.</param>
 		/// <param name="queueParameters">The custom queue parameters to use for this request.</param>
+		/// <param name="validateCapabilities">Whether to validate the model's and client's capabilities before making this request.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <returns>The streaming partial completion results.</returns>
 		public async Task<PartialCompletionResult> CompleteStreamingAsync(
 			string prompt,
 			string suffix,
-			int count,
-			OptionalParameter<IEnumerable<CompletionProperty>> properties = null,
-			OptionalParameter<IEnumerable<ILLModelPropertyInjector>> injectors = null,
-			OptionalParameter<TaskQueueParameters> queueParameters = null,
+			int count = 1,
+			IEnumerable<CompletionProperty> properties = null,
+			IEnumerable<ILLModelPropertyInjector> injectors = null,
+			TaskQueueParameters queueParameters = null,
+			bool validateCapabilities = false,
 			CancellationToken cancellationToken = default)
 		{
 			return await CompleteStreamingPrivateAsync(
 				prompt,
 				suffix,
 				count,
-				properties.GetValue(CompletionProperties),
-				injectors.GetValue(Injectors),
-				queueParameters.GetValue(QueueParameters),
+				properties ?? CompletionProperties,
+				injectors ?? Injectors,
+				queueParameters ?? QueueParameters,
+				validateCapabilities,
 				cancellationToken);
 		}
 	}

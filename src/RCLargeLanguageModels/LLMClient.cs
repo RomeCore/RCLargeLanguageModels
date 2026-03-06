@@ -82,6 +82,11 @@ namespace RCLargeLanguageModels
 		public virtual string GenerateCompletion => BaseUri + "/api/generate";
 
 		/// <summary>
+		/// The completed URI for generating embeddings.
+		/// </summary>
+		public virtual string GenerateEmbedding => BaseUri + "/api/embeddings";
+
+		/// <summary>
 		/// Creates a new instance of the <see cref="LLMEndpointConfig"/> class.
 		/// </summary>
 		/// <param name="baseUri">The base URI of the endpoint.</param>

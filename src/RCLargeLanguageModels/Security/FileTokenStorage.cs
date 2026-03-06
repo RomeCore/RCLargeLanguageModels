@@ -4,10 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
 using Serilog;
 
 namespace RCLargeLanguageModels.Security
@@ -148,12 +145,12 @@ namespace RCLargeLanguageModels.Security
 				return new Dictionary<string, EncryptedData>();
 
 			var json = File.ReadAllText(StoragePath);
-			return JsonConvert.DeserializeObject<Dictionary<string, EncryptedData>>(json);
+			return JsonSerializer.Deserialize<Dictionary<string, EncryptedData>>(json);
 		}
 
 		private void SaveTokens(Dictionary<string, EncryptedData> tokens)
 		{
-			var json = JsonConvert.SerializeObject(tokens, Formatting.Indented);
+			var json = JsonSerializer.Serialize(tokens, options: new JsonSerializerOptions { WriteIndented = true });
 			File.WriteAllText(StoragePath, json);
 		}
 

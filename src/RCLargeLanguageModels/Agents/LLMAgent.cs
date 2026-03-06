@@ -19,7 +19,7 @@ namespace RCLargeLanguageModels.Agents
 		/// Gets the planner agent that will be used to plan the task execution.
 		/// </summary>
 		/// <returns>The planner agent or null if planning not needed.</returns>
-		protected virtual LLMToolExecutionAgent? GetPlanner()
+		protected virtual LLMToolExecutionAgentBase? GetPlanner()
 		{
 			return null;
 		}
@@ -32,7 +32,7 @@ namespace RCLargeLanguageModels.Agents
 		/// <returns>The generated assistant message as an asynchronous operation.</returns>
 		public async Task<IAssistantMessage> Execute(IUserMessage userMessage, CancellationToken cancellationToken = default)
 		{
-			LLMToolExecutionAgent planner = null!;
+			LLMToolExecutionAgentBase planner = null!;
 
 			return new AssistantMessage("");
 		}

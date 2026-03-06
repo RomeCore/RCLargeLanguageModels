@@ -1,5 +1,5 @@
 ﻿using System;
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 namespace RCLargeLanguageModels.Statistics
 {
@@ -11,13 +11,13 @@ namespace RCLargeLanguageModels.Statistics
 		/// <summary>
 		/// Gets or sets the number of input tokens used. A value of -1 indicates unknown usage.
 		/// </summary>
-		[JsonProperty("inputTokens")]
+		[JsonPropertyName("inputTokens")]
 		public int InputTokens { get; set; }
 
 		/// <summary>
 		/// Gets or sets the number of output tokens used. A value of -1 indicates unknown usage.
 		/// </summary>
-		[JsonProperty("outputTokens")]
+		[JsonPropertyName("outputTokens")]
 		public int OutputTokens { get; set; }
 
 		/// <summary>
@@ -29,7 +29,7 @@ namespace RCLargeLanguageModels.Statistics
 		/// <summary>
 		/// Gets or sets the number of times this model has been used.
 		/// </summary>
-		[JsonProperty("usageCount")]
+		[JsonPropertyName("usageCount")]
 		public int UsageCount { get; set; }
 
 		/// <summary>

@@ -5,10 +5,9 @@ using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using RCLargeLanguageModels.Json.Schema;
 
 namespace RCLargeLanguageModels.Json
@@ -23,41 +22,53 @@ namespace RCLargeLanguageModels.Json
 			new JsonSchemaObjectGenerator()
 		};
 
-		private static JObject Populate(JObject schema, JsonMemberAccessor member)
+		private static JsonObject Populate(JsonObject schema, JsonMemberAccessor member)
 		{
 			if (member.Attributes.Get<DescriptionAttribute>()?.Description is string desc)
 				schema["description"] = desc;
 			if (member.Nullable)
-				schema["type"] = new JArray { schema["type"], "null" };
+			{
+				var prevType = schema["type"];
+
+				if (prevType is JsonArray typeArray)
+				{
+					typeArray.Add("null");
+				}
+				else
+				{
+					schema.Remove("type");
+					schema["type"] = new JsonArray { prevType, "null" };
+				}
+			}
 			if (member.DefaultValue != null)
-				schema["default"] = JToken.FromObject(member.DefaultValue);
+				schema["default"] = JsonSerializer.SerializeToNode(member.DefaultValue);
 
 			return schema;
 		}
 
-		public static JObject Generate(JsonMemberAccessor member)
+		public static JsonObject Generate(JsonMemberAccessor member)
 		{
 			foreach (var generator in _generators)
-				if (generator.GenerateSchema(member) is JObject result)
+				if (generator.GenerateSchema(member) is JsonObject result)
 					return Populate(result, member);
 
-			return new JObject
+			return new JsonObject
 			{
 				["type"] = "object"
 			};
 		}
 
-		public static JObject Generate(Type type)
+		public static JsonObject Generate(Type type)
 		{
 			return Generate(new JsonMemberAccessor(type));
 		}
 
-		public static JObject Generate(MethodInfo method)
+		public static JsonObject Generate(MethodInfo method)
 		{
 			var methodAccessor = new JsonMemberAccessor(method);
-			var propertiesSchema = new JObject();
-			var requiredProperties = new JArray();
-			var resultSchema = new JObject
+			var propertiesSchema = new JsonObject();
+			var requiredProperties = new JsonArray();
+			var resultSchema = new JsonObject
 			{
 				["type"] = "object",
 				["properties"] = propertiesSchema,

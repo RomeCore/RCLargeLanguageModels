@@ -1,13 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
-using System.Net.Mail;
-using Newtonsoft.Json;
 using RCLargeLanguageModels.Completions;
 using RCLargeLanguageModels.Messages.Attachments;
 using RCLargeLanguageModels.Metadata;
-using RCLargeLanguageModels.Tasks;
 using RCLargeLanguageModels.Tools;
 
 namespace RCLargeLanguageModels.Messages

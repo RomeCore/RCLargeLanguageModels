@@ -11,6 +11,9 @@ namespace RCLargeLanguageModels.Metadata
 	{
 		private readonly ImmutableUniqueTypeDictionary<IMetadata> _dict;
 
+		/// <summary>
+		/// Gets the number of elements in the metadata collection.
+		/// </summary>
 		public int Count => _dict.Count;
 
 		/// <summary>
@@ -18,16 +21,27 @@ namespace RCLargeLanguageModels.Metadata
 		/// </summary>
 		public static MetadataCollection Empty { get; } = new MetadataCollection();
 
+		/// <summary>
+		/// Initializes a new instance of <see cref="MetadataCollection"/> class.
+		/// </summary>
 		public MetadataCollection()
 		{
 			_dict = new ImmutableUniqueTypeDictionary<IMetadata>();
 		}
-		
+
+		/// <summary>
+		/// Initializes a new instance of <see cref="MetadataCollection"/> class with the specified metadata items.
+		/// </summary>
+		/// <param name="metadatas">The metadata items to add to the collection.</param>
 		public MetadataCollection(IEnumerable<IMetadata> metadatas)
 		{
 			_dict = new ImmutableUniqueTypeDictionary<IMetadata>(metadatas);
 		}
-		
+
+		/// <summary>
+		/// Initializes a new instance of <see cref="MetadataCollection"/> class with the specified metadata items.
+		/// </summary>
+		/// <param name="metadatas">The metadata items to add to the collection.</param>
 		public MetadataCollection(params IMetadata[] metadatas)
 		{
 			_dict = new ImmutableUniqueTypeDictionary<IMetadata>(metadatas);

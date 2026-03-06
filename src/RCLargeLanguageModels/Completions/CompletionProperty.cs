@@ -17,7 +17,16 @@ namespace RCLargeLanguageModels.Completions
 		/// <summary>
 		/// Gets the value of this completion property. The type depends on the specific implementation.
 		/// </summary>
-		public abstract object RawValue { get; }
+		public object RawValue { get; }
+
+		/// <summary>
+		/// Initializes a new instance of the <see cref="CompletionProperty"/> class.
+		/// </summary>
+		/// <param name="value">The value of this completion property. The type depends on the specific implementation.</param>
+		public CompletionProperty(object value)
+		{
+			RawValue = value;
+		}
 	}
 
 	/// <summary>
@@ -26,12 +35,19 @@ namespace RCLargeLanguageModels.Completions
 	/// <typeparam name="T">The type of the completion property.</typeparam>
 	public abstract class CompletionProperty<T> : CompletionProperty
 	{
-		public sealed override object RawValue => Value;
-
 		/// <summary>
 		/// Gets or sets the value of this completion property.
 		/// </summary>
-		public abstract T Value { get; }
+		public T Value { get; }
+
+		/// <summary>
+		/// Initializes a new instance of the <see cref="CompletionProperty"/> class.
+		/// </summary>
+		/// <param name="value">The value of this completion property. The type depends on the specific implementation.</param>
+		public CompletionProperty(T value) : base(value)
+		{
+			Value = value;
+		}
 	}
 
 	/// <summary>
@@ -49,17 +65,14 @@ namespace RCLargeLanguageModels.Completions
 		/// </summary>
 		public abstract float MaxValue { get; }
 
-		public sealed override float Value { get; }
-
 		/// <summary>
 		/// Initializes a new instance of the <see cref="FloatCompletionProperty"/> class.
 		/// </summary>
 		/// <param name="value">The initial value of this completion property.</param>
-		public FloatCompletionProperty(float value)
+		public FloatCompletionProperty(float value) : base(value)
 		{
 			if (value < MinValue || value > MaxValue)
 				throw new ArgumentOutOfRangeException(nameof(value));
-			Value = value;
 		}
 
 		/// <summary>
@@ -89,17 +102,14 @@ namespace RCLargeLanguageModels.Completions
 		/// </summary>
 		public abstract int MaxValue { get; }
 
-		public sealed override int Value { get; }
-
 		/// <summary>
 		/// Initializes a new instance of the <see cref="IntCompletionProperty"/> class.
 		/// </summary>
 		/// <param name="value">The initial value of this completion property.</param>
-		public IntCompletionProperty(int value)
+		public IntCompletionProperty(int value) : base(value)
 		{
 			if (value < MinValue || value > MaxValue)
 				throw new ArgumentOutOfRangeException(nameof(value));
-			Value = value;
 		}
 	}
 }

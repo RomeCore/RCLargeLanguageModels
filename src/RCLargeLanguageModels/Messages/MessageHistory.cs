@@ -4,9 +4,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
 
 namespace RCLargeLanguageModels.Messages
 {
@@ -15,7 +12,6 @@ namespace RCLargeLanguageModels.Messages
 	/// <summary>
 	/// Represents a thread-safe collection of chat messages, including both system-generated and user messages.
 	/// </summary> 
-	[JsonArray(ItemTypeNameHandling = TypeNameHandling.Auto)]
 	public class MessageHistory : IEnumerable<IMessage>, INotifyCollectionChanged
 	{
 		private readonly List<IMessage> _messages;

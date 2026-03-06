@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace RCLargeLanguageModels.Clients
 {
@@ -12,25 +11,25 @@ namespace RCLargeLanguageModels.Clients
 	/// </summary>
 	public class LLModelDescriptorTrackedJSONConverter : JsonConverter<LLModelDescriptorTracked>
 	{
-		public override LLModelDescriptorTracked ReadJson(JsonReader reader, Type objectType, LLModelDescriptorTracked existingValue, bool hasExistingValue, JsonSerializer serializer)
+		public override LLModelDescriptorTracked Read(ref Utf8JsonReader reader, Type objectType, JsonSerializerOptions options)
 		{
-			if (reader.TokenType == JsonToken.String)
+			if (reader.TokenType == JsonTokenType.String)
 			{
-				string fullName = (string)reader.Value;
+				string fullName = reader.GetString();
 				return LLModelDescriptorTracked.Get(fullName);
 			}
 			return null;
 		}
 
-		public override void WriteJson(JsonWriter writer, LLModelDescriptorTracked value, JsonSerializer serializer)
+		public override void Write(Utf8JsonWriter writer, LLModelDescriptorTracked value, JsonSerializerOptions options)
 		{
 			if (value != null)
 			{
-				writer.WriteValue(value.FullName);
+				writer.WriteStringValue(value.FullName);
 			}
 			else
 			{
-				writer.WriteNull();
+				writer.WriteNullValue();
 			}
 		}
 	}

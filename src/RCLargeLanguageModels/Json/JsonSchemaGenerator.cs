@@ -12,17 +12,27 @@ using RCLargeLanguageModels.Json.Schema;
 
 namespace RCLargeLanguageModels.Json
 {
+	/// <summary>
+	/// The main class for JSON schema generation.
+	/// </summary>
 	public static class JsonSchemaGenerator
 	{
 		private static readonly JsonSchemaGeneratorBase[] _generators = new JsonSchemaGeneratorBase[]
 		{
+			new JsonSchemaMethodGenerator(),
 			new JsonSchemaDictionaryGenerator(),
 			new JsonSchemaArrayGenerator(),
 			new JsonSchemaValueGenerator(),
 			new JsonSchemaObjectGenerator()
 		};
 
-		private static JsonObject Populate(JsonObject schema, JsonMemberAccessor member)
+		private static readonly JsonSchemaGeneratorProperties _defaultProperties = new JsonSchemaGeneratorProperties
+		{
+
+		};
+
+		private static JsonObject Populate(JsonObject schema, JsonMemberAccessor member,
+			JsonSchemaGeneratorProperties properties)
 		{
 			if (member.Attributes.Get<DescriptionAttribute>()?.Description is string desc)
 				schema["description"] = desc;
@@ -40,59 +50,25 @@ namespace RCLargeLanguageModels.Json
 					schema["type"] = new JsonArray { prevType, "null" };
 				}
 			}
-			if (member.DefaultValue != null)
+			if (member.HasDefaultValue)
 				schema["default"] = JsonSerializer.SerializeToNode(member.DefaultValue);
 
 			return schema;
 		}
 
-		public static JsonObject Generate(JsonMemberAccessor member)
+		public static JsonObject Generate(JsonMemberAccessor member,
+			JsonSchemaGeneratorProperties? properties = null)
 		{
+			properties ??= _defaultProperties;
+
 			foreach (var generator in _generators)
-				if (generator.GenerateSchema(member) is JsonObject result)
-					return Populate(result, member);
+				if (generator.GenerateSchema(member, properties) is JsonObject result)
+					return Populate(result, member, properties);
 
 			return new JsonObject
 			{
 				["type"] = "object"
 			};
-		}
-
-		public static JsonObject Generate(Type type)
-		{
-			return Generate(new JsonMemberAccessor(type));
-		}
-
-		public static JsonObject Generate(MethodInfo method)
-		{
-			var methodAccessor = new JsonMemberAccessor(method);
-			var propertiesSchema = new JsonObject();
-			var requiredProperties = new JsonArray();
-			var resultSchema = new JsonObject
-			{
-				["type"] = "object",
-				["properties"] = propertiesSchema,
-				["required"] = requiredProperties,
-				["allow_additional_properties"] = false
-			};
-
-			var parameters = method.GetParameters();
-			foreach (var parameter in parameters)
-			{
-				if (parameter.ParameterType == typeof(CancellationToken))
-					continue;
-
-				var parameterAccessor = new JsonMemberAccessor(parameter);
-				if (!parameterAccessor.Include)
-					continue;
-
-				var parameterSchema = Generate(parameterAccessor);
-				propertiesSchema.Add(parameterAccessor.Name, parameterSchema);
-				if (parameterAccessor.Required)
-					requiredProperties.Add(parameterAccessor.Name);
-			}
-
-			return Populate(resultSchema, methodAccessor);
 		}
 	}
 }

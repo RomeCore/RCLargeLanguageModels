@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using RCLargeLanguageModels.Completions;
+using RCLargeLanguageModels.Exceptions;
 using RCLargeLanguageModels.Formats;
 using RCLargeLanguageModels.Messages;
 using RCLargeLanguageModels.Tools;

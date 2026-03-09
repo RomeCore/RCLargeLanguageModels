@@ -6,12 +6,9 @@
 	public sealed class ThinkProperty : CompletionProperty<bool>
 	{
 		public override string Name => "think";
-		public override bool Value { get; }
 
-		public ThinkProperty(bool value)
+		public ThinkProperty(bool value) : base(value)
 		{
-			Value = value;
 		}
 	}
-
 }

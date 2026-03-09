@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -9,7 +10,7 @@ namespace RCLargeLanguageModels.Embeddings
 	/// <summary>
 	/// Represents a dense vector embedding of a text segment or token.
 	/// </summary>
-	public class Embedding : IEquatable<Embedding>
+	public class Embedding : IEquatable<Embedding>, IReadOnlyList<float>
 	{
 		private const float Tolerance = 1e-8f;
 
@@ -20,6 +21,7 @@ namespace RCLargeLanguageModels.Embeddings
 		/// The embedding vector values as array.
 		/// </summary>
 		public ImmutableArray<float> Vector { get; }
+		float IReadOnlyList<float>.this[int index] => Vector[index];
 
 		/// <summary>
 		/// The source model that embedding was created with. Can be <see langword="null"/> if unknown.
@@ -30,6 +32,12 @@ namespace RCLargeLanguageModels.Embeddings
 		/// The count of dimensions of the embedding vector.
 		/// </summary>
 		public int Dimensions => Vector.Length;
+		int IReadOnlyCollection<float>.Count => Dimensions;
+
+		/// <summary>
+		/// The size in bytes of the embedding vector.
+		/// </summary>
+		public int ByteSize => Vector.Length * sizeof(float);
 
 		/// <summary>
 		/// Gets the length of the embedding vector.
@@ -50,8 +58,6 @@ namespace RCLargeLanguageModels.Embeddings
 		/// Get the normalized version of embedding.
 		/// </summary>
 		public Embedding Normalized => _normalizedLazy.Value;
-
-
 
 		private static Lazy<float> CreateLazyLength(ImmutableArray<float> vector)
 		{
@@ -208,6 +214,8 @@ namespace RCLargeLanguageModels.Embeddings
 		public static implicit operator Embedding(List<float> vector) => new Embedding(vector);
 		public static implicit operator Embedding(float[] vector) => new Embedding(vector);
 		public static implicit operator ImmutableArray<float>(Embedding embedding) => embedding.Vector;
+		public static implicit operator ReadOnlySpan<float>(Embedding embedding) => embedding.Vector.AsSpan();
+		public static implicit operator ReadOnlyMemory<float>(Embedding embedding) => embedding.Vector.AsMemory();
 
 
 
@@ -222,6 +230,19 @@ namespace RCLargeLanguageModels.Embeddings
 				sourceModelStr += ", " + SourceModel.DisplayName;
 
 			return $"Embedding: Dimensions={Dimensions}, Vector=[{vectorString}]{sourceModelStr}";
+		}
+
+		/// <summary>
+		/// Returns an enumerator that iterates through the embedding vector.
+		/// </summary>
+		/// <returns>An enumerator.</returns>
+		public IEnumerator<float> GetEnumerator()
+		{
+			return ((IEnumerable<float>)Vector).GetEnumerator();
+		}
+		IEnumerator IEnumerable.GetEnumerator()
+		{
+			return GetEnumerator();
 		}
 	}
 }

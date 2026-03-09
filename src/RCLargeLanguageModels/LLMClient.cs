@@ -1,61 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
+﻿using System.Net.Http;
 using System.Threading;
-using System.Threading.Tasks;
 using RCLargeLanguageModels.Clients;
-using RCLargeLanguageModels.Messages;
 using RCLargeLanguageModels.Formats;
-using RCLargeLanguageModels.Security;
-using RCLargeLanguageModels.Tools;
-using Serilog;
-using System.Diagnostics.Metrics;
 using RCLargeLanguageModels.Metadata;
-using RCLargeLanguageModels.Reflection;
 
 namespace RCLargeLanguageModels
 {
-	/// <summary>
-	/// Marks an attribute to be registered in the <see cref="LLMClientRegistry"/>.
-	/// </summary>
-	[AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
-	public class LLMClientAttribute : Reflector.DefineBaseAttribute
-	{
-	}
-
-	/// <summary>
-	/// Marks a constructor that should be used to create a new instance of the <see cref="LLMClient"/> class in the <see cref="LLMClientRegistry"/>.
-	/// </summary>
-	/// <remarks>
-	/// All parameters of the constructor must be marked with the <see cref="LLMAPIKeyAttribute"/> attribute and be of type <see cref="string"/> or <see cref="ITokenAccessor"/>.
-	/// </remarks>
-	[AttributeUsage(AttributeTargets.Constructor, AllowMultiple = false)]
-	public class LLMClientConstructorAttribute : Reflector.DefineBaseAttribute
-	{
-	}
-
-	/// <summary>
-	/// Marks a constructor parameter to be injected by the <see cref="LLMClientRegistry"/> to retrieve the API key.
-	/// </summary>
-	[AttributeUsage(AttributeTargets.Parameter, AllowMultiple = false)]
-	public class LLMAPIKeyAttribute : Reflector.DefineBaseAttribute
-	{
-		/// <summary>
-		/// Gets the API key ID associated with the attribute.
-		/// </summary>
-		public string ApiKeyId { get; }
-
-		/// <summary>
-		/// Initializes a new instance of the <see cref="LLMAPIKeyAttribute"/> class with the specified API key ID.
-		/// </summary>
-		/// <param name="apiKeyId">The API key ID.</param>
-		public LLMAPIKeyAttribute(string apiKeyId)
-		{
-			ApiKeyId = apiKeyId;
-		}
-	}
-
 	/// <summary>
 	/// Defines an endpoint configuration for a large language model (LLM) client.
 	/// </summary>
@@ -101,6 +51,11 @@ namespace RCLargeLanguageModels
 	/// </summary>
 	public abstract partial class LLMClient : IMetadataProvider
 	{
+		/// <summary>
+		/// Gets the empty instance of the <see cref="LLMClient"/> class that returns a dummy content for all operations.
+		/// </summary>
+		public static LLMClient Empty { get; } = new EmptyLLMClient();
+
 		/// <summary>
 		/// Gets the name of the LLM client.
 		/// </summary>

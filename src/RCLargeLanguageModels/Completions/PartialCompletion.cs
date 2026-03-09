@@ -137,7 +137,7 @@ namespace RCLargeLanguageModels.Completions
 			PartialMetadata = _partialMetadata.AsReadOnly();
 
 			if (_metadata != null && completionState != CompletionState.Incomplete)
-				_metadata = new MetadataCollection(completionMetadata);
+				_metadata = new MetadataCollection(completionMetadata ?? Enumerable.Empty<IMetadata>());
 			else
 				_metadata = MetadataCollection.Empty;
 
@@ -189,7 +189,7 @@ namespace RCLargeLanguageModels.Completions
 
 				if (!delta.NewPartialMetadata.IsNullOrEmpty())
 				{
-					_partialMetadata.AddRange(delta.NewPartialMetadata);
+					_partialMetadata.AddRange(delta.NewPartialMetadata!);
 					PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PartialMetadata)));
 				}
 

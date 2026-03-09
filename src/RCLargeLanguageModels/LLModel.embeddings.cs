@@ -47,44 +47,6 @@ namespace RCLargeLanguageModels
 		}
 
 		/// <summary>
-		/// Creates an embedding for the specified text.
-		/// </summary>
-		/// <param name="input">The text to embed.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <returns>The <see cref="EmbeddingResult"/> containing the generated embedding.</returns>
-		public Task<EmbeddingResult> EmbedAsync(
-			string input,
-			CancellationToken cancellationToken = default)
-		{
-			return EmbedPrivateAsync(
-				new[] { input },
-				CompletionProperties,
-				Injectors,
-				QueueParameters,
-				false,
-				cancellationToken);
-		}
-
-		/// <summary>
-		/// Creates embeddings for the specified texts.
-		/// </summary>
-		/// <param name="inputs">The texts to embed.</param>
-		/// <param name="cancellationToken">The cancellation token.</param>
-		/// <returns>The <see cref="EmbeddingResult"/> containing the generated embeddings.</returns>
-		public Task<EmbeddingResult> EmbedAsync(
-			IEnumerable<string> inputs,
-			CancellationToken cancellationToken = default)
-		{
-			return EmbedPrivateAsync(
-				inputs,
-				CompletionProperties,
-				Injectors,
-				QueueParameters,
-				false,
-				cancellationToken);
-		}
-
-		/// <summary>
 		/// Creates embeddings with all parameters.
 		/// </summary>
 		/// <param name="inputs">The texts to embed.</param>

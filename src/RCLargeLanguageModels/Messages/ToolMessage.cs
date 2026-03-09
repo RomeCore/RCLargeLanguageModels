@@ -14,9 +14,24 @@ namespace RCLargeLanguageModels.Messages
 		public Role Role => Role.Tool;
 
 		/// <summary>
+		/// The result of the tool execution.
+		/// </summary>
+		public ToolResult Result { get; }
+
+		/// <summary>
+		/// The status of the tool execution.
+		/// </summary>
+		public ToolResultStatus Status => Result.Status;
+
+		/// <summary>
 		/// The tool message content.
 		/// </summary>
-		public string Content { get; }
+		public string Content => Result.Content;
+
+		/// <summary>
+		/// Gets the attachments list of the tool message.
+		/// </summary>
+		public IReadOnlyList<IAttachment> Attachments => Result.Attachments;
 
 		/// <summary>
 		/// The tool call identifier used to response to the right tool call.
@@ -31,11 +46,6 @@ namespace RCLargeLanguageModels.Messages
 		public string ToolName { get; }
 
 		/// <summary>
-		/// Gets the attachments list of the tool message.
-		/// </summary>
-		public IReadOnlyList<IAttachment> Attachments { get; }
-
-		/// <summary>
 		/// Creates a new instance of <see cref="ToolMessage"/> class.
 		/// </summary>
 		/// <param name="content">The content of the tool message.</param>
@@ -43,10 +53,11 @@ namespace RCLargeLanguageModels.Messages
 		/// <param name="toolName">The source tool name.</param>
 		public ToolMessage(string content, string toolCallId, string toolName)
 		{
-			Content = content ?? throw new ArgumentNullException(nameof(content));
+			Result = new ToolResult(ToolResultStatus.Success,
+				content ?? throw new ArgumentNullException(nameof(content)),
+				Array.Empty<IAttachment>());
 			ToolCallId = toolCallId ?? throw new ArgumentNullException(nameof(toolCallId));
 			ToolName = toolName ?? throw new ArgumentNullException(nameof(toolName));
-			Attachments = Array.Empty<IAttachment>();
 		}
 
 		/// <summary>
@@ -57,12 +68,9 @@ namespace RCLargeLanguageModels.Messages
 		/// <param name="toolName">The source tool name.</param>
 		public ToolMessage(ToolResult result, string toolCallId, string toolName)
 		{
-			if (result == null) throw new ArgumentNullException(nameof(result));
-
-			Content = result.Content;
+			Result = result ?? throw new ArgumentNullException(nameof(result));
 			ToolCallId = toolCallId ?? throw new ArgumentNullException(nameof(toolCallId));
 			ToolName = toolName ?? throw new ArgumentNullException(nameof(toolName));
-			Attachments = result.Attachments.ToImmutableList();
 		}
 
 		/// <summary>
@@ -74,10 +82,11 @@ namespace RCLargeLanguageModels.Messages
 		/// <param name="attachments">The attachments of the message.</param>
 		public ToolMessage(string content, string toolCallId, string toolName, IEnumerable<IAttachment>? attachments)
 		{
-			Content = content ?? throw new ArgumentNullException(nameof(content));
+			Result = new ToolResult(ToolResultStatus.Success,
+				content ?? throw new ArgumentNullException(nameof(content)),
+				attachments?.ToImmutableList() ?? throw new ArgumentNullException(nameof(attachments)));
 			ToolCallId = toolCallId ?? throw new ArgumentNullException(nameof(toolCallId));
 			ToolName = toolName ?? throw new ArgumentNullException(nameof(toolName));
-			Attachments = attachments?.ToImmutableList() ?? throw new ArgumentNullException(nameof(attachments));
 		}
 	}
 }

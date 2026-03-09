@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using RCLargeLanguageModels.Completions;
 using RCLargeLanguageModels.Embeddings;
+using RCLargeLanguageModels.Exceptions;
 
 namespace RCLargeLanguageModels
 {
@@ -22,7 +23,7 @@ namespace RCLargeLanguageModels
 		protected abstract Task<EmbeddingResult> CreateEmbeddingsOverrideAsync(
 			LLModelDescriptor model,
 			IEnumerable<string> inputs,
-			IEnumerable<CompletionProperty>? properties,
+			IEnumerable<CompletionProperty> properties,
 			CancellationToken cancellationToken);
 
 		/// <summary>
@@ -30,6 +31,7 @@ namespace RCLargeLanguageModels
 		/// </summary>
 		/// <param name="model">The model descriptor.</param>
 		/// <param name="inputs">The input texts.</param>
+		/// <param name="properties">The completion properties.</param>
 		/// <param name="validateCapabilities">Whether to validate capabilities.</param>
 		/// <exception cref="ArgumentNullException"></exception>
 		/// <exception cref="ArgumentException"></exception>
@@ -37,6 +39,7 @@ namespace RCLargeLanguageModels
 		protected virtual void ValidateEmbeddingParameters(
 			LLModelDescriptor model,
 			ref IEnumerable<string> inputs,
+			ref IEnumerable<CompletionProperty> properties,
 			bool validateCapabilities)
 		{
 			if (model == null)
@@ -46,6 +49,8 @@ namespace RCLargeLanguageModels
 			if (inputsList.Count == 0)
 				throw new ArgumentException("Inputs cannot be empty.", nameof(inputs));
 			inputs = inputsList;
+
+			properties ??= Enumerable.Empty<CompletionProperty>();
 
 			if (validateCapabilities)
 			{
@@ -79,7 +84,7 @@ namespace RCLargeLanguageModels
 			CancellationToken cancellationToken = default)
 		{
 			IEnumerable<string> inputs = new[] { input };
-			ValidateEmbeddingParameters(model, ref inputs, validateCapabilities);
+			ValidateEmbeddingParameters(model, ref inputs, ref properties, validateCapabilities);
 
 			return await CreateEmbeddingsOverrideAsync(model, inputs, properties, cancellationToken);
 		}
@@ -100,7 +105,7 @@ namespace RCLargeLanguageModels
 			bool validateCapabilities = false,
 			CancellationToken cancellationToken = default)
 		{
-			ValidateEmbeddingParameters(model, ref inputs, validateCapabilities);
+			ValidateEmbeddingParameters(model, ref inputs, ref properties, validateCapabilities);
 
 			return await CreateEmbeddingsOverrideAsync(model, inputs, properties, cancellationToken);
 		}

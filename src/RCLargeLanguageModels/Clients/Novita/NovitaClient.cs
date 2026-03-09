@@ -24,7 +24,6 @@ namespace RCLargeLanguageModels.Clients.Novita
 	/// <summary>
 	/// The https://novita.ai/ client
 	/// </summary>
-	[LLMClient]
 	public class NovitaClient : OpenAICompatibleClient
 	{
 		/// <summary>
@@ -52,8 +51,7 @@ namespace RCLargeLanguageModels.Clients.Novita
 		/// Creates a new instance of the Novita client.
 		/// </summary>
 		/// <param name="tokenAccessor">The API key accessor for authentication.</param>
-		[LLMClientConstructor]
-		public NovitaClient([LLMAPIKey(ApiKeyName)] ITokenAccessor tokenAccessor) : base(BaseUri, tokenAccessor)
+		public NovitaClient(ITokenAccessor tokenAccessor) : base(BaseUri, tokenAccessor)
 		{
 		}
 

@@ -10,7 +10,8 @@ namespace RCLargeLanguageModels.Json.Schema
 	/// </summary>
 	public class JsonSchemaValueGenerator : JsonSchemaGeneratorBase
 	{
-		public override JsonObject? GenerateSchema(JsonMemberAccessor member)
+		public override JsonObject? GenerateSchema(JsonMemberAccessor member,
+			JsonSchemaGeneratorProperties generatorProperties)
 		{
 			var type = member.NullableUnderlyingType;
 			var typeSchema = new JsonObject();
@@ -83,9 +84,18 @@ namespace RCLargeLanguageModels.Json.Schema
 
 			if (member.Attributes.Get<RangeAttribute>() is RangeAttribute range)
 			{
-				if (range.Minimum is IComparable)
+				static bool IsSpecialMinValue(object value) =>
+					(value is int intVal && intVal == int.MinValue) ||
+					(value is double doubleVal && doubleVal == double.MinValue);
+
+				static bool IsSpecialMaxValue(object value) =>
+					(value is int intVal && intVal == int.MaxValue) ||
+					(value is double doubleVal && doubleVal == double.MaxValue);
+
+				if (!IsSpecialMinValue(range.Minimum))
 					typeSchema["minimum"] = JsonSerializer.SerializeToNode(range.Minimum);
-				if (range.Maximum is IComparable)
+
+				if (!IsSpecialMaxValue(range.Maximum))
 					typeSchema["maximum"] = JsonSerializer.SerializeToNode(range.Maximum);
 			}
 

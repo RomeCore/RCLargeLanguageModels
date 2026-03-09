@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using RCLargeLanguageModels.Json;
 using RCLargeLanguageModels.Json.Schema;
 using RCLargeLanguageModels.Tests.JsonAssertion;
 
@@ -137,7 +138,6 @@ namespace RCLargeLanguageModels.Tests
 					"EnumProperty": { "type": "string", "enum": ["Value1", "Value2", "Value3"] },
 					"NullableIntProperty": { "type": ["integer", "null"] }
 				  },
-				  "required": [],
 				  "additionalProperties": false
 				}
 				""";
@@ -166,7 +166,6 @@ namespace RCLargeLanguageModels.Tests
 					"DefaultValueProperty": { "type": "string", "default": "Default Value" },
 					"DescribedProperty": { "type": "string", "description": "This is a test description" }
 				  },
-				  "required": [],
 				  "additionalProperties": false
 				}
 				""";
@@ -196,7 +195,6 @@ namespace RCLargeLanguageModels.Tests
 					"JaggedArray": { "type": "array", "items": { "type": "array", "items": { "type": "integer" } } },
 					"NestedList": { "type": "array", "items": { "type": "array", "items": { "type": "string" } } }
 				  },
-				  "required": [],
 				  "additionalProperties": false
 				}
 				""";
@@ -242,7 +240,6 @@ namespace RCLargeLanguageModels.Tests
 					  "items": { "type": "integer" }
 					}
 				  },
-				  "required": [],
 				  "additionalProperties": false
 				}
 				""";
@@ -256,10 +253,9 @@ namespace RCLargeLanguageModels.Tests
 			// Arrange
 			var type = typeof(ComplexTypesClass);
 			var member = new JsonMemberAccessor(type);
-			var generator = new JsonSchemaObjectGenerator();
 
 			// Act
-			var schema = generator.GenerateSchema(member) as JsonObject;
+			var schema = JsonSchemaGenerator.Generate(member) as JsonObject;
 
 			// Assert
 			var expected = """
@@ -278,7 +274,6 @@ namespace RCLargeLanguageModels.Tests
 						"EnumProperty": { "type": "string", "enum": ["Value1", "Value2", "Value3"] },
 						"NullableIntProperty": { "type": ["integer", "null"] }
 					  },
-					  "required": [],
 					  "additionalProperties": false
 					},
 					"ListOfObjects": {
@@ -292,13 +287,11 @@ namespace RCLargeLanguageModels.Tests
 						  "DefaultValueProperty": { "type": "string", "default": "Default Value" },
 						  "DescribedProperty": { "type": "string", "description": "This is a test description" }
 						},
-						"required": [],
 						"additionalProperties": false
 					  }
 					},
 					"DictionaryProperty": { "type": "object", "additionalProperties": { "type": "integer" } }
 				  },
-				  "required": [],
 				  "additionalProperties": false
 				}
 				""";
@@ -312,10 +305,9 @@ namespace RCLargeLanguageModels.Tests
 			// Arrange
 			var type = typeof(AttributedPropertiesClass);
 			var member = new JsonMemberAccessor(type);
-			var generator = new JsonSchemaObjectGenerator();
 
 			// Act
-			var schema = generator.GenerateSchema(member);
+			var schema = JsonSchemaGenerator.Generate(member);
 
 			// Assert
 			var expected = """
@@ -339,10 +331,9 @@ namespace RCLargeLanguageModels.Tests
 		{
 			// Arrange
 			var member = new JsonMemberAccessor(typeof(TestEnum));
-			var generator = new JsonSchemaValueGenerator();
 
 			// Act
-			var schema = generator.GenerateSchema(member) as JsonObject;
+			var schema = JsonSchemaGenerator.Generate(member) as JsonObject;
 
 			// Assert
 			var expected = """
@@ -363,7 +354,7 @@ namespace RCLargeLanguageModels.Tests
 			var generator = new JsonSchemaArrayGenerator();
 
 			// Act
-			var schema = generator.GenerateSchema(member);
+			var schema = generator.GenerateSchema(member, new JsonSchemaGeneratorProperties());
 
 			// Assert
 			Assert.Null(schema);
@@ -372,32 +363,65 @@ namespace RCLargeLanguageModels.Tests
 		[Fact]
 		public void ValueGenerator_WithDateTimeTypes_AddsCorrectFormat()
 		{
-			// Arrange
-			var generator = new JsonSchemaValueGenerator();
-
 			// Act & Assert for DateTime
 			var dateTimeMember = new JsonMemberAccessor(typeof(DateTime));
-			var dateTimeSchema = generator.GenerateSchema(dateTimeMember) as JsonObject;
+			var dateTimeSchema = JsonSchemaGenerator.Generate(dateTimeMember) as JsonObject;
 			var expectedDateTime = """{ "type": "string", "format": "date-time" }""";
 			JsonAssert.Equal(JsonNode.Parse(expectedDateTime), dateTimeSchema);
 
 			// Act & Assert for DateTimeOffset
 			var dateTimeOffsetMember = new JsonMemberAccessor(typeof(DateTimeOffset));
-			var dateTimeOffsetSchema = generator.GenerateSchema(dateTimeOffsetMember) as JsonObject;
+			var dateTimeOffsetSchema = JsonSchemaGenerator.Generate(dateTimeOffsetMember) as JsonObject;
 			var expectedDateTimeOffset = """{ "type": "string", "format": "date-time" }""";
 			JsonAssert.Equal(JsonNode.Parse(expectedDateTimeOffset), dateTimeOffsetSchema);
 
 			// Act & Assert for DateOnly
 			var dateOnlyMember = new JsonMemberAccessor(typeof(DateOnly));
-			var dateOnlySchema = generator.GenerateSchema(dateOnlyMember) as JsonObject;
+			var dateOnlySchema = JsonSchemaGenerator.Generate(dateOnlyMember) as JsonObject;
 			var expectedDateOnly = """{ "type": "string", "format": "date" }""";
 			JsonAssert.Equal(JsonNode.Parse(expectedDateOnly), dateOnlySchema);
 
 			// Act & Assert for TimeOnly
 			var timeOnlyMember = new JsonMemberAccessor(typeof(TimeOnly));
-			var timeOnlySchema = generator.GenerateSchema(timeOnlyMember) as JsonObject;
+			var timeOnlySchema = JsonSchemaGenerator.Generate(timeOnlyMember) as JsonObject;
 			var expectedTimeOnly = """{ "type": "string", "format": "time" }""";
 			JsonAssert.Equal(JsonNode.Parse(expectedTimeOnly), timeOnlySchema);
+		}
+
+		[Fact]
+		public void MethodGenerator_GeneratesCorrectSchema()
+		{
+			// Arrange
+			var method = typeof(TestClass).GetMethod("TestMethod");
+
+			// Act
+			var schema = Json.JsonSchemaGenerator.Generate(method);
+
+			// Assert
+			var expected = """
+				{
+				  "type": "object",
+				  "properties": {
+					"param1": { "type": "string", "description": "First parameter" },
+					"param2": { "type": "integer", "minimum": 0, "description": "Second parameter" },
+					"customName": { "type": "string", "default": "This is default string." }
+				  },
+				  "required": ["param1", "param2"],
+				  "additionalProperties": false
+				}
+				""";
+
+			JsonAssert.Equal(JsonNode.Parse(expected), schema);
+		}
+
+		private class TestClass
+		{
+			public void TestMethod(
+				[Description("First parameter")] string param1,
+				[Description("Second parameter")] [Range(0, int.MaxValue)] int param2,
+				[Name("customName")] string renamedParam = "This is default string.")
+			{
+			}
 		}
 	}
 }

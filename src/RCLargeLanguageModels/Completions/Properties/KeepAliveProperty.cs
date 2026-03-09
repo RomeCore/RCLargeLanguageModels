@@ -8,12 +8,9 @@ namespace RCLargeLanguageModels.Completions.Properties
 	public sealed class KeepAliveProperty : CompletionProperty<TimeSpan>
 	{
 		public override string Name => "keep_alive";
-		public override TimeSpan Value { get; }
 
-		public KeepAliveProperty(TimeSpan value)
+		public KeepAliveProperty(TimeSpan value) : base(value)
 		{
-			Value = value;
 		}
 	}
-
 }

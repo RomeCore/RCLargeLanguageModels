@@ -6,12 +6,9 @@
 	public sealed class StopSequencesProperty : CompletionProperty<StopSequenceCollection>
 	{
 		public override string Name => "stop";
-		public override StopSequenceCollection Value { get; }
 
-		public StopSequencesProperty(StopSequenceCollection value)
+		public StopSequencesProperty(StopSequenceCollection value) : base(value)
 		{
-			Value = value;
 		}
 	}
-
 }

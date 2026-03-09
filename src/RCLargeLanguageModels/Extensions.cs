@@ -27,7 +27,7 @@ namespace RCLargeLanguageModels
 		/// <returns>Array of substrings</returns>
 		/// <exception cref="InvalidOperationException">Thrown if there is invalid string and validation check is enabled</exception>
 		public static string[] SplitSmart(this string str, char c,
-			int maxCount = -1, StringSplitOptions options = StringSplitOptions.None, 
+			int maxCount = -1, StringSplitOptions options = StringSplitOptions.None,
 			IEnumerable<CharPair> pairs = null, bool validate = false)
 		{
 			if (maxCount == 0)
@@ -243,6 +243,34 @@ namespace RCLargeLanguageModels
 
 			if (!defined)
 				throw new ArgumentOutOfRangeException(nameof(en));
+		}
+
+		/// <summary>
+		/// Splits the collection into batches of a specified size.
+		/// </summary>
+		/// <typeparam name="T">The type of the elements in the collection.</typeparam>
+		/// <param name="items">The collection to split into batches.</param>
+		/// <param name="batchSize">The size of each batch. Must be greater than 0.</param>
+		/// <returns>An enumerable collection of batches. Each batch is an array of elements.</returns>
+		/// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="batchSize"/> is less than or equal to 0.</exception>
+		public static IEnumerable<T[]> EnumerateBatches<T>(this IEnumerable<T> items, int batchSize)
+		{
+			if (batchSize <= 0)
+				throw new ArgumentOutOfRangeException(nameof(batchSize));
+
+			var batch = new List<T>(batchSize);
+			foreach (var item in items)
+			{
+				batch.Add(item);
+				if (batch.Count == batchSize)
+				{
+					yield return batch.ToArray();
+					batch.Clear();
+				}
+			}
+
+			if (batch.Count > 0)
+				yield return batch.ToArray();
 		}
 	}
 }

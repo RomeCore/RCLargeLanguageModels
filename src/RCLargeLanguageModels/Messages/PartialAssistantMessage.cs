@@ -99,7 +99,7 @@ namespace RCLargeLanguageModels.Messages
 		/// <summary>
 		/// The event is raised when a new part of the assistant message is added to message.
 		/// </summary>
-		public event EventHandler<AssistantMessageDelta> PartAdded;
+		public event EventHandler<AssistantMessageDelta>? PartAdded;
 
 		/// <summary>
 		/// The event that is raised when message completes (successfully, cancelled or failed).
@@ -113,7 +113,7 @@ namespace RCLargeLanguageModels.Messages
 		/// <summary>
 		/// The event is raised when a property of the partial assistant message is changed.
 		/// </summary>
-		public event PropertyChangedEventHandler PropertyChanged;
+		public event PropertyChangedEventHandler? PropertyChanged;
 
 
 
@@ -234,11 +234,11 @@ namespace RCLargeLanguageModels.Messages
 		/// <param name="newAttachments">The new attachments.</param>
 		/// <param name="newPartialMetadata">The new partial metadata.</param>
 		public void Add(
-			string deltaContent = null,
-			string deltaReasoningContent = null,
-			IEnumerable<IToolCall> newToolCalls = null,
-			IEnumerable<IAttachment> newAttachments = null,
-			IEnumerable<IMetadata> newPartialMetadata = null)
+			string? deltaContent = null,
+			string? deltaReasoningContent = null,
+			IEnumerable<IToolCall>? newToolCalls = null,
+			IEnumerable<IAttachment>? newAttachments = null,
+			IEnumerable<IMetadata>? newPartialMetadata = null)
 		{
 			Add
 			(
@@ -283,19 +283,19 @@ namespace RCLargeLanguageModels.Messages
 
 				if (!delta.NewToolCalls.IsNullOrEmpty())
 				{
-					_toolCalls.AddRange(delta.NewToolCalls);
+					_toolCalls.AddRange(delta.NewToolCalls!);
 					PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ToolCalls)));
 				}
 
 				if (!delta.NewAttachments.IsNullOrEmpty())
 				{
-					_attachments.AddRange(delta.NewAttachments);
+					_attachments.AddRange(delta.NewAttachments!);
 					PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Attachments)));
 				}
 
 				if (!delta.NewPartialMetadata.IsNullOrEmpty())
 				{
-					_partialMetadata.AddRange(delta.NewPartialMetadata);
+					_partialMetadata.AddRange(delta.NewPartialMetadata!);
 					PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PartialMetadata)));
 				}
 

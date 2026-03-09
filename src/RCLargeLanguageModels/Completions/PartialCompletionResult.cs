@@ -78,7 +78,12 @@ namespace RCLargeLanguageModels.Completions
 			LLModelDescriptor model,
 			PartialCompletion choice,
 			IEnumerable<IMetadata>? metadata = null)
-			: this(client, model, choice?.WrapIntoArray(), CompletionState.Success, metadata, null)
+			: this(client,
+				  model,
+				  choice?.WrapIntoArray() ?? Enumerable.Empty<PartialCompletion>(),
+				  CompletionState.Success,
+				  metadata,
+				  null)
 		{
 		}
 		
@@ -148,7 +153,7 @@ namespace RCLargeLanguageModels.Completions
 			else
 				_metadata = MetadataCollection.Empty;
 
-			_cs = new CompletionSource(completionState, completionException);
+			_cs = new CompletionSource(completionState, completionException ?? new Exception());
 		}
 
 		private void CompletePrivate(IEnumerable<IMetadata>? completionMetadata)

@@ -97,11 +97,11 @@ namespace RCLargeLanguageModels
 		/// <summary>
 		/// Gets the collection of keys in the dictionary.
 		/// </summary>
-		public ICollection<TKey> Keys { get
+		public ICollection<TKey?> Keys { get
 			{
 				if (_nullEntry != null)
-					return Utils.Single<TKey>(default).Concat(_dictionary.Keys).ToList();
-				return _dictionary.Keys;
+					return Utils.Single<TKey?>(default)!.Concat(_dictionary.Keys).ToList()!;
+				return _dictionary.Keys!;
 			}
 		}
 

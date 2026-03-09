@@ -18,6 +18,11 @@ namespace RCLargeLanguageModels
 	public partial class LLModel
 	{
 		/// <summary>
+		/// Gets an empty LLM instance that returns dummy results for all operations.
+		/// </summary>
+		public static LLModel Empty { get; } = new LLModel(LLMClient.Empty, "empty");
+
+		/// <summary>
 		/// Gets the descriptor of the model that describes the model when using API.
 		/// </summary>
 		public LLModelDescriptor Descriptor { get; }

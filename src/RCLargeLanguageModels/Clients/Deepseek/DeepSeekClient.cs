@@ -27,7 +27,6 @@ namespace RCLargeLanguageModels.Clients.Deepseek
 		public override string ListModels => BaseUri + "/models";
 	}
 
-	[LLMClient]
 	public class DeepSeekClient : OpenAICompatibleClient
 	{
 		/// <summary>
@@ -47,25 +46,8 @@ namespace RCLargeLanguageModels.Clients.Deepseek
 		/// Creates a new instance of the DeepSeek client.
 		/// </summary>
 		/// <param name="apiKey">The API key for authentication.</param>
-		public DeepSeekClient(string apiKey) : base(BaseUri, apiKey)
-		{
-		}
-
-		/// <summary>
-		/// Creates a new instance of the DeepSeek client.
-		/// </summary>
-		/// <param name="tokenAccessor">The API key accessor for authentication.</param>
-		[LLMClientConstructor]
-		public DeepSeekClient([LLMAPIKey(ApiKeyName)] ITokenAccessor tokenAccessor) : base(BaseUri, tokenAccessor)
-		{
-		}
-
-		/// <summary>
-		/// Creates a new instance of the DeepSeek client.
-		/// </summary>
-		/// <param name="apiKey">The API key for authentication.</param>
 		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
-		public DeepSeekClient(string apiKey, HttpClient? http) : base(BaseUri, apiKey, http)
+		public DeepSeekClient(string apiKey, HttpClient? http = null) : base(BaseUri, apiKey)
 		{
 		}
 
@@ -74,7 +56,7 @@ namespace RCLargeLanguageModels.Clients.Deepseek
 		/// </summary>
 		/// <param name="tokenAccessor">The API key accessor for authentication.</param>
 		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
-		public DeepSeekClient(ITokenAccessor tokenAccessor, HttpClient? http) : base(BaseUri, tokenAccessor, http)
+		public DeepSeekClient(ITokenAccessor tokenAccessor, HttpClient? http = null) : base(BaseUri, tokenAccessor)
 		{
 		}
 
@@ -145,19 +127,18 @@ namespace RCLargeLanguageModels.Clients.Deepseek
 				};
 		}
 
-		protected override JsonObject BuildMessage(IMessage message, bool isLast)
+		protected override JsonObject BuildAssistantMessage(IAssistantMessage message, bool isLast)
 		{
-			var obj = base.BuildMessage(message, isLast);
+			var res = base.BuildAssistantMessage(message, isLast);
 
-			if (isLast && message is IAssistantMessage assistantMessage)
+			if (isLast)
 			{
-				// Complete the assistant message using the beta feature
-				obj["prefix"] = true;
-				if (!string.IsNullOrEmpty(assistantMessage.ReasoningContent))
-					obj["reasoning_content"] = assistantMessage.ReasoningContent;
+				res["prefix"] = true;
+				if (!string.IsNullOrEmpty(message.ReasoningContent))
+					res["reasoning_content"] = message.ReasoningContent;
 			}
 
-			return obj;
+			return res;
 		}
 	}
 }

@@ -21,7 +21,7 @@ namespace RCLargeLanguageModels.Embeddings
 		/// <returns>
 		/// Similarity score between -1.0 (completely dissimilar) and 1.0 (identical direction).
 		/// </returns>
-		public static float CosineSimilarity(Embedding a, Embedding b)
+		public static float CosineSimilarity(ReadOnlySpan<float> a, ReadOnlySpan<float> b)
 		{
 			ValidateCompatibility(a, b);
 
@@ -38,29 +38,30 @@ namespace RCLargeLanguageModels.Embeddings
 		/// <summary>
 		/// Computes the dot product (scalar product) between two embeddings.
 		/// </summary>
-		public static float DotProduct(Embedding a, Embedding b)
+		public static float DotProduct(ReadOnlySpan<float> a, ReadOnlySpan<float> b)
 		{
 			ValidateCompatibility(a, b);
 
 			float result = 0f;
-			for (int i = 0; i < a.Dimensions; i++)
+			for (int i = 0; i < a.Length; i++)
 			{
-				result += a.Vector[i] * b.Vector[i];
+				result += a[i] * b[i];
 			}
+
 			return result;
 		}
 
 		/// <summary>
 		/// Computes Euclidean distance between two embeddings.
 		/// </summary>
-		public static float EuclideanDistance(Embedding a, Embedding b)
+		public static float EuclideanDistance(ReadOnlySpan<float> a, ReadOnlySpan<float> b)
 		{
 			ValidateCompatibility(a, b);
 
 			float sum = 0f;
-			for (int i = 0; i < a.Dimensions; i++)
+			for (int i = 0; i < a.Length; i++)
 			{
-				float diff = a.Vector[i] - b.Vector[i];
+				float diff = a[i] - b[i];
 				sum += diff * diff;
 			}
 			return (float)Math.Sqrt(sum);
@@ -69,14 +70,14 @@ namespace RCLargeLanguageModels.Embeddings
 		/// <summary>
 		/// Computes Manhattan distance (L1 distance) between two embeddings.
 		/// </summary>
-		public static float ManhattanDistance(Embedding a, Embedding b)
+		public static float ManhattanDistance(ReadOnlySpan<float> a, ReadOnlySpan<float> b)
 		{
 			ValidateCompatibility(a, b);
 
 			float sum = 0f;
-			for (int i = 0; i < a.Dimensions; i++)
+			for (int i = 0; i < a.Length; i++)
 			{
-				sum += Math.Abs(a.Vector[i] - b.Vector[i]);
+				sum += Math.Abs(a[i] - b[i]);
 			}
 			return sum;
 		}
@@ -100,17 +101,12 @@ namespace RCLargeLanguageModels.Embeddings
 			return DotProduct(a, b);
 		}
 
-		private static void ValidateCompatibility(Embedding a, Embedding b)
+		private static void ValidateCompatibility(ReadOnlySpan<float> a, ReadOnlySpan<float> b)
 		{
-			if (a is null)
-				throw new ArgumentNullException(nameof(a));
-			if (b is null)
-				throw new ArgumentNullException(nameof(b));
-
-			if (a.Dimensions != b.Dimensions)
+			if (a.Length != b.Length)
 			{
 				throw new ArgumentException(
-					$"Embedding dimension mismatch: {a.Dimensions} vs {b.Dimensions}");
+					$"Embedding dimension mismatch: {a.Length} vs {b.Length}");
 			}
 		}
 	}

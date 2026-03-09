@@ -60,6 +60,19 @@ namespace RCLargeLanguageModels.Tools
 		/// </summary>
 		public ToolResult()
 		{
+			Status = ToolResultStatus.Success;
+			Content = string.Empty;
+			Attachments = ImmutableList<IAttachment>.Empty;
+		}
+
+		/// <summary>
+		/// Initializes a new instance of the <see cref="ToolResult"/> class with a specified status.
+		/// </summary>
+		/// <param name="status">The status of the tool execution.</param>
+		public ToolResult(ToolResultStatus status)
+		{
+			Status = status;
+			Content = string.Empty;
 			Attachments = ImmutableList<IAttachment>.Empty;
 		}
 
@@ -69,6 +82,7 @@ namespace RCLargeLanguageModels.Tools
 		/// <param name="content">The main content of the tool result.</param>
 		public ToolResult(string content)
 		{
+			Status = ToolResultStatus.Success;
 			Content = content ?? string.Empty;
 			Attachments = ImmutableList<IAttachment>.Empty;
 		}
@@ -79,20 +93,11 @@ namespace RCLargeLanguageModels.Tools
 		/// <param name="attachments">The attachments to include in the tool result.</param>
 		public ToolResult(IEnumerable<IAttachment> attachments)
 		{
+			Status = ToolResultStatus.Success;
 			Content = string.Empty;
 			Attachments = attachments.ToImmutableList();
 		}
 		
-		/// <summary>
-		/// Initializes a new instance of the <see cref="ToolResult"/> class with the specified attachments.
-		/// </summary>
-		/// <param name="attachments">The attachments to include in the tool result.</param>
-		public ToolResult(params IAttachment[] attachments)
-		{
-			Content = string.Empty;
-			Attachments = attachments.ToImmutableList();
-		}
-
 		/// <summary>
 		/// Initializes a new instance of the <see cref="ToolResult"/> class with the specified content and attachments.
 		/// </summary>
@@ -100,6 +105,44 @@ namespace RCLargeLanguageModels.Tools
 		/// <param name="attachments">The attachments to include in the tool result.</param>
 		public ToolResult(string content, IEnumerable<IAttachment> attachments)
 		{
+			Status = ToolResultStatus.Success;
+			Content = content ?? string.Empty;
+			Attachments = attachments.ToImmutableList();
+		}
+
+		/// <summary>
+		/// Initializes a new instance of the <see cref="ToolResult"/> class with the specified content.
+		/// </summary>
+		/// <param name="status">The status of the tool execution.</param>
+		/// <param name="content">The main content of the tool result.</param>
+		public ToolResult(ToolResultStatus status, string content)
+		{
+			Status = status;
+			Content = content ?? string.Empty;
+			Attachments = ImmutableList<IAttachment>.Empty;
+		}
+
+		/// <summary>
+		/// Initializes a new instance of the <see cref="ToolResult"/> class with the specified attachments.
+		/// </summary>
+		/// <param name="status">The status of the tool execution.</param>
+		/// <param name="attachments">The attachments to include in the tool result.</param>
+		public ToolResult(ToolResultStatus status, IEnumerable<IAttachment> attachments)
+		{
+			Status = status;
+			Content = string.Empty;
+			Attachments = attachments.ToImmutableList();
+		}
+
+		/// <summary>
+		/// Initializes a new instance of the <see cref="ToolResult"/> class with the specified content and attachments.
+		/// </summary>
+		/// <param name="status">The status of the tool execution.</param>
+		/// <param name="content">The main content of the tool result.</param>
+		/// <param name="attachments">The attachments to include in the tool result.</param>
+		public ToolResult(ToolResultStatus status, string content, IEnumerable<IAttachment> attachments)
+		{
+			Status = status;
 			Content = content ?? string.Empty;
 			Attachments = attachments.ToImmutableList();
 		}

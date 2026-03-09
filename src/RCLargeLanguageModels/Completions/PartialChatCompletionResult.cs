@@ -82,7 +82,7 @@ namespace RCLargeLanguageModels.Completions
 			: this(
 				  client,
 				  model,
-				  choice?.WrapIntoArray(),
+				  choice?.WrapIntoArray() ?? Enumerable.Empty<PartialAssistantMessage>(),
 				  CompletionState.Success,
 				  metadata,
 				  null)
@@ -161,7 +161,7 @@ namespace RCLargeLanguageModels.Completions
 			else
 				_metadata = MetadataCollection.Empty;
 
-			_cs = new CompletionSource(completionState, completionException);
+			_cs = new CompletionSource(completionState, completionException ?? new Exception());
 			_metadata = MetadataCollection.Empty;
 		}
 

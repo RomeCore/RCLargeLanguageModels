@@ -6,7 +6,8 @@ namespace RCLargeLanguageModels.Json.Schema
 {
 	public class JsonSchemaObjectGenerator : JsonSchemaGeneratorBase
 	{
-		public override JsonObject? GenerateSchema(JsonMemberAccessor member)
+		public override JsonObject? GenerateSchema(JsonMemberAccessor member,
+			JsonSchemaGeneratorProperties generatorProperties)
 		{
 			var bindingAttr = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
 			var properties = member.Type.GetMembers(bindingAttr)
@@ -29,11 +30,14 @@ namespace RCLargeLanguageModels.Json.Schema
 				if (!propertyAccessor.Include)
 					continue;
 
-				var propertySchema = JsonSchemaGenerator.Generate(propertyAccessor);
+				var propertySchema = JsonSchemaGenerator.Generate(propertyAccessor, generatorProperties);
 				propertiesSchema.Add(propertyAccessor.Name, propertySchema);
 				if (propertyAccessor.Required)
 					requiredProperties.Add(propertyAccessor.Name);
 			}
+
+			if (requiredProperties.Count == 0)
+				resultSchema.Remove("required");
 
 			return resultSchema;
 		}

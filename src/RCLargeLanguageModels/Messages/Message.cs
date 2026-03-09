@@ -22,22 +22,28 @@ namespace RCLargeLanguageModels.Messages
 
 		public string? Content { get; set; }
 
-		public IReadOnlyList<IToolCall> ToolCalls { get; set; }
+		public IReadOnlyList<IToolCall> ToolCalls { get; set; } = Array.Empty<IToolCall>();
 
-		public IReadOnlyList<IAttachment> Attachments { get; set; }
+		public IReadOnlyList<IAttachment> Attachments { get; set; } = Array.Empty<IAttachment>();
 
-		public IMetadataCollection Metadata { get; set; }
+		public IMetadataCollection Metadata { get; set; } = MetadataCollection.Empty;
 
-		public IReadOnlyList<IMetadata> PartialMetadata { get; set; }
+		public IReadOnlyList<IMetadata> PartialMetadata { get; set; } = Array.Empty<IMetadata>();
 
 		public IEnumerable<ITokenProbabilitiesMetadata> TokenProbabilities
 			=> PartialMetadata?.OfType<TokenProbabilitiesMetadata>() ?? Enumerable.Empty<ITokenProbabilitiesMetadata>();
 
 		public IStopReasonMetadata? StopReason => Metadata?.TryGet<StopReasonMetadata>();
 
-		public string ToolName { get; set; }
+		public ToolResultStatus ToolStatus { get; set; } = ToolResultStatus.Success;
+		ToolResultStatus IToolMessage.Status => ToolStatus;
 
-		public string ToolCallId { get; set; }
+		public ToolResult ToolResult => new ToolResult(ToolStatus, Content ?? string.Empty, Attachments ?? Enumerable.Empty<IAttachment>());
+		ToolResult IToolMessage.Result => ToolResult;
+
+		public string ToolName { get; set; } = string.Empty;
+
+		public string ToolCallId { get; set; } = string.Empty;
 
 		/// <summary>
 		/// Converts the current message to a roled message. This is useful when you want to ensure that the message has a specific role.
@@ -46,23 +52,14 @@ namespace RCLargeLanguageModels.Messages
 		/// <exception cref="InvalidOperationException"></exception>
 		public IMessage ToRoledMessage()
 		{
-			switch (Role)
+			return Role switch
 			{
-				case Role.System:
-					return new SystemMessage(Content);
-
-				case Role.User:
-					return new UserMessage(Sender, Content, Attachments);
-
-				case Role.Assistant:
-					return new AssistantMessage(Content, ReasoningContent, ToolCalls, Attachments, PartialMetadata, Metadata);
-
-				case Role.Tool:
-					return new ToolMessage(Content, ToolName, ToolCallId, Attachments);
-
-				default:
-					throw new InvalidOperationException("Message must have a valid role.");
-			}
+				Role.System => new SystemMessage(Content ?? string.Empty),
+				Role.User => new UserMessage(Sender ?? string.Empty, Content ?? string.Empty, Attachments),
+				Role.Assistant => new AssistantMessage(Content, ReasoningContent, ToolCalls, Attachments, PartialMetadata, Metadata),
+				Role.Tool => new ToolMessage(ToolResult, ToolName, ToolCallId),
+				_ => throw new InvalidOperationException("Message must have a valid role."),
+			};
 		}
 	}
 

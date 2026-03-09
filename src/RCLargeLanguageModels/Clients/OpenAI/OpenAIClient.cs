@@ -1,10 +1,8 @@
 ﻿using System.Net.Http;
 using RCLargeLanguageModels.Security;
-using static System.Net.WebRequestMethods;
 
 namespace RCLargeLanguageModels.Clients.OpenAI
 {
-	[LLMClient]
 	public class OpenAIClient : OpenAICompatibleClient
 	{
 		/// <summary>
@@ -32,8 +30,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 		/// Creates a new instance of the OpenAI client.
 		/// </summary>
 		/// <param name="tokenAccessor">The API key accessor for authentication.</param>
-		[LLMClientConstructor]
-		public OpenAIClient([LLMAPIKey(ApiKeyName)] ITokenAccessor tokenAccessor) : base(BaseUri, tokenAccessor)
+		public OpenAIClient(ITokenAccessor tokenAccessor) : base(BaseUri, tokenAccessor)
 		{
 		}
 

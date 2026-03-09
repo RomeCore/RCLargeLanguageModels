@@ -84,8 +84,8 @@ namespace RCLargeLanguageModels.Messages
 		/// <param name="newAttachments"></param>
 		/// <param name="newPartialMetadata"></param>
 		public AssistantMessageDelta(
-			string deltaContent = null,
-			string deltaReasoningContent = null,
+			string? deltaContent = null,
+			string? deltaReasoningContent = null,
 			IEnumerable<IToolCall>? newToolCalls = null,
 			IEnumerable<IAttachment>? newAttachments = null,
 			IEnumerable<IMetadata>? newPartialMetadata = null)
@@ -153,11 +153,11 @@ namespace RCLargeLanguageModels.Messages
 			return new AssistantMessageDelta(newPartialMetadata: metadatas.Where(m => m != null));
 		}
 
-		public static implicit operator string(AssistantMessageDelta delta) => delta.DeltaContent;
+		public static implicit operator string(AssistantMessageDelta delta) => delta.DeltaContent ?? string.Empty;
 
 		public override string ToString()
 		{
-			return DeltaContent;
+			return DeltaContent ?? string.Empty;
 		}
 	}
 }

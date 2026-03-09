@@ -13,7 +13,8 @@ namespace RCLargeLanguageModels.Json.Schema
 	/// </summary>
 	public class JsonSchemaDictionaryGenerator : JsonSchemaGeneratorBase
 	{
-		public override JsonObject? GenerateSchema(JsonMemberAccessor member)
+		public override JsonObject? GenerateSchema(JsonMemberAccessor member,
+			JsonSchemaGeneratorProperties generatorProperties)
 		{
 			var type = member.Type;
 			Type? keyType = null;
@@ -78,7 +79,7 @@ namespace RCLargeLanguageModels.Json.Schema
 				member.Attributes.GetSeparated<ItemsAttribute>() // Items attribute for values?
 			);
 
-			var valueSchema = JsonSchemaGenerator.Generate(valueMember);
+			var valueSchema = JsonSchemaGenerator.Generate(valueMember, generatorProperties);
 			if (valueSchema != null)
 			{
 				resultSchema["additionalProperties"] = valueSchema;

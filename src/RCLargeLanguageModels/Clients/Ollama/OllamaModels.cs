@@ -357,7 +357,7 @@ namespace RCLargeLanguageModels.Clients.Ollama
 		public static LLModelDescriptor GetModelDescriptor(LLMClient client, string name)
 		{
 			if (!_dictionary.TryGetValue(name, out var info))
-				return null;
+				return new LLModelDescriptor(client, name);
 
 			if (info.Capabilities.HasFlag(OllamaModelCapabilities.Embedding))
 				throw new InvalidOperationException($"Cannot create descriptor for embedding model: {name}");

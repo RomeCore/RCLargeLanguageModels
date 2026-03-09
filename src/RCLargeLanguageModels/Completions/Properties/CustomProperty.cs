@@ -10,12 +10,10 @@ namespace RCLargeLanguageModels.Completions.Properties
 	public class CustomProperty : CompletionProperty
 	{
 		public override string Name { get; }
-		public override object RawValue { get; }
 
-		public CustomProperty(string name, object value)
+		public CustomProperty(string name, object value) : base(value)
 		{
 			Name = name;
-			RawValue = value;
 		}
 	}
 
@@ -26,12 +24,10 @@ namespace RCLargeLanguageModels.Completions.Properties
 	public class CustomProperty<T> : CompletionProperty<T>
 	{
 		public override string Name { get; }
-		public override T Value { get; }
 
-		public CustomProperty(string name, T value)
+		public CustomProperty(string name, T value) : base(value)
 		{
 			Name = name;
-			Value = value;
 		}
 	}
 }

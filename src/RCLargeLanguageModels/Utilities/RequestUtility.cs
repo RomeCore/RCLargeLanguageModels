@@ -65,11 +65,12 @@ namespace RCLargeLanguageModels.Utilities
 		/// <param name="client">A <see cref="HttpClient"/> to use for requesting. Can be null</param>
 		/// <param name="headers">Optional dictionary of headers to include in the request.</param>
 		/// <returns>A <see cref="JsonNode"/> representing the JSON response.</returns>
-		public static async Task<JsonNode> GetJsonResponseAsync(RequestType requestType, string uri, object body, HttpClient client = null, Dictionary<string, string> headers = null)
+		public static async Task<JsonNode> GetJsonResponseAsync(RequestType requestType, string uri,
+			object? body, HttpClient? client = null, Dictionary<string, string>? headers = null)
 		{
 			HttpResponseMessage response = await GetResponseAsync(requestType, uri, body, client, headers);
 			string responseContent = await response.Content.ReadAsStringAsync();
-			return JsonNode.Parse(responseContent);
+			return JsonNode.Parse(responseContent)!;
 		}
 
 		/// <summary>
@@ -83,13 +84,13 @@ namespace RCLargeLanguageModels.Utilities
 		/// <param name="headers">Optional dictionary of headers to include in the request.</param>
 		/// <param name="cancellationToken">The cancellation token used to cancel the request.</param>
 		/// <returns>The deserialized response of type <typeparamref name="T"/>.</returns>
-		public static async Task<T> GetResponseAsync<T>(RequestType requestType, string uri, object body,
-			HttpClient client = null, Dictionary<string, string> headers = null, CancellationToken cancellationToken = default)
+		public static async Task<T> GetResponseAsync<T>(RequestType requestType, string uri, object? body,
+			HttpClient? client = null, Dictionary<string, string>? headers = null, CancellationToken cancellationToken = default)
 		{
 			HttpResponseMessage response = await GetResponseAsync(requestType, uri, body, client, headers, cancellationToken);
-			string responseContent = await response.Content.ReadAsStringAsync();
 			response.EnsureSuccessStatusCode();
-			return JsonSerializer.Deserialize<T>(responseContent);
+			string responseContent = await response.Content.ReadAsStringAsync();
+			return JsonSerializer.Deserialize<T>(responseContent)!;
 		}
 
 		/// <summary>
@@ -103,7 +104,7 @@ namespace RCLargeLanguageModels.Utilities
 		/// <param name="cancellationToken">The cancellation token used to cancel the request.</param>
 		/// <returns>The <see cref="HttpResponseMessage"/> from the request.</returns>
 		public static async Task<HttpResponseMessage> GetResponseAsync(RequestType requestType,
-			string uri, object body, HttpClient client = null, Dictionary<string, string> headers = null, CancellationToken cancellationToken = default)
+			string uri, object? body, HttpClient? client = null, Dictionary<string, string>? headers = null, CancellationToken cancellationToken = default)
 		{
 			HttpRequestMessage request = new HttpRequestMessage(GetHttpMethod(requestType), uri);
 
@@ -147,17 +148,18 @@ namespace RCLargeLanguageModels.Utilities
 			string uri,
 			object body,
 			Action<T> onDataReceived,
-			HttpClient client = null,
-			Dictionary<string, string> headers = null,
+			HttpClient? client = null,
+			Dictionary<string, string>? headers = null,
 			CancellationToken cancellationToken = default)
 		{
 			void OnDataReceived(JsonNode token)
 			{
-				var obj = JsonSerializer.Deserialize<T>(token);
+				var obj = JsonSerializer.Deserialize<T>(token)!;
 				onDataReceived(obj);
 			}
 
-			await ProcessStreamingJsonResponseAsync(requestType, uri, body, OnDataReceived, client, headers, cancellationToken);
+			await ProcessStreamingJsonResponseAsync(requestType, uri, body, OnDataReceived,
+				client, headers, cancellationToken);
 		}
 
 		/// <summary>
@@ -179,11 +181,11 @@ namespace RCLargeLanguageModels.Utilities
 			string uri,
 			object body,
 			Action<JsonNode> onDataReceived,
-			HttpClient client,
-			Dictionary<string, string> headers,
+			HttpClient? client = null,
+			Dictionary<string, string>? headers = null,
 			CancellationToken cancellationToken = default)
 		{
-			return ProcessStreamingResponseAsync(requestType, uri, body, l => onDataReceived(JsonNode.Parse(l)),
+			return ProcessStreamingResponseAsync(requestType, uri, body, l => onDataReceived(JsonNode.Parse(l)!),
 				client, headers, cancellationToken);
 		}
 
@@ -206,8 +208,8 @@ namespace RCLargeLanguageModels.Utilities
 			string uri,
 			object body,
 			Action<string> onDataReceived,
-			HttpClient client,
-			Dictionary<string, string> headers,
+			HttpClient? client = null,
+			Dictionary<string, string>? headers = null,
 			CancellationToken cancellationToken = default)
 		{
 			var response = await GetResponseAsync(requestType, uri, body, client, headers, cancellationToken);
@@ -271,7 +273,7 @@ namespace RCLargeLanguageModels.Utilities
 #else
 			var content = await message.Content.ReadAsStringAsync();
 #endif
-			return JsonSerializer.Deserialize<T>(content);
+			return JsonSerializer.Deserialize<T>(content)!;
 		}
 	}
 }

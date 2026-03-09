@@ -11,7 +11,9 @@ namespace RCLargeLanguageModels.Json.Schema
 		/// Generates a JSON schema for the specified member.
 		/// </summary>
 		/// <param name="member">The member to generate a schema for.</param>
+		/// <param name="generatorProperties">The properties of the generator.</param>
 		/// <returns>A JSON schema object, or null if no schema can be generated.</returns>
-		public abstract JsonObject? GenerateSchema(JsonMemberAccessor member);
+		public abstract JsonObject? GenerateSchema(JsonMemberAccessor member,
+			JsonSchemaGeneratorProperties generatorProperties);
 	}
 }

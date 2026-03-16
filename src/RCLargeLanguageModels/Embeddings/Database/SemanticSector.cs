@@ -94,13 +94,13 @@ namespace RCLargeLanguageModels.Embeddings.Database
 		/// <returns>A task that represents the asynchronous operation.</returns>
 		public Task RecordAsync(T item, CancellationToken cancellationToken = default)
 		{
-			return RecordAsync(new[] { item }, cancellationToken);
+			return RecordRangeAsync(new[] { item }, cancellationToken);
 		}
 
 		/// <summary>
 		/// Records a collection of items into the sector.
 		/// </summary>
-		public async Task RecordAsync(IEnumerable<T> items, CancellationToken cancellationToken = default)
+		public async Task RecordRangeAsync(IEnumerable<T> items, CancellationToken cancellationToken = default)
 		{
 #if MEASURE_TIME
 			var timeStart = DateTime.Now;
@@ -234,6 +234,24 @@ namespace RCLargeLanguageModels.Embeddings.Database
 		}
 
 		/// <summary>
+		/// Gets all records from this sector.
+		/// </summary>
+		/// <returns>The enumeration of records.</returns>
+		public IEnumerable<T> EnumerateAll()
+		{
+			lock (_lock)
+			{
+				if (!File.Exists(_dataPath))
+					yield break;
+
+				foreach (var line in File.ReadLines(_dataPath))
+				{
+					yield return JsonSerializer.Deserialize<T>(line, _properties.SerializationOptions);
+				}
+			}
+		}
+
+		/// <summary>
 		/// Ensures that the model used for this sector is compatible with the current embedding model.
 		/// If not, rebuilds the sector with the current model.
 		/// </summary>
@@ -245,7 +263,7 @@ namespace RCLargeLanguageModels.Embeddings.Database
 
 			var items = GetAll();
 			Clear();
-			await RecordAsync(items);
+			await RecordRangeAsync(items);
 		}
 
 		/// <summary>

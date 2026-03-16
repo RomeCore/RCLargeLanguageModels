@@ -15,7 +15,7 @@ namespace RCLargeLanguageModels
 	/// <summary>
 	/// Represents a configured large language model (LLM) that can be used to generate text and chat completions.
 	/// </summary>
-	public partial class LLModel
+	public partial class LLModel : ILLMProvider
 	{
 		/// <summary>
 		/// Gets an empty LLM instance that returns dummy results for all operations.
@@ -172,6 +172,11 @@ namespace RCLargeLanguageModels
 			queueParameters
 		)
 		{
+		}
+
+		LLModel ILLMProvider.GetLLM()
+		{
+			return this;
 		}
 	}
 

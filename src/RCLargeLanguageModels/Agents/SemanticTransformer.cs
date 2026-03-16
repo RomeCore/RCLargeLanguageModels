@@ -8,7 +8,7 @@ using RCLargeLanguageModels.Messages;
 namespace RCLargeLanguageModels.Agents
 {
 	/// <summary>
-	/// Represents a transformer for converting data into a format suitable for semantic search and analysis.
+	/// Represents a transformer for converting data using LLM.
 	/// </summary>
 	/// <remarks>
 	/// This is abstract class that implements the <see cref="ISemanticTransformer"/> interface.

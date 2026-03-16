@@ -1,25 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
+using System.Net.Http;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
-using RCLargeLanguageModels.Messages;
-using RCLargeLanguageModels.Formats;
-using RCLargeLanguageModels.Security;
-using RCLargeLanguageModels.Statistics;
-using RCLargeLanguageModels.Tools;
-using RCLargeLanguageModels.Utilities;
-using Serilog;
-using RCLargeLanguageModels.Completions;
-using System.Net.Http;
-using System.Collections.Immutable;
-using RCLargeLanguageModels.Completions.Properties;
-using System.Text.Json.Nodes;
-using System.Text.Json;
-using RCLargeLanguageModels.Embeddings;
 using RCLargeLanguageModels.Exceptions;
+using RCLargeLanguageModels.Security;
+using RCLargeLanguageModels.Utilities;
 
 namespace RCLargeLanguageModels.Clients.OpenAI
 {

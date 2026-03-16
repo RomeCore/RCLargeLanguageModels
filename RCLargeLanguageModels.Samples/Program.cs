@@ -51,7 +51,7 @@ if (sector.Count == 0)
 	Console.WriteLine($"Recording {examples.Count} examples into the database...");
 
 	var timeStart = DateTime.Now;
-	await sector.RecordAsync(examples);
+	await sector.RecordRangeAsync(examples);
 	var timeTaken = DateTime.Now - timeStart;
 
 	Console.WriteLine($"Recording complete! Time taken: {timeTaken.TotalMilliseconds} ms.\n");

@@ -8,8 +8,6 @@ using System.Net;
 
 namespace RCLargeLanguageModels
 {
-	#pragma warning disable CS1998
-
 	/// <summary>
 	/// A thread-safe asynchronous cache that stores items with optional sliding expiration.
 	/// Items are automatically created using an async factory method when requested.
@@ -19,7 +17,7 @@ namespace RCLargeLanguageModels
 	public class AsyncCache<TKey, TValue> : IDisposable
 	{
 		private readonly ConcurrentDictionary<TKey, CacheItem> _storage;
-		private readonly Func<TKey, Task<TValue>> _factory;
+		private readonly Func<TKey, CancellationToken, Task<TValue>> _factory;
 		private readonly TimeSpan? _slidingExpiration;
 		private readonly Timer? _cleanupTimer;
 
@@ -33,20 +31,56 @@ namespace RCLargeLanguageModels
 		/// <param name="cleanupInterval">
 		/// Optional interval for automatic cleanup of expired items. If null, no automatic cleanup occurs.
 		/// </param>
+		/// <param name="keyComparer">Optional key comparer used for internal dictionary.</param>
 		/// <exception cref="ArgumentNullException">Thrown when factory is null.</exception>
 		public AsyncCache(
 			Func<TKey, Task<TValue>> factory,
 			TimeSpan? slidingExpirationTime = null,
-			TimeSpan? cleanupInterval = null)
+			TimeSpan? cleanupInterval = null,
+			IEqualityComparer<TKey>? keyComparer = null)
 		{
-			_factory = factory ?? throw new ArgumentNullException(nameof(factory));
+			if (factory == null)
+				throw new ArgumentNullException(nameof(factory));
+			_factory = (k, ct) => factory(k);
 			_slidingExpiration = slidingExpirationTime;
-			_storage = new ConcurrentDictionary<TKey, CacheItem>();
+			_storage = new ConcurrentDictionary<TKey, CacheItem>(keyComparer ?? EqualityComparer<TKey>.Default);
 
 			if (cleanupInterval != null)
 			{
 				_cleanupTimer = new Timer(
-					_ => _ = RemoveExpiredItemsAsync(),
+					_ => RemoveExpiredItems(),
+					null,
+					cleanupInterval.Value,
+					cleanupInterval.Value);
+			}
+		}
+
+		/// <summary>
+		/// Initializes a new instance of the <see cref="AsyncCache{TKey, TValue}"/> class.
+		/// </summary>
+		/// <param name="factory">Async factory method to create items when they're not found in cache.</param>
+		/// <param name="slidingExpirationTime">
+		/// Optional sliding expiration time. If null, items never expire automatically.
+		/// </param>
+		/// <param name="cleanupInterval">
+		/// Optional interval for automatic cleanup of expired items. If null, no automatic cleanup occurs.
+		/// </param>
+		/// <param name="keyComparer">Optional key comparer used for internal dictionary.</param>
+		/// <exception cref="ArgumentNullException">Thrown when factory is null.</exception>
+		public AsyncCache(
+			Func<TKey, CancellationToken, Task<TValue>> factory,
+			TimeSpan? slidingExpirationTime = null,
+			TimeSpan? cleanupInterval = null,
+			IEqualityComparer<TKey>? keyComparer = null)
+		{
+			_factory = factory ?? throw new ArgumentNullException(nameof(factory));
+			_slidingExpiration = slidingExpirationTime;
+			_storage = new ConcurrentDictionary<TKey, CacheItem>(keyComparer ?? EqualityComparer<TKey>.Default);
+
+			if (cleanupInterval != null)
+			{
+				_cleanupTimer = new Timer(
+					_ => RemoveExpiredItems(),
 					null,
 					cleanupInterval.Value,
 					cleanupInterval.Value);
@@ -105,7 +139,7 @@ namespace RCLargeLanguageModels
 			}
 
 			// Create the async task first to prevent multiple concurrent creations
-			var task = _factory(key);
+			var task = _factory(key, cancellationToken);
 			var newItem = new CacheItem(task);
 			_storage[key] = newItem;
 
@@ -124,6 +158,18 @@ namespace RCLargeLanguageModels
 				_storage.TryRemove(key, out _);
 				throw;
 			}
+		}
+
+		/// <summary>
+		/// Gets an item, while forcefully removes an existing item in cache.
+		/// </summary>
+		/// <param name="key">The key to get new item for.</param>
+		/// <param name="cancellationToken">The cancellation token that can be used to cancel the operation.</param>
+		/// <returns>The refreshed item task.</returns>
+		public async Task<TValue> RefreshAsync(TKey key, CancellationToken cancellationToken = default)
+		{
+			_storage.TryRemove(key, out _);
+			return await GetAsync(key, cancellationToken).ConfigureAwait(false);
 		}
 
 		/// <summary>
@@ -150,8 +196,7 @@ namespace RCLargeLanguageModels
 		/// <summary>
 		/// Removes all items that have exceeded their sliding expiration time.
 		/// </summary>
-		/// <returns>A task that represents the asynchronous operation.</returns>
-		public async Task RemoveExpiredItemsAsync()
+		public void RemoveExpiredItems()
 		{
 			if (_slidingExpiration == null)
 				return;
@@ -187,12 +232,28 @@ namespace RCLargeLanguageModels
 			}
 		}
 
-		/// <summary>
-		/// Releases all resources used by this instance.
-		/// </summary>
+		~AsyncCache()
+		{
+			Dispose(false);
+		}
+
 		public void Dispose()
 		{
-			_cleanupTimer?.Dispose();
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
+		protected virtual void Dispose(bool disposing)
+		{
+			if (disposing)
+			{
+				if (_cleanupTimer != null)
+				{
+					using var waitHandle = new ManualResetEvent(false);
+					_cleanupTimer.Dispose(waitHandle);
+					waitHandle.WaitOne();
+				}
+			}
 		}
 	}
 }

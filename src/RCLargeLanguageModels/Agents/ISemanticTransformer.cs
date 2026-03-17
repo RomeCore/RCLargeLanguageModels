@@ -7,16 +7,16 @@ using System.Threading.Tasks;
 namespace RCLargeLanguageModels.Agents
 {
 	/// <summary>
-	/// Represents a transformer for converting textual data.
+	/// Represents a transformer for converting data via LLM.
 	/// </summary>
-	public interface ISemanticTransformer
+	public interface ISemanticTransformer<TIn, TOut>
 	{
 		/// <summary>
 		/// Transforms the given input data asynchronously.
 		/// </summary>
 		/// <param name="input">The input data to transform.</param>
 		/// <param name="cancellationToken">A token that can be used to cancel the operation.</param>
-		/// <returns>The transformed data as a string.</returns>
-		Task<string> TransformAsync(string input, CancellationToken cancellationToken = default);
+		/// <returns>The transformed data.</returns>
+		Task<TOut> TransformAsync(TIn input, CancellationToken cancellationToken = default);
 	}
 }

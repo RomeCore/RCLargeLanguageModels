@@ -23,7 +23,7 @@ namespace RCLargeLanguageModels.Embeddings.Database
 		/// <summary>
 		/// Gets or sets a transformer that converts data into a format suitable for semantic search and analysis.
 		/// </summary>
-		public ISemanticTransformer InputTransformer { get; set; } = SemanticTransformer.PassThrough;
+		public ISemanticTransformer<string, string> InputTransformer { get; set; } = SemanticTransformer<string, string>.PassThrough;
 
 		/// <summary>
 		/// Gets or sets the serialization options used for serializing and deserializing objects.

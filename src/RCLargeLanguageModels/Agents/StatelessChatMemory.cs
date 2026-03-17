@@ -16,16 +16,16 @@ namespace RCLargeLanguageModels.Agents
 		/// </summary>
 		public string SystemInstructions { get; set; } = "You are a helpful assistant.";
 
-		public override Task<IEnumerable<IMessage>> AppendAsync(IUserMessage userMessage,
+		public override async Task<IEnumerable<IMessage>> AppendAsync(IUserMessage userMessage,
 			LLModel targetModel, CancellationToken cancellationToken = default)
 		{
 			if (string.IsNullOrWhiteSpace(SystemInstructions))
 				SystemInstructions = "You are a helpful assistant";
-			return Task.FromResult<IEnumerable<IMessage>>(new IMessage[]
+			return new IMessage[]
 			{
 				new SystemMessage(SystemInstructions),
-				userMessage
-			});
+				await TransformUserMessage(userMessage, cancellationToken)
+			};
 		}
 
 		public override Task<IEnumerable<IMessage>> AppendAsync(IEnumerable<IMessage> previousMessages,

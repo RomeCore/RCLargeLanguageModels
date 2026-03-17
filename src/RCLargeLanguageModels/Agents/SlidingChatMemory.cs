@@ -17,7 +17,7 @@ namespace RCLargeLanguageModels.Agents
 		public string SystemInstructions { get; set; } = string.Empty;
 
 		/// <summary>
-		/// Gets or sets the list of messages. All added system messages will be removed and appended into <see cref="SystemInstructions"/>.
+		/// Gets or sets the list of non-system messages. Messages can be removed from this list if them will be trimmed.
 		/// </summary>
 		public List<IMessage> Messages { get; set; } = new();
 
@@ -26,27 +26,12 @@ namespace RCLargeLanguageModels.Agents
 		/// </summary>
 		public int ReturnLastNMessages { get; set; } = -1;
 
-		private Task<IEnumerable<IMessage>> Append(IEnumerable<IMessage> messagesToAdd)
+		private Task<IEnumerable<IMessage>> AppendInternal(IEnumerable<IMessage> messagesToAdd)
 		{
 			if (string.IsNullOrWhiteSpace(SystemInstructions))
 				SystemInstructions = "You are a helpful assistant";
 			Messages ??= new();
 			var maxMessages = ReturnLastNMessages;
-
-			// Move contents of system messages to system instructions
-			for (int i = 0; i < Messages.Count; i++)
-			{
-				var message = Messages[i];
-				if (message is ISystemMessage && !string.IsNullOrWhiteSpace(message.Content))
-				{
-					if (string.IsNullOrWhiteSpace(SystemInstructions))
-						SystemInstructions = message.Content;
-					else
-						SystemInstructions += "\n\n" + message.Content;
-					Messages.RemoveAt(i);
-					i--;
-				}
-			}
 
 			var systemMessage = new SystemMessage(SystemInstructions);
 			List<IMessage> result = new()
@@ -54,9 +39,9 @@ namespace RCLargeLanguageModels.Agents
 				systemMessage
 			};
 			Messages.AddRange(messagesToAdd);
+			if (maxMessages >= 0 && Messages.Count - 1 > maxMessages)
+				Messages.RemoveRange(1, Messages.Count - 1 - maxMessages);
 			result.AddRange(Messages);
-			if (maxMessages >= 0 && result.Count - 1 > maxMessages)
-				result.RemoveRange(1, result.Count - 1 - maxMessages);
 
 			// Remove headless tool messages (the tool messages without tool call before them)
 			// The tool calls contined in previous assistant message
@@ -66,16 +51,16 @@ namespace RCLargeLanguageModels.Agents
 			return Task.FromResult<IEnumerable<IMessage>>(result);
 		}
 
-		public override Task<IEnumerable<IMessage>> AppendAsync(IUserMessage userMessage,
+		public override async Task<IEnumerable<IMessage>> AppendAsync(IUserMessage userMessage,
 			LLModel targetModel, CancellationToken cancellationToken = default)
 		{
-			return Append(new IMessage[] { userMessage });
+			return await AppendInternal(new IMessage[] { await TransformUserMessage(userMessage, cancellationToken) });
 		}
 
 		public override Task<IEnumerable<IMessage>> AppendAsync(IEnumerable<IMessage> previousMessages, IAssistantMessage assistantMessage,
 			IEnumerable<IToolMessage> toolMessages, LLModel targetModel, CancellationToken cancellationToken = default)
 		{
-			return Append(new IMessage[] { assistantMessage }.Concat(toolMessages));
+			return AppendInternal(new IMessage[] { assistantMessage }.Concat(toolMessages));
 		}
 	}
 }

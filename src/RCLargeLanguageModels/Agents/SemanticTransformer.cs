@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,25 +12,32 @@ namespace RCLargeLanguageModels.Agents
 	/// Represents a transformer for converting data using LLM.
 	/// </summary>
 	/// <remarks>
-	/// This is abstract class that implements the <see cref="ISemanticTransformer"/> interface.
+	/// This is abstract class that implements the <see cref="ISemanticTransformer{TIn, TOut}"/> interface.
 	/// </remarks>
-	public abstract class SemanticTransformer : ISemanticTransformer
+	public abstract class SemanticTransformer<TIn, TOut> : ISemanticTransformer<TIn, TOut>
 	{
-		public abstract Task<string> TransformAsync(string input, CancellationToken cancellationToken = default);
+		public abstract Task<TOut> TransformAsync(TIn input, CancellationToken cancellationToken = default);
 
 
 
-		private class PassThroughTransformer : SemanticTransformer
+		private class PassThroughTransformer : SemanticTransformer<TIn, TOut>
 		{
-			public override Task<string> TransformAsync(string input, CancellationToken cancellationToken = default)
+			public override Task<TOut> TransformAsync(TIn input, CancellationToken cancellationToken = default)
 			{
-				return Task.FromResult(input); // Pass through the input without any transformation.
+				// Pass through the input without any transformation.
+				if (input == null)
+					return Task.FromResult<TOut>(default);
+				if (input is TOut result)
+					return Task.FromResult(result);
+				throw new InvalidCastException($"Cannot cast object of type {input?.GetType()} to {typeof(TOut)} in pass-through transformer.");
 			}
 		}
 
 		/// <summary>
-		/// A pre-defined instance of <see cref="SemanticTransformer"/> that simply passes through the input without any transformation.
+		/// A pre-defined instance of <see cref="ISemanticTransformer{TIn, TOut}"/> that simply passes through the input without any transformation.
 		/// </summary>
-		public static SemanticTransformer PassThrough { get; } = new PassThroughTransformer();
+		public static SemanticTransformer<TIn, TOut> PassThrough { get; } = new PassThroughTransformer();
+	
+		
 	}
 }

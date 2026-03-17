@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using RCLargeLanguageModels.Messages;
 using RCLargeLanguageModels.Statistics;
+using RCLargeLanguageModels.Tools;
 
 namespace RCLargeLanguageModels.Agents
 {
@@ -13,13 +14,15 @@ namespace RCLargeLanguageModels.Agents
 	/// </summary>
 	public class TokenSlidingChatMemory : LLMChatMemory
 	{
+		private readonly AsyncCache<(IMessage, IEnumerable<ITool>), int> _tokenCountCache;
+
 		/// <summary>
 		/// Gets or sets the system instructions.
 		/// </summary>
 		public string SystemInstructions { get; set; } = string.Empty;
 
 		/// <summary>
-		/// Gets or sets the list of messages. All added system messages will be removed and appended into <see cref="SystemInstructions"/>.
+		/// Gets or sets the list of non-system messages. Messages can be removed from this list if them will be trimmed.
 		/// </summary>
 		public List<IMessage> Messages { get; set; } = new();
 
@@ -43,7 +46,46 @@ namespace RCLargeLanguageModels.Agents
 		/// </summary>
 		public float Tolerance { get; set; } = 0.7f;
 
-		private async Task<IEnumerable<IMessage>> TrimWithAppend(IEnumerable<IMessage> messagesToAdd,
+		/// <summary>
+		/// Initializes a new instance of <see cref="TokenSlidingChatMemory"/> class.
+		/// </summary>
+		public TokenSlidingChatMemory()
+		{
+			_tokenCountCache = new ((t, ct) =>
+			{
+				return TokenCounter.CountAsync(t.Item1, t.Item2, MessageTokenSerializationSchema, ct);
+			}, slidingExpirationTime: TimeSpan.FromHours(1));
+		}
+
+		/// <summary>
+		/// Initializes a new instance of <see cref="TokenSlidingChatMemory"/> class.
+		/// </summary>
+		/// <param name="tokenCountCacheExpirationTime">
+		/// The time that token count cache will be expired and counted again.
+		/// </param>
+		public TokenSlidingChatMemory(TimeSpan tokenCountCacheExpirationTime)
+		{
+			_tokenCountCache = new((t, ct) =>
+			{
+				return TokenCounter.CountAsync(t.Item1, t.Item2, MessageTokenSerializationSchema, ct);
+			}, slidingExpirationTime: tokenCountCacheExpirationTime);
+		}
+
+		public override async Task<IEnumerable<IMessage>> AppendAsync(IUserMessage userMessage,
+			LLModel targetModel, CancellationToken cancellationToken = default)
+		{
+			return await AppendInternal(new IMessage[] { await TransformUserMessage(userMessage, cancellationToken) },
+				targetModel, cancellationToken);
+		}
+
+		public override Task<IEnumerable<IMessage>> AppendAsync(IEnumerable<IMessage> previousMessages, IAssistantMessage assistantMessage,
+			IEnumerable<IToolMessage> toolMessages, LLModel targetModel, CancellationToken cancellationToken = default)
+		{
+			return AppendInternal(new IMessage[] { assistantMessage }.Concat(toolMessages),
+				targetModel, cancellationToken);
+		}
+
+		private async Task<IEnumerable<IMessage>> AppendInternal(IEnumerable<IMessage> messagesToAdd,
 			LLModel targetModel, CancellationToken cancellationToken = default)
 		{
 			if (string.IsNullOrWhiteSpace(SystemInstructions))
@@ -53,20 +95,7 @@ namespace RCLargeLanguageModels.Agents
 			MessageTokenSerializationSchema ??= Statistics.MessageTokenSerializationSchema.Default;
 			var maxTokens = (int)(TargetTokens * Tolerance);
 
-			// Move contents of system messages to system instructions
-			for (int i = 0; i < Messages.Count; i++)
-			{
-				var message = Messages[i];
-				if (message is ISystemMessage && !string.IsNullOrWhiteSpace(message.Content))
-				{
-					if (string.IsNullOrWhiteSpace(SystemInstructions))
-						SystemInstructions = message.Content;
-					else
-						SystemInstructions += "\n\n" + message.Content;
-					Messages.RemoveAt(i);
-					i--;
-				}
-			}
+			_tokenCountCache.RemoveExpiredItems();
 
 			var systemMessage = new SystemMessage(SystemInstructions);
 			List<IMessage> result = new()
@@ -76,12 +105,12 @@ namespace RCLargeLanguageModels.Agents
 
 			// Count tokens in system instructions + new messages
 			// Then strictly check if token count exceeds maximum
-			int currentTokenCount = await TokenCounter.CountAsync(systemMessage, targetModel.Tools,
-				MessageTokenSerializationSchema, cancellationToken);
+			int currentTokenCount = await _tokenCountCache.GetAsync((systemMessage, targetModel.Tools),
+				cancellationToken);
 			foreach (var message in messagesToAddList)
 			{
-				currentTokenCount += await TokenCounter.CountAsync(message, targetModel.Tools,
-					MessageTokenSerializationSchema, cancellationToken);
+				currentTokenCount += await _tokenCountCache.GetAsync((message, targetModel.Tools),
+					cancellationToken);
 				if (currentTokenCount > maxTokens)
 					throw new Exception("New messages along with system messages exceeds trim token count.");
 				result.Add(message);
@@ -91,10 +120,13 @@ namespace RCLargeLanguageModels.Agents
 			for (int i = Messages.Count - 1; i >= 0; i--)
 			{
 				var message = Messages[i];
-				int tokenCount = await TokenCounter.CountAsync(message, targetModel.Tools,
-					MessageTokenSerializationSchema, cancellationToken);
+				int tokenCount = await _tokenCountCache.GetAsync((message, targetModel.Tools),
+					cancellationToken);
 				if (currentTokenCount + tokenCount > maxTokens)
+				{
+					Messages.RemoveRange(0, i + 1);
 					break;
+				}
 				currentTokenCount += tokenCount;
 				// Just after the system message (insert in reverse order again)
 				// Order becames normal
@@ -110,18 +142,6 @@ namespace RCLargeLanguageModels.Agents
 			Messages.AddRange(messagesToAddList);
 
 			return result;
-		}
-
-		public override Task<IEnumerable<IMessage>> AppendAsync(IUserMessage userMessage,
-			LLModel targetModel, CancellationToken cancellationToken = default)
-		{
-			return TrimWithAppend(new IMessage[] { userMessage }, targetModel, cancellationToken);
-		}
-
-		public override Task<IEnumerable<IMessage>> AppendAsync(IEnumerable<IMessage> previousMessages, IAssistantMessage assistantMessage,
-			IEnumerable<IToolMessage> toolMessages, LLModel targetModel, CancellationToken cancellationToken = default)
-		{
-			return TrimWithAppend(new IMessage[] { assistantMessage }.Concat(toolMessages), targetModel, cancellationToken);
 		}
 	}
 }

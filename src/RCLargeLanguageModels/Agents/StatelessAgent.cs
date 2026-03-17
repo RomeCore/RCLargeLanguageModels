@@ -16,16 +16,16 @@ namespace RCLargeLanguageModels.Agents
 		public string SystemInstructions { get; set; } = "You are a helpful assistant";
 
 		/// <summary>
-		/// Gets or sets the LLM provider
+		/// Gets or sets the LLM provider that will be used for generation.
 		/// </summary>
-		public ILLMProvider? LLM { get; set; }
+		public ILLMProvider? LLMProvider { get; set; }
 
 		public override async Task<IAssistantMessage> Execute(IUserMessage userMessage, CancellationToken cancellationToken = default)
 		{
-			if (LLM == null)
+			if (LLMProvider == null)
 				throw new InvalidOperationException("LLM provider is not set.");
 
-			var llm = LLM.GetLLM();
+			var llm = LLMProvider.GetLLM();
 			var messages = new IMessage[]
 			{
 				new SystemMessage(SystemInstructions),

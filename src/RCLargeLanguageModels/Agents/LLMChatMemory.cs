@@ -13,6 +13,25 @@ namespace RCLargeLanguageModels.Agents
 	public abstract class LLMChatMemory
 	{
 		/// <summary>
+		/// Gets or sets the RAG provider that will be used to transform user message.
+		/// </summary>
+		public IRAGProvider? RAGProvider { get; set; } = Agents.RAGProvider.PassThrough;
+
+		/// <summary>
+		/// Transforms user message using RAG provider.
+		/// </summary>
+		/// <param name="message"></param>
+		/// <param name="cancellationToken"></param>
+		/// <returns></returns>
+		protected Task<IUserMessage> TransformUserMessage(IUserMessage message,
+			CancellationToken cancellationToken = default)
+		{
+			if (RAGProvider != null)
+				return RAGProvider.TransformAsync(message, cancellationToken);
+			return Task.FromResult(message);
+		}
+
+		/// <summary>
 		/// Appends the user message to the merory and returns the complete conversation for LLM API.
 		/// Conversation turn (user request -&gt; LLM response) begins here.
 		/// </summary>

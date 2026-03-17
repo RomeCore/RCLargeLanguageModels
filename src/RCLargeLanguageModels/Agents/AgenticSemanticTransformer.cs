@@ -6,9 +6,9 @@ using RCLargeLanguageModels.Messages;
 namespace RCLargeLanguageModels.Agents
 {
 	/// <summary>
-	/// Represents a semantic transformer that uses a LLM agent for transformation.
+	/// Represents a semantic transformer that uses a LLM agent for <see cref="string"/> transformation.
 	/// </summary>
-	public class AgenticSemanticTransformer : SemanticTransformer
+	public class AgenticSemanticTransformer : SemanticTransformer<string, string>
 	{
 		/// <summary>
 		/// The agent used for transformation. Can be <see langword="null"/> if no agent is available or if the transformer should operate in a pass-through mode.

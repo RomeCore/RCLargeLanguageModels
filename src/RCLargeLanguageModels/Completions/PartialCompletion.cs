@@ -61,7 +61,7 @@ namespace RCLargeLanguageModels.Completions
 		/// <summary>
 		/// Gets the stop reason metadata that caused the generation end, may be <see langword="null"/> (especially if not completed).
 		/// </summary>
-		public IStopReasonMetadata? StopReason => Metadata?.TryGet<IStopReasonMetadata>();
+		public IFinishReasonMetadata? FinishReason => Metadata?.TryGet<IFinishReasonMetadata>();
 
 		/// <summary>
 		/// The event is raised when a new part of the completion is added.

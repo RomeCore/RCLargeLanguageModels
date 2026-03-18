@@ -12,6 +12,7 @@ using RCLargeLanguageModels.Completions;
 using RCLargeLanguageModels.Completions.Properties;
 using RCLargeLanguageModels.Formats;
 using RCLargeLanguageModels.Messages;
+using RCLargeLanguageModels.Metadata;
 using RCLargeLanguageModels.Statistics;
 using RCLargeLanguageModels.Tools;
 using RCLargeLanguageModels.Utilities;
@@ -53,26 +54,33 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			var responseContent = await response.ParseContentAsync<JsonObject>(cancellationToken);
 			if (responseContent["choices"] is not JsonArray choices || choices.Count == 0)
 				throw new InvalidDataException("No choices in response.");
-
+			
 			List<AssistantMessage> resultMessages = new List<AssistantMessage>();
 
 			foreach (var choice in choices)
 			{
 				var message = choice!["message"] as JsonObject
 					?? throw new InvalidDataException("No message in 'choice'.");
-				resultMessages.Add(ParseNonStreamingAssistantMessage(message, model, tools));
+
+				var completionMetadata = new List<IMetadata>();
+				if (choice["finish_reason"]?.GetValue<string>() is string finishReason)
+					completionMetadata.Add(GetFinishReasonMetadata(finishReason));
+
+				resultMessages.Add(ParseNonStreamingAssistantMessage(message, model, tools, completionMetadata));
 			}
 
+			var metadata = new List<IMetadata>();
 			if (responseContent["usage"] is JsonObject usage)
-				AppendUsage(usage, model);
+				metadata.Add(GetUsageMetadata(usage));
 
-			return new ChatCompletionResult(this, model, resultMessages);
+			return new ChatCompletionResult(this, model, resultMessages, metadata);
 		}
 
 		protected override Task<PartialChatCompletionResult> CreateStreamingChatCompletionsOverrideAsync(LLModelDescriptor model, IEnumerable<IMessage> messages, int count, IEnumerable<CompletionProperty> properties, OutputFormatDefinition outputFormatDefinition, IEnumerable<ITool> tools, CancellationToken cancellationToken)
 		{
 			var resultMessages = Enumerable.Range(0, count).Select(i => new PartialAssistantMessage()).ToImmutableArray();
 			var contexts = Enumerable.Range(0, count).Select(i => new List<PartialMessageToolCallContext?>()).ToImmutableArray();
+			var result = new PartialChatCompletionResult(this, model, resultMessages);
 
 			void OnDataReceived(JsonObject data)
 			{
@@ -84,18 +92,26 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 					int index = choice!["index"]!.GetValue<int>();
 					var message = resultMessages[index];
 
-					if (choice["finish_reason"]?.GetValue<string>() is string finishReason)
-						message.Complete();
-
 					var delta = choice["delta"] as JsonObject
 						?? throw new InvalidDataException("No delta in 'choice'.");
 					var context = contexts[index];
 
 					ParseStreamingAssistantMessage(delta, message, context, tools);
+
+					var completionMetadata = new List<IMetadata>();
+					if (choice["finish_reason"]?.GetValue<string>() is string finishReason)
+						completionMetadata.Add(GetFinishReasonMetadata(finishReason));
+
+					if (completionMetadata.Count > 0)
+						message.Complete(completionMetadata);
 				}
 
+				var metadata = new List<IMetadata>();
 				if (data["usage"] is JsonObject usage)
-					AppendUsage(usage, model);
+					metadata.Add(GetUsageMetadata(usage));
+
+				if (metadata.Count > 0)
+					result.Complete(metadata);
 			}
 
 			var body = BuildChatRequestBody(model, messages, outputFormatDefinition, tools, properties, count, true);
@@ -116,7 +132,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 					}
 				}, cancellationToken);
 
-			return Task.FromResult(new PartialChatCompletionResult(this, model, resultMessages));
+			return Task.FromResult(result);
 		}
 
 		protected virtual JsonObject BuildTool(ITool tool)
@@ -181,7 +197,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			return new JsonObject
 			{
 				["role"] = "user",
-				["content"] = message.BuildContentWithTextAttachments()
+				["content"] = message.Content
 			};
 		}
 
@@ -190,7 +206,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			var res = new JsonObject
 			{
 				["role"] = "assistant",
-				["content"] = message.BuildContentWithTextAttachments()
+				["content"] = message.Content
 			};
 
 			var toolCalls = new JsonArray(message.ToolCalls.Select(BuildToolCall).ToArray());
@@ -206,7 +222,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			{
 				["role"] = "tool",
 				["tool_call_id"] = message.ToolCallId,
-				["content"] = message.BuildContentWithTextAttachments()
+				["content"] = message.Content
 			};
 		}
 
@@ -245,9 +261,11 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			{
 				["model"] = model.Name,
 				["messages"] = messages,
-				["n"] = count,
 				["stream"] = stream
 			};
+
+			if (count > 1)
+				result["n"] = count;
 
 			if (tools.Any())
 				result["tools"] = new JsonArray(tools.Select(BuildTool).ToArray());
@@ -331,7 +349,8 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			return null;
 		}
 
-		protected virtual AssistantMessage ParseNonStreamingAssistantMessage(JsonObject message, LLModelDescriptor model, IEnumerable<ITool> tools)
+		protected virtual AssistantMessage ParseNonStreamingAssistantMessage(JsonObject message,
+			LLModelDescriptor model, IEnumerable<ITool> tools, IEnumerable<IMetadata> metadata)
 		{
 			var content = message["content"]?.GetValue<string>();
 			var reasoningContent = message["reasoning_content"]?.GetValue<string>(); // The DeepSeek is using that currently, why OpenAI can't?
@@ -340,7 +359,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 				? new List<IToolCall>()
 				: toolCalls.Select(c => ParseToolCall(c!.AsObject(), tools)).ToList();
 
-			return new AssistantMessage(content, reasoningContent, parsedToolCalls);
+			return new AssistantMessage(content, reasoningContent, parsedToolCalls, completionMetadata: metadata);
 		}
 
 		protected virtual void ParseStreamingAssistantMessage(JsonObject delta, PartialAssistantMessage message,
@@ -376,12 +395,31 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			message.Add(content, reasoningContent, parsedToolCalls.AsReadOnly());
 		}
 
-		protected virtual void AppendUsage(JsonObject usage, LLModelDescriptor model)
+		protected virtual IFinishReasonMetadata GetFinishReasonMetadata(string reason)
 		{
-			var promptTokens = usage["prompt_tokens"]?.GetValue<int>() ?? -1;
-			var completionTokens = usage["completion_tokens"]?.GetValue<int>() ?? -1;
+			var value = reason switch
+			{
+				"stop" => FinishReason.Stop,
+				"length" => FinishReason.Length,
+				"content_filter" => FinishReason.ContentFilter,
+				"tool_calls" => FinishReason.ToolCalls,
+				"insufficient_system_resource" => FinishReason.InsufficientResources,
+				_ => FinishReason.Unknown
+			};
+			return new FinishReasonMetadata(value);
+		}
 
-			TokenUsageStatsCollector.AppendUsage(Name, model.Name, promptTokens, completionTokens);
+		protected virtual IUsageMetadata GetUsageMetadata(JsonObject usage)
+		{
+			var promptTokens = usage["prompt_tokens"]?.GetValue<int>() ?? 0;
+			var promptCHTokens = usage["prompt_cache_hit_tokens"]?.GetValue<int>() ?? 0;
+			var promptCMTokens = usage["prompt_cache_miss_tokens"]?.GetValue<int>() ?? 0;
+			var completionTokens = usage["completion_tokens"]?.GetValue<int>() ?? 0;
+
+			if (promptCHTokens != 0 && promptCMTokens != 0)
+				return new UsageCacheMetadata(promptCHTokens, promptCMTokens, completionTokens, 0);
+
+			return new UsageMetadata(promptTokens, completionTokens);
 		}
 	}
 }

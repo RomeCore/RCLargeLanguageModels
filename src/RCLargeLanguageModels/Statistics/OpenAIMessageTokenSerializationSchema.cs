@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using System.Text.Unicode;
 using System.Threading;
 using RCLargeLanguageModels.Messages;
@@ -16,6 +17,7 @@ namespace RCLargeLanguageModels.Statistics
 		{
 			// WriteIndented = true,
 			Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
+			TypeInfoResolver = new DefaultJsonTypeInfoResolver()
 		};
 
 		public override string SerializeMessage(IMessage message, IEnumerable<ITool> availableTools)

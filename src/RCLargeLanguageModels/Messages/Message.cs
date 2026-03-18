@@ -33,7 +33,7 @@ namespace RCLargeLanguageModels.Messages
 		public IEnumerable<ITokenProbabilitiesMetadata> TokenProbabilities
 			=> PartialMetadata?.OfType<TokenProbabilitiesMetadata>() ?? Enumerable.Empty<ITokenProbabilitiesMetadata>();
 
-		public IStopReasonMetadata? StopReason => Metadata?.TryGet<StopReasonMetadata>();
+		public IFinishReasonMetadata? FinishReason => Metadata?.TryGet<FinishReasonMetadata>();
 
 		public ToolResultStatus ToolStatus { get; set; } = ToolResultStatus.Success;
 		ToolResultStatus IToolMessage.Status => ToolStatus;

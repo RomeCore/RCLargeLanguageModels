@@ -65,39 +65,6 @@ namespace RCLargeLanguageModels
 		}
 
 		/// <summary>
-		/// Creates a copy of the current instance with the specified task queue mode.
-		/// </summary>
-		/// <param name="queueMode">The task queue mode to use for enqueueing operations.</param>
-		/// <returns>A copied model instance with the specified queue mode.</returns>
-		public LLModel WithEnqueueing(TaskQueueMode queueMode)
-		{
-			return new LLModel(
-				Descriptor,
-				CompletionProperties,
-				OutputFormatDefinition,
-				Tools,
-				Injectors,
-				new TaskQueueParameters(queueMode, QueueParameters.EnqueuePriority));
-		}
-		
-		/// <summary>
-		/// Creates a copy of the current instance with the specified task queue mode and priority.
-		/// </summary>
-		/// <param name="queueMode">The task queue mode to use for enqueueing operations.</param>
-		/// <param name="priority">The priority to use for enqueueing operations.</param>
-		/// <returns>A copied model instance with the specified queue mode and priority.</returns>
-		public LLModel WithEnqueueing(TaskQueueMode queueMode, int priority)
-		{
-			return new LLModel(
-				Descriptor,
-				CompletionProperties,
-				OutputFormatDefinition,
-				Tools,
-				Injectors,
-				new TaskQueueParameters(queueMode, priority));
-		}
-
-		/// <summary>
 		/// Creates a copy of the current instance with the specified task queue.
 		/// </summary>
 		/// <param name="queue">The task queue to use for enqueueing operations.</param>

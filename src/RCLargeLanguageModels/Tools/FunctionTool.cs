@@ -37,7 +37,8 @@ namespace RCLargeLanguageModels.Tools
 		public FunctionTool(string name, string description, JsonObject argumentSchema,
 			Func<JsonNode, CancellationToken, Task<ToolResult>> function)
 		{
-			Name = name ?? throw new ArgumentNullException(nameof(name));
+			ToolName.EnsureValid(name);
+			Name = name;
 			Description = description ?? throw new ArgumentNullException(nameof(description));
 			ArgumentSchema = argumentSchema ?? throw new ArgumentNullException(nameof(argumentSchema));
 			_function = function ?? throw new ArgumentNullException(nameof(function));
@@ -131,6 +132,7 @@ namespace RCLargeLanguageModels.Tools
 
 			name = name ??
 				methodAccessor.Name;
+			ToolName.EnsureValid(name);
 			description = description ??
 				methodAccessor.Attributes.Get<DescriptionAttribute>()?.Description ??
 				string.Empty;

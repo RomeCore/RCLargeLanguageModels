@@ -224,12 +224,17 @@ namespace RCLargeLanguageModels.Utilities
 					if (!string.IsNullOrWhiteSpace(line))
 					{
 						// SSE handling
+
+						if (line.StartsWith(":"))
+							continue; // Ignore comments
+
 						if (line.StartsWith("data:"))
 						{
 							line = line.Substring(5).Trim();
 							if (line == "[DONE]")
 								break;
 						}
+
 						onDataReceived(line);
 					}
 				}

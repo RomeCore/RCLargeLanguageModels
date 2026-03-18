@@ -15,7 +15,7 @@ namespace RCLargeLanguageModels.Completions
 		IReadOnlyList<IMetadata> PartialMetadata { get; }
 
 		/// <summary>
-		/// Gets the collection of completion metadata (such as stop reason: <see cref="IStopReasonMetadata"/>).
+		/// Gets the collection of completion metadata (such as stop reason: <see cref="IFinishReasonMetadata"/>).
 		/// </summary>
 		new IMetadataCollection Metadata { get; }
 
@@ -25,8 +25,8 @@ namespace RCLargeLanguageModels.Completions
 		IEnumerable<ITokenProbabilitiesMetadata> TokenProbabilities { get; }
 
 		/// <summary>
-		/// Gets the stop reason metadata that caused the generation end, may be <see langword="null"/>.
+		/// Gets the finish reason metadata that caused the generation end, may be <see langword="null"/>.
 		/// </summary>
-		IStopReasonMetadata? StopReason { get; }
+		IFinishReasonMetadata? FinishReason { get; }
 	}
 }

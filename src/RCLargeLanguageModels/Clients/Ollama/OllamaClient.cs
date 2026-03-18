@@ -12,6 +12,7 @@ using RCLargeLanguageModels.Embeddings;
 using RCLargeLanguageModels.Exceptions;
 using RCLargeLanguageModels.Formats;
 using RCLargeLanguageModels.Messages;
+using RCLargeLanguageModels.Metadata;
 using RCLargeLanguageModels.Security;
 using RCLargeLanguageModels.Statistics;
 using RCLargeLanguageModels.Tools;
@@ -213,10 +214,10 @@ namespace RCLargeLanguageModels.Clients.Ollama
 
 			void OnDataReceived(JsonObject response)
 			{
-				var (Delta, Done) = ParseChatResponse(response, model, tools, false, ref gettingThinking);
-				message.Add(Delta);
-				if (Done)
-					message.Complete();
+				var (delta, metadata) = ParseChatResponse(response, model, tools, false, ref gettingThinking);
+				message.Add(delta);
+				if (metadata != null)
+					message.Complete(metadata);
 			}
 
 			var _ = RequestUtility.ProcessStreamingJsonResponseAsync<JsonObject>(
@@ -252,9 +253,9 @@ namespace RCLargeLanguageModels.Clients.Ollama
 				_endpoint.GenerateCompletion,
 				body, _http, headers, cancellationToken: cancellationToken);
 
-			var delta = ParseResponse(response, model, false).Delta;
+			var (delta, metadata) = ParseCompletionResponse(response, model, false);
 
-			return new CompletionResult(this, model, new Completion(delta.DeltaContent));
+			return new CompletionResult(this, model, new Completion(delta.DeltaContent), metadata);
 		}
 
 		protected override async Task<PartialCompletionResult> CreateStreamingCompletionsOverrideAsync(
@@ -270,19 +271,15 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			var headers = GetRequestHeaders();
 			var body = BuildRequestBody(model, prompt, suffix, true, properties);
 
-			string bodyStr = body.ToString();
-			Log.Information("Request body: {0}", bodyStr);
-
 			var completion = new PartialCompletion();
 
 			void OnStreamResponse(JsonObject response)
 			{
-				var parsed = ParseResponse(response, model, false);
-				var delta = parsed.Delta;
+				var (delta, metadata) = ParseCompletionResponse(response, model, false);
 				completion.Add(delta);
 
-				if (parsed.Done)
-					completion.Complete();
+				if (metadata != null)
+					completion.Complete(metadata);
 			}
 
 			var _ = RequestUtility.ProcessStreamingJsonResponseAsync<JsonObject>(
@@ -321,15 +318,20 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			return result;
 		}
 
-		private (CompletionDelta Delta, bool Done) ParseResponse(JsonObject response, LLModelDescriptor model, bool stream)
+		private (CompletionDelta Delta, IEnumerable<IMetadata>? Metadata) ParseCompletionResponse(JsonObject response, LLModelDescriptor model, bool stream)
 		{
 			var content = response["response"]?.GetValue<string>();
 
+			List<IMetadata>? metadata = null;
 			var done = response["done"]?.GetValue<bool>() ?? false;
 			if (done)
-				AppendUsage(response, model);
+			{
+				metadata = new List<IMetadata>();
+				metadata.Add(GetFinishReasonMetadata(response["done_reason"]?.GetValue<string>() ?? ""));
+				metadata.Add(GetUsageMetadata(response));
+			}
 
-			return (new CompletionDelta(content), done);
+			return (new CompletionDelta(content), metadata);
 		}
 
 		private const string ThinkingTagOpen = "<think>";
@@ -415,25 +417,20 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			return result;
 		}
 
-		protected virtual void AppendUsage(JsonObject response, LLModelDescriptor model)
-		{
-			var promptEvalCount = response["prompt_eval_count"]?.GetValue<int>() ?? -1;
-			var evalCount = response["eval_count"]?.GetValue<int>() ?? -1;
-
-			if (promptEvalCount != -1 && evalCount != -1)
-				TokenUsageStatsCollector.AppendUsage(Name, model.Name, promptEvalCount, evalCount);
-		}
-
-		protected virtual (AssistantMessageDelta Delta, bool Done) ParseChatResponse(
+		protected virtual (AssistantMessageDelta Delta, IEnumerable<IMetadata>? CompletionMetadata) ParseChatResponse(
 			JsonObject response, LLModelDescriptor model, IEnumerable<ITool> tools, bool stream, ref bool gettingThinking)
 		{
 			var message = response["message"] as JsonObject;
 			if (message == null)
 				throw new LLMException("Could not get message from response.", model);
 
-			var done = response["done"]?.GetValue<bool>() ?? false;
-			if (done)
-				AppendUsage(response, model);
+			List<IMetadata>? metadata = null;
+			if (response["done"]?.GetValue<bool>() ?? false)
+			{
+				metadata = new List<IMetadata>();
+				metadata.Add(GetFinishReasonMetadata(response["done_reason"]?.GetValue<string>() ?? ""));
+				metadata.Add(GetUsageMetadata(response));
+			}
 
 			var (content, reasoningContent) = ParseMessageContent(message, model, stream, ref gettingThinking);
 
@@ -442,7 +439,7 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			if (toolCalls != null)
 				toolCallsParsed = ParseToolCalls(toolCalls, model, tools);
 
-			return (new AssistantMessageDelta(content, reasoningContent, toolCallsParsed), done);
+			return (new AssistantMessageDelta(content, reasoningContent, toolCallsParsed), metadata);
 		}
 
 		protected virtual JsonObject BuildChatRequestBody(
@@ -612,14 +609,14 @@ namespace RCLargeLanguageModels.Clients.Ollama
 					return new JsonObject
 					{
 						["role"] = "user",
-						["content"] = userMessage.BuildContentWithTextAttachments()
+						["content"] = userMessage.Content
 					};
 
 				case IAssistantMessage assistantMessage:
 					var res = new JsonObject
 					{
 						["role"] = "assistant",
-						["content"] = assistantMessage.BuildContentWithTextAttachments()
+						["content"] = assistantMessage.Content
 					};
 
 					var toolCalls = new JsonArray(assistantMessage.ToolCalls.Select(BuildToolCall).ToArray());
@@ -633,12 +630,34 @@ namespace RCLargeLanguageModels.Clients.Ollama
 					{
 						["role"] = "tool",
 						["tool_call_id"] = toolMessage.ToolCallId,
-						["content"] = toolMessage.BuildContentWithTextAttachments()
+						["content"] = toolMessage.Content
 					};
 
 				default:
 					throw new InvalidOperationException("Unknown message type.");
 			}
+		}
+
+		protected virtual IFinishReasonMetadata GetFinishReasonMetadata(string reason)
+		{
+			var value = reason switch
+			{
+				"stop" => FinishReason.Stop,
+				"length" => FinishReason.Length,
+				"content_filter" => FinishReason.ContentFilter,
+				"tool_calls" => FinishReason.ToolCalls,
+				"insufficient_system_resource" => FinishReason.InsufficientResources,
+				_ => FinishReason.Unknown
+			};
+			return new FinishReasonMetadata(value);
+		}
+
+		protected virtual IUsageMetadata GetUsageMetadata(JsonObject response)
+		{
+			var promptEvalCount = response["prompt_eval_count"]?.GetValue<int>() ?? 0;
+			var evalCount = response["eval_count"]?.GetValue<int>() ?? 0;
+
+			return new UsageMetadata(promptEvalCount, evalCount);
 		}
 
 		protected override async Task<EmbeddingResult> CreateEmbeddingsOverrideAsync(
@@ -659,9 +678,11 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			var responseContent = await response.ParseContentAsync<JsonObject>(cancellationToken);
 
 			var embeddings = ParseEmbeddingsResponse(responseContent, model);
-			AppendEmbeddingUsage(responseContent, model);
 
-			return new EmbeddingResult(this, model, embeddings);
+			var metadata = new List<IMetadata>();
+			metadata.Add(GetUsageMetadata(responseContent));
+
+			return new EmbeddingResult(this, model, embeddings, metadata);
 		}
 
 		protected virtual JsonObject BuildEmbeddingRequestBody(
@@ -757,16 +778,6 @@ namespace RCLargeLanguageModels.Clients.Ollama
 				parts.Add($"{timeSpan.Seconds}s");
 
 			return string.Join(" ", parts);
-		}
-
-		protected virtual void AppendEmbeddingUsage(JsonObject response, LLModelDescriptor model)
-		{
-			var promptEvalCount = response["prompt_eval_count"]?.GetValue<int>() ?? -1;
-
-			if (promptEvalCount != -1)
-			{
-				TokenUsageStatsCollector.AppendUsage(Name, model.Name, promptEvalCount, 0);
-			}
 		}
 	}
 }

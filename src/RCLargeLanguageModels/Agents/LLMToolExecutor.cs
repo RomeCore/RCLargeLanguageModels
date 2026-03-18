@@ -45,17 +45,17 @@ namespace RCLargeLanguageModels.Agents
 		public LLMChatMemory? Memory { get; set; } = null;
 
 		/// <summary>
-		/// Event triggered when a new message is received.
+		/// Event that triggered when a new message is received in the processor, includes all messages (user, assistant and tool).
 		/// </summary>
 		public event EventHandler<IMessage>? MessageReceived;
 
 		/// <summary>
-		/// Event triggered when a tool execution begins.
+		/// Event that triggered when a tool execution begins.
 		/// </summary>
 		public event EventHandler<ToolExecutionBeginEventArgs>? ToolExecutionBegin;
 
 		/// <summary>
-		/// Event triggered when a tool execution ends.
+		/// Event that triggered when a tool execution ends.
 		/// </summary>
 		public event EventHandler<ToolExecutionEndEventArgs>? ToolExecutionEnd;
 

@@ -12,6 +12,7 @@ using RCLargeLanguageModels.Completions;
 using RCLargeLanguageModels.Embeddings;
 using RCLargeLanguageModels.Formats;
 using RCLargeLanguageModels.Messages;
+using RCLargeLanguageModels.Metadata;
 using RCLargeLanguageModels.Statistics;
 using RCLargeLanguageModels.Tools;
 using RCLargeLanguageModels.Utilities;
@@ -59,10 +60,11 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 				embeddings.Add(new Embedding(vector, model));
 			}
 
+			var metadata = new List<IMetadata>();
 			if (responseContent["usage"] is JsonObject usage)
-				AppendEmbeddingUsage(usage, model);
+				metadata.Add(GetUsageMetadata(usage));
 
-			return new EmbeddingResult(this, model, embeddings);
+			return new EmbeddingResult(this, model, embeddings, metadata);
 		}
 
 		protected virtual JsonObject BuildEmbeddingRequestBody(
@@ -107,14 +109,6 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			}
 
 			return result;
-		}
-
-		protected virtual void AppendEmbeddingUsage(JsonObject usage, LLModelDescriptor model)
-		{
-			var promptTokens = usage["prompt_tokens"]?.GetValue<int>() ?? -1;
-			var totalTokens = usage["total_tokens"]?.GetValue<int>() ?? -1;
-
-			TokenUsageStatsCollector.AppendUsage(Name, model.Name, promptTokens, 0);
 		}
 	}
 }

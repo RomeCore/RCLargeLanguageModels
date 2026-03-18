@@ -13,6 +13,7 @@ using RCLargeLanguageModels.Formats;
 using RCLargeLanguageModels.Messages;
 using RCLargeLanguageModels.Utilities;
 using Serilog;
+using RCLargeLanguageModels.Metadata;
 
 namespace RCLargeLanguageModels.Clients.OpenAI
 {
@@ -36,19 +37,26 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 
 			foreach (var choice in choices)
 			{
-				results.Add(new Completion(choice!["text"]?.GetValue<string>()));
+				var completionMetadata = new List<IMetadata>();
+				if (choice["finish_reason"]?.GetValue<string>() is string finishReason)
+					completionMetadata.Add(GetFinishReasonMetadata(finishReason));
+
+				var completion = new Completion(choice!["text"]?.GetValue<string>(), completionMetadata: completionMetadata);
+				results.Add(completion);
 			}
 
+			var metadata = new List<IMetadata>();
 			if (responseContent["usage"] is JsonObject usage)
-				AppendUsage(usage, model);
+				metadata.Add(GetUsageMetadata(usage));
 
-			return new CompletionResult(this, model, results);
+			return new CompletionResult(this, model, results, metadata);
 		}
 
 		protected override Task<PartialCompletionResult> CreateStreamingCompletionsOverrideAsync(LLModelDescriptor model,
 			string prompt, string? suffix, int count, IEnumerable<CompletionProperty> properties, CancellationToken cancellationToken)
 		{
 			var results = Enumerable.Range(0, count).Select(i => new PartialCompletion()).ToImmutableArray();
+			var result = new PartialCompletionResult(this, model, results);
 
 			void OnDataReceived(JsonObject data)
 			{
@@ -60,15 +68,23 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 					int index = choice!["index"]!.GetValue<int>();
 					var completion = results[index];
 
-					if (choice["finish_reason"]?.GetValue<string>() is string finishReason)
-						completion.Complete();
-
 					if (choice["text"]?.GetValue<string>() is string delta)
 						completion.Add(delta);
+
+					var completionMetadata = new List<IMetadata>();
+					if (choice["finish_reason"]?.GetValue<string>() is string finishReason)
+						completionMetadata.Add(GetFinishReasonMetadata(finishReason));
+
+					if (completionMetadata.Count > 0)
+						completion.Complete(completionMetadata);
 				}
 
+				var metadata = new List<IMetadata>();
 				if (data["usage"] is JsonObject usage)
-					AppendUsage(usage, model);
+					metadata.Add(GetUsageMetadata(usage));
+
+				if (metadata.Count > 0)
+					result.Complete(metadata);
 			}
 
 			var body = BuildCompletionRequestBody(model, prompt, suffix, properties, count, true);
@@ -89,7 +105,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 					}
 				}, TaskScheduler.Default);
 
-			return Task.FromResult(new PartialCompletionResult(this, model, results));
+			return Task.FromResult(result);
 		}
 
 		private JsonObject BuildCompletionRequestBody(LLModelDescriptor model, string prompt, string? suffix, IEnumerable<CompletionProperty> properties, int count, bool stream)

@@ -17,12 +17,18 @@ namespace RCLargeLanguageModels.Agents
 	{
 		private readonly AsyncCache<(IMessage, IEnumerable<ITool>), int> _tokenCountCache;
 
+		/// <summary>
+		/// Creates the summarizer agent from the given LLM provider.
+		/// </summary>
+		/// <param name="llm">The LLM provider.</param>
+		/// <returns>The summarizer agent.</returns>
 		public static LLMAgent CreateSummarizer(ILLMProvider llm)
 		{
 			return new StatelessAgent
 			{
 				SystemInstructions = "You are a conversation summarizer. " +
-				"Your task is to summarize input LLM conversation history (including a previous summary, if provided) and return a next summary.",
+					"Your task is to summarize input LLM conversation history " +
+					"(including a previous summary, if provided) and return a next summary.",
 				LLMProvider = llm
 			};
 		}
@@ -58,10 +64,16 @@ namespace RCLargeLanguageModels.Agents
 		public IMessageTokenSerializationSchema MessageSerializationSchema { get; set; } = Statistics.MessageTokenSerializationSchema.Default;
 
 		/// <summary>
-		/// Gets or sets the maximum context window in tokens that target LLM model should support (default is 128000),
-		/// this value will be multiplied by <see cref="Tolerance"/> and used for summarization trigger.
+		/// Gets or sets the maximum context window in tokens that target LLM model should support (default is 128000).
+		/// This value will be multiplied by <see cref="Tolerance"/> and used for summarization trigger.
 		/// </summary>
 		public int TargetTokens { get; set; } = 128000;
+
+		/// <summary>
+		/// Gets or sets the maximum number of tokens that summarizer agent can process (default is 128000).
+		/// This value will be multiplied by <see cref="Tolerance"/> and used for summarization message selection.
+		/// </summary>
+		public int MaxSummarizerTokens { get; set; } = 128000;
 
 		/// <summary>
 		/// Gets or sets the summarization trigger tokens tolerance multiplier, default is 0.7 or 70%.
@@ -74,7 +86,7 @@ namespace RCLargeLanguageModels.Agents
 		public int KeepLastNMessages { get; set; } = 0;
 
 		/// <summary>
-		/// Initializes a new instance of <see cref="TokenSlidingChatMemory"/> class.
+		/// Initializes a new instance of <see cref="SummarizingChatMemory"/> class.
 		/// </summary>
 		public SummarizingChatMemory()
 		{
@@ -85,7 +97,7 @@ namespace RCLargeLanguageModels.Agents
 		}
 
 		/// <summary>
-		/// Initializes a new instance of <see cref="TokenSlidingChatMemory"/> class.
+		/// Initializes a new instance of <see cref="SummarizingChatMemory"/> class.
 		/// </summary>
 		/// <param name="tokenCountCacheExpirationTime">
 		/// The time that token count cache will be expired and counted again.
@@ -134,6 +146,7 @@ namespace RCLargeLanguageModels.Agents
 			TokenCounter ??= Statistics.TokenCounter.Naive;
 			MessageSerializationSchema ??= Statistics.MessageTokenSerializationSchema.Default;
 			int maxTokens = (int)(TargetTokens * Tolerance);
+			int maxSummarizerTokens = (int)(MaxSummarizerTokens * Tolerance);
 
 			_tokenCountCache.RemoveExpiredItems();
 
@@ -152,23 +165,87 @@ namespace RCLargeLanguageModels.Agents
 				List<IMessage> messagesToSummarize = new();
 				StringBuilder summaryInput = new();
 
-				int accumulatedTokens = 0;
+				int summaryInputTokens = 0;
 				if (!string.IsNullOrWhiteSpace(LatestSummary))
 				{
 					summaryInput.Append("Previous messages summary: ").AppendLine(LatestSummary).AppendLine();
-					accumulatedTokens = await TokenCounter.CountAsync(LatestSummary, cancellationToken);
+					summaryInputTokens = await TokenCounter.CountAsync(LatestSummary, cancellationToken);
 				}
 
-				foreach (var msg in Messages)
+				for (int i = 0; i < Messages.Count - KeepLastNMessages; i++)
 				{
-					int currentTokens = await _tokenCountCache.GetAsync((msg, targetModel.Tools), cancellationToken);
-					if (accumulatedTokens + currentTokens > maxTokens)
+					var message = Messages[i];
+					int currentTokens = await _tokenCountCache.GetAsync((message, targetModel.Tools), cancellationToken);
+					if (summaryInputTokens + currentTokens > maxSummarizerTokens)
 					{
 						break;
 					}
-					messagesToSummarize.Add(msg);
-					accumulatedTokens += currentTokens;
+					messagesToSummarize.Add(message);
+					summaryInputTokens += currentTokens;
 				}
+
+				// Remove the assistant-tool messages if the number of tool messages is not equal to the number of assistant tool calls
+				if (messagesToSummarize.Count > 0 &&
+					messagesToSummarize[messagesToSummarize.Count - 1] is IToolMessage)
+				{
+					int toolMsgCount = 1;
+					while (true)
+					{
+						if (messagesToSummarize.Count > toolMsgCount + 1)
+						{
+							var lastMsg = messagesToSummarize[messagesToSummarize.Count - toolMsgCount - 1];
+							if (lastMsg is IToolMessage)
+							{
+								toolMsgCount++;
+							}
+							else if (lastMsg is IAssistantMessage assistMsg1)
+							{
+								if (assistMsg1.ToolCalls.Count != toolMsgCount)
+								{
+									messagesToSummarize.RemoveRange(messagesToSummarize.Count - 2 - toolMsgCount,
+										toolMsgCount + 1);
+								}
+
+								break;
+							}
+						}
+						else
+						{
+							// Messages to summarize contains ENTIRELY tool messages, throw exception later
+							messagesToSummarize.Clear();
+							break;
+						}
+					}
+				}
+
+				// Remove last assistant message if it contains some tool calls
+				if (messagesToSummarize.Count > 0 &&
+					messagesToSummarize[messagesToSummarize.Count - 1] is IAssistantMessage assistMsg2)
+				{
+					if (assistMsg2.ToolCalls.Count > 0)
+					{
+						messagesToSummarize.RemoveAt(messagesToSummarize.Count - 1);
+					}
+				}
+
+				// Remove last user message
+				if (messagesToSummarize.Count > 0 &&
+					messagesToSummarize[messagesToSummarize.Count - 1] is IUserMessage)
+				{
+					messagesToSummarize.RemoveAt(messagesToSummarize.Count - 1);
+				}
+
+				// Append last summarizing user message to the end if there will not be any user messages in result conversation
+				if (messagesToSummarize.OfType<IUserMessage>().LastOrDefault() is IUserMessage userMsg &&
+					!Messages.Concat(messagesToAddList).Any(m => m is IUserMessage))
+				{
+					messagesToAddList.Insert(0, userMsg);
+				}
+
+				if (messagesToSummarize.Count == 0)
+					throw new Exception($"No messages to summarize. This may be caused by too low limit for summarizer context window or too long messages " +
+						$"(see {nameof(MaxSummarizerTokens)} and {nameof(TargetTokens)} properties). " +
+						$"Please increase these limits or adjust your model's context window settings.");
 
 				summaryInput.AppendLine("Messages:");
 				foreach (var msg in messagesToSummarize)
@@ -190,8 +267,10 @@ namespace RCLargeLanguageModels.Agents
 			}
 
 			Messages.AddRange(messagesToAddList);
+
 			result.Add(systemMessage);
 			result.AddRange(Messages);
+
 			return result;
 		}
 	}

@@ -27,7 +27,7 @@ namespace RCLargeLanguageModels.Completions
 			=> PartialMetadata.OfType<ITokenProbabilitiesMetadata>();
 
 		/// <inheritdoc/>
-		public IStopReasonMetadata? StopReason => Metadata.TryGet<IStopReasonMetadata>();
+		public IFinishReasonMetadata? FinishReason => Metadata.TryGet<IFinishReasonMetadata>();
 
 		/// <summary>
 		/// Creates a new instance of <see cref="Completion"/> class.

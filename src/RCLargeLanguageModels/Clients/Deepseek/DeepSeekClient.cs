@@ -105,13 +105,12 @@ namespace RCLargeLanguageModels.Clients.Deepseek
 			return Task.FromResult(new LLModelDescriptor[]
 			{
 				new LLModelDescriptor(this,
-					"deepseek-chat", "DeepSeek V3",
+					"deepseek-chat", "DeepSeek V3.2",
 					LLMCapabilities.ChatWithTools | LLMCapabilities.SuffixCompletions | LLMCapabilities.StreamingCompletions,
 						supportedOutputFormats: OutputFormatSupportSet.Text.With(OutputFormatType.Json)),
 
-				// Now DeepSeek-R1 supports tools and structured outputs (28 May, 2025)!
 				new LLModelDescriptor(this,
-					"deepseek-reasoner", "DeepSeek-R1",
+					"deepseek-reasoner", "DeepSeek V3.2 Reasoning",
 					LLMCapabilities.ChatWithReasoningAndTools | LLMCapabilities.StreamingCompletions,
 						supportedOutputFormats: OutputFormatSupportSet.Text.With(OutputFormatType.Json))
 			});

@@ -79,7 +79,7 @@ namespace RCLargeLanguageModels.Messages
 		public IReadOnlyList<IMetadata> PartialMetadata { get; }
 
 		/// <summary>
-		/// The completion metadata (such as stop reason: <see cref="IStopReasonMetadata"/>). Will be empty until completed.
+		/// The completion metadata (such as stop reason: <see cref="IFinishReasonMetadata"/>). Will be empty until completed.
 		/// </summary>
 		public MetadataCollection Metadata => _metadata;
 		IMetadataCollection IMetadataProvider.Metadata => Metadata;
@@ -94,7 +94,7 @@ namespace RCLargeLanguageModels.Messages
 		/// <summary>
 		/// Gets the stop reason metadata that caused the generation end, may be <see langword="null"/> (especially if not completed).
 		/// </summary>
-		public IStopReasonMetadata? StopReason => Metadata?.TryGet<IStopReasonMetadata>();
+		public IFinishReasonMetadata? FinishReason => Metadata?.TryGet<IFinishReasonMetadata>();
 
 		/// <summary>
 		/// The event is raised when a new part of the assistant message is added to message.
@@ -168,7 +168,7 @@ namespace RCLargeLanguageModels.Messages
 		/// <param name="partialMetadata">The list of partial metadata.</param>
 		/// <param name="completionState">The completion state of the partial assistant message.</param>
 		/// <param name="completionMetadata">
-		/// The completion metadata (such as stop reason: <see cref="IStopReasonMetadata"/>).
+		/// The completion metadata (such as stop reason: <see cref="IFinishReasonMetadata"/>).
 		/// Will be ignored when <paramref name="completionState"/>==<see cref="CompletionState.Incomplete"/>.
 		/// </param>
 		/// <param name="completionException">

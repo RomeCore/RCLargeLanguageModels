@@ -43,7 +43,7 @@ namespace RCLargeLanguageModels.Messages
 			=> PartialMetadata.OfType<ITokenProbabilitiesMetadata>();
 
 		/// <inheritdoc/>
-		public IStopReasonMetadata? StopReason => Metadata.TryGet<IStopReasonMetadata>();
+		public IFinishReasonMetadata? FinishReason => Metadata.TryGet<IFinishReasonMetadata>();
 
 		/// <summary>
 		/// Creates a new instance of <see cref="AssistantMessage"/> class.

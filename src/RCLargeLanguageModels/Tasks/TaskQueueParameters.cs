@@ -8,7 +8,7 @@
 		/// <summary>
 		/// Gets the task queue that used to enqueue requests. Can be null for executing immediately.
 		/// </summary>
-		public TaskQueue EnqueueInto { get; }
+		public TaskQueue? EnqueueInto { get; }
 
 		/// <summary>
 		/// Gets the priority of the requests when enqueued into a task queue. Higher values have higher priority.
@@ -34,7 +34,7 @@
 		/// Initializes a new instance of the <see cref="TaskQueueParameters"/> class with the specified task queue.
 		/// </summary>
 		/// <param name="enqueueInto">The task queue that used to enqueue requests. Can be null for executing immediately.</param>
-		public TaskQueueParameters(TaskQueue enqueueInto)
+		public TaskQueueParameters(TaskQueue? enqueueInto)
 		{
 			EnqueueInto = enqueueInto;
 			EnqueuePriority = 0;
@@ -51,27 +51,6 @@
 			EnqueuePriority = enqueuePriority;
 		}
 
-		/// <summary>
-		/// Initializes a new instance of the <see cref="TaskQueueParameters"/> class with the specified task queue mode.
-		/// </summary>
-		/// <param name="mode">The task queue mode that used to enqueue requests.</param>
-		public TaskQueueParameters(TaskQueueMode mode)
-		{
-			EnqueueInto = TaskQueueMaster.GetQueue(mode);
-			EnqueuePriority = 0;
-		}
-
-		/// <summary>
-		/// Initializes a new instance of the <see cref="TaskQueueParameters"/> class with the specified task queue mode and priority.
-		/// </summary>
-		/// <param name="mode">The task queue mode that used to enqueue requests.</param>
-		/// <param name="enqueuePriority">The priority of the requests when enqueued into a task queue. Higher values have higher priority.</param>
-		public TaskQueueParameters(TaskQueueMode mode, int enqueuePriority)
-		{
-			EnqueueInto = TaskQueueMaster.GetQueue(mode);
-			EnqueuePriority = enqueuePriority;
-		}
-
-		public static readonly TaskQueueParameters ExecuteImmediately = new TaskQueueParameters(TaskQueueMode.ExecuteImmediately);
+		public static readonly TaskQueueParameters ExecuteImmediately = new TaskQueueParameters(null);
 	}
 }

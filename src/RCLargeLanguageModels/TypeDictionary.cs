@@ -60,6 +60,8 @@ namespace RCLargeLanguageModels
 		/// </summary>
 		public static ImmutableHashSet<Type> GetHierarchySet(Type type)
 		{
+			if (type == null)
+				return ImmutableHashSet<Type>.Empty;
 			return _cache.GetOrAdd(type, GetHierarchySetInternal);
 		}
 

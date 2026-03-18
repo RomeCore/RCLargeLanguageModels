@@ -1,9 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace RCLargeLanguageModels.Tools
 {
+	/// <summary>
+	/// The utility class for generating unique tool call ids.
+	/// </summary>
 	public static class ToolCallId
 	{
 		/// <summary>

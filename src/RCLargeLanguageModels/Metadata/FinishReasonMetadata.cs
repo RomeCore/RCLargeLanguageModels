@@ -5,12 +5,12 @@ using System.Text;
 namespace RCLargeLanguageModels.Metadata
 {
 	/// <summary>
-	/// Represents a stop reason that caused completion to stop.
+	/// Represents a finish reason that caused completion to stop.
 	/// </summary>
-	public enum StopReason
+	public enum FinishReason
 	{
 		/// <summary>
-		/// The stop reason is unknown or not specified.
+		/// The finish reason is unknown or not specified.
 		/// Used for unmapped API values or undefined cases.
 		/// </summary>
 		Unknown,
@@ -47,27 +47,27 @@ namespace RCLargeLanguageModels.Metadata
 	}
 
 	/// <summary>
-	/// Represents a stop reason completion metadata that contains stop reason.
+	/// Represents a finish reason completion metadata that contains stop reason.
 	/// </summary>
-	public interface IStopReasonMetadata : IChoiceCompletionMetadata
+	public interface IFinishReasonMetadata : IChoiceCompletionMetadata
 	{
 		/// <summary>
 		/// Gets the stop reason that caused completion to stop.
 		/// </summary>
-		public StopReason StopReason { get; }
+		public FinishReason FinishReason { get; }
 	}
 
-	/// <inheritdoc cref="IStopReasonMetadata"/>
-	public class StopReasonMetadata : IStopReasonMetadata
+	/// <inheritdoc cref="IFinishReasonMetadata"/>
+	public class FinishReasonMetadata : IFinishReasonMetadata
 	{
-		public StopReason StopReason { get; }
+		public FinishReason FinishReason { get; }
 
 		/// <summary>
-		/// Creates a new instance of <see cref="StopReasonMetadata"/>
+		/// Creates a new instance of <see cref="FinishReasonMetadata"/>
 		/// </summary>
-		public StopReasonMetadata(StopReason stopReason)
+		public FinishReasonMetadata(FinishReason finishReason)
 		{
-			StopReason = stopReason;
+			FinishReason = finishReason;
 		}
 	}
 }

@@ -12,6 +12,7 @@ using RCLargeLanguageModels.Embeddings;
 using RCLargeLanguageModels.Exceptions;
 using RCLargeLanguageModels.Formats;
 using RCLargeLanguageModels.Messages;
+using RCLargeLanguageModels.Messages.Attachments;
 using RCLargeLanguageModels.Metadata;
 using RCLargeLanguageModels.Security;
 using RCLargeLanguageModels.Statistics;
@@ -172,11 +173,11 @@ namespace RCLargeLanguageModels.Clients.Ollama
 
 		protected override async Task<ChatCompletionResult> CreateChatCompletionsOverrideAsync(
 			LLModelDescriptor model,
-			IEnumerable<IMessage> messages,
+			List<IMessage> messages,
 			int count,
-			IEnumerable<CompletionProperty> properties,
+			List<CompletionProperty> properties,
 			OutputFormatDefinition outputFormatDefinition,
-			IEnumerable<ITool> tools,
+			ToolSet tools,
 			CancellationToken cancellationToken)
 		{
 			await GetVersionAsync(cancellationToken);
@@ -197,11 +198,11 @@ namespace RCLargeLanguageModels.Clients.Ollama
 
 		protected override async Task<PartialChatCompletionResult> CreateStreamingChatCompletionsOverrideAsync(
 			LLModelDescriptor model,
-			IEnumerable<IMessage> messages,
+			List<IMessage> messages,
 			int count,
-			IEnumerable<CompletionProperty> properties,
+			List<CompletionProperty> properties,
 			OutputFormatDefinition outputFormatDefinition,
-			IEnumerable<ITool> tools,
+			ToolSet tools,
 			CancellationToken cancellationToken)
 		{
 			await GetVersionAsync(cancellationToken);
@@ -240,7 +241,7 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			string prompt,
 			string? suffix,
 			int count,
-			IEnumerable<CompletionProperty> properties,
+			List<CompletionProperty> properties,
 			CancellationToken cancellationToken)
 		{
 			await GetVersionAsync(cancellationToken);
@@ -263,7 +264,7 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			string prompt,
 			string? suffix,
 			int count,
-			IEnumerable<CompletionProperty> properties,
+			List<CompletionProperty> properties,
 			CancellationToken cancellationToken)
 		{
 			await GetVersionAsync(cancellationToken);
@@ -295,6 +296,31 @@ namespace RCLargeLanguageModels.Clients.Ollama
 				}, cancellationToken);
 
 			return new PartialCompletionResult(this, model, completion);
+		}
+
+		protected override async Task<EmbeddingResult> CreateEmbeddingsOverrideAsync(
+			LLModelDescriptor model,
+			List<string> inputs,
+			List<CompletionProperty> properties,
+			CancellationToken cancellationToken)
+		{
+			await GetVersionAsync(cancellationToken);
+
+			var body = BuildEmbeddingRequestBody(model, inputs, properties);
+
+			var response = await RequestUtility.GetResponseAsync(
+				RequestType.Post,
+				_endpoint.GenerateEmbedding,
+				body, _http, cancellationToken: cancellationToken);
+			response.EnsureSuccessStatusCode();
+			var responseContent = await response.ParseContentAsync<JsonObject>(cancellationToken);
+
+			var embeddings = ParseEmbeddingsResponse(responseContent, model);
+
+			var metadata = new List<IMetadata>();
+			metadata.Add(GetUsageMetadata(responseContent));
+
+			return new EmbeddingResult(this, model, embeddings, metadata);
 		}
 
 		private JsonObject BuildRequestBody(LLModelDescriptor model, string prompt, string? suffix,
@@ -606,14 +632,22 @@ namespace RCLargeLanguageModels.Clients.Ollama
 					};
 
 				case IUserMessage userMessage:
-					return new JsonObject
+					var ures = new JsonObject
 					{
 						["role"] = "user",
 						["content"] = userMessage.Content
 					};
 
+					var imageAttachments = userMessage.Attachments.OfType<IImageAttachment>().ToList();
+					if (imageAttachments.Count > 0)
+					{
+						ures["images"] = new JsonArray(imageAttachments.Select(a => (JsonNode)a.GetBase64()).ToArray());
+					}
+
+					return ures;
+
 				case IAssistantMessage assistantMessage:
-					var res = new JsonObject
+					var ares = new JsonObject
 					{
 						["role"] = "assistant",
 						["content"] = assistantMessage.Content
@@ -621,17 +655,25 @@ namespace RCLargeLanguageModels.Clients.Ollama
 
 					var toolCalls = new JsonArray(assistantMessage.ToolCalls.Select(BuildToolCall).ToArray());
 					if (toolCalls.Count > 0)
-						res["tool_calls"] = toolCalls;
+						ares["tool_calls"] = toolCalls;
 
-					return res;
+					return ares;
 
 				case IToolMessage toolMessage:
-					return new JsonObject
+					var tres = new JsonObject
 					{
 						["role"] = "tool",
 						["tool_call_id"] = toolMessage.ToolCallId,
 						["content"] = toolMessage.Content
 					};
+
+					imageAttachments = toolMessage.Attachments.OfType<IImageAttachment>().ToList();
+					if (imageAttachments.Count > 0)
+					{
+						tres["images"] = new JsonArray(imageAttachments.Select(a => (JsonNode)a.GetBase64()).ToArray());
+					}
+
+					return tres;
 
 				default:
 					throw new InvalidOperationException("Unknown message type.");
@@ -658,31 +700,6 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			var evalCount = response["eval_count"]?.GetValue<int>() ?? 0;
 
 			return new UsageMetadata(promptEvalCount, evalCount);
-		}
-
-		protected override async Task<EmbeddingResult> CreateEmbeddingsOverrideAsync(
-			LLModelDescriptor model,
-			IEnumerable<string> inputs,
-			IEnumerable<CompletionProperty> properties,
-			CancellationToken cancellationToken)
-		{
-			await GetVersionAsync(cancellationToken);
-
-			var body = BuildEmbeddingRequestBody(model, inputs, properties);
-			
-			var response = await RequestUtility.GetResponseAsync(
-				RequestType.Post,
-				_endpoint.GenerateEmbedding,
-				body, _http, cancellationToken: cancellationToken);
-			response.EnsureSuccessStatusCode();
-			var responseContent = await response.ParseContentAsync<JsonObject>(cancellationToken);
-
-			var embeddings = ParseEmbeddingsResponse(responseContent, model);
-
-			var metadata = new List<IMetadata>();
-			metadata.Add(GetUsageMetadata(responseContent));
-
-			return new EmbeddingResult(this, model, embeddings, metadata);
 		}
 
 		protected virtual JsonObject BuildEmbeddingRequestBody(

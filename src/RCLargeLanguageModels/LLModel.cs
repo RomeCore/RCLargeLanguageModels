@@ -28,7 +28,7 @@ namespace RCLargeLanguageModels
 		public LLModelDescriptor Descriptor { get; }
 
 		/// <summary>
-		/// Gets the completion properties associated with the model that will be used in completions. Can be null.
+		/// Gets the completion properties associated with the model that will be used in completions.
 		/// </summary>
 		public ImmutableList<CompletionProperty> CompletionProperties { get; }
 

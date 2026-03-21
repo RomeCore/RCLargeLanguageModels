@@ -3,6 +3,7 @@ using RCLargeLanguageModels.Messages;
 using RCLargeLanguageModels.Formats;
 using RCLargeLanguageModels.Tools;
 using RCLargeLanguageModels.Completions;
+using System.Threading.Tasks;
 
 namespace RCLargeLanguageModels.PropertyInjectors
 {
@@ -14,43 +15,19 @@ namespace RCLargeLanguageModels.PropertyInjectors
 		/// <summary>
 		/// Injects properties into LLM API execution process.
 		/// </summary>
-		/// <param name="model">The model that uses injector.</param>
-		/// <param name="prompt">The prompt to complete.</param>
-		/// <param name="suffix">The suffix to use in fill-in-the-middle completions.</param>
-		/// <param name="count">The count of completions to create.</param>
-		/// <param name="properties">The completion properties.</param>
-		void InjectCompletion(
-			LLModel model,
-			ref string prompt,
-			ref string? suffix,
-			ref int count,
-			ref IEnumerable<CompletionProperty>? properties);
+		/// <param name="parameters">The parameters for injecting in the general completions.</param>
+		Task InjectCompletionAsync(CompletionInjectionParameters parameters);
 
 		/// <summary>
 		/// Injects properties into LLM API execution process.
 		/// </summary>
-		/// <param name="model">The model that uses injector.</param>
-		/// <param name="messages">The messages history.</param>
-		/// <param name="count">The count of completions to create.</param>
-		/// <param name="properties">The chat completion properties.</param>
-		/// <param name="tools">The tool set.</param>
-		/// <param name="outputFormatDefinition">The native output format definition.</param>
-		void InjectChatCompletion(
-			LLModel model,
-			ref IEnumerable<IMessage> messages,
-			ref int count,
-			ref IEnumerable<CompletionProperty>? properties,
-			ref IEnumerable<ITool>? tools,
-			ref OutputFormatDefinition? outputFormatDefinition);
+		/// <param name="parameters">The parameters for injecting in the chat completions.</param>
+		Task InjectChatCompletionAsync(ChatCompletionInjectionParameters parameters);
 
 		/// <summary>
 		/// Injects properties into LLM API execution process.
 		/// </summary>
-		/// <param name="model">The model that uses injector.</param>
-		/// <param name="inputs">The inputs to generate embeddings for.</param>
-		/// <param name="properties">The embedding completion properties.</param>
-		void InjectEmbedding(LLModel model,
-			ref IEnumerable<string> inputs,
-			ref IEnumerable<CompletionProperty> properties);
+		/// <param name="parameters">The parameters for injecting in the embeddings generations.</param>
+		Task InjectEmbeddingAsync(EmbeddingInjectionParameters parameters);
 	}
 }

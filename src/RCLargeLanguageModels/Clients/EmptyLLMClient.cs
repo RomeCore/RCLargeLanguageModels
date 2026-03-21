@@ -23,31 +23,61 @@ namespace RCLargeLanguageModels.Clients
 			return Task.FromResult(Array.Empty<LLModelDescriptor>());
 		}
 
-		protected override Task<ChatCompletionResult> CreateChatCompletionsOverrideAsync(LLModelDescriptor model, IEnumerable<IMessage> messages, int count, IEnumerable<CompletionProperty> properties, OutputFormatDefinition outputFormatDefinition, IEnumerable<ITool> tools, CancellationToken cancellationToken)
+		protected override Task<ChatCompletionResult> CreateChatCompletionsOverrideAsync(
+			LLModelDescriptor model,
+			List<IMessage> messages,
+			int count,
+			List<CompletionProperty> properties,
+			OutputFormatDefinition outputFormatDefinition,
+			ToolSet tools,
+			CancellationToken cancellationToken)
 		{
 			return Task.FromResult(new ChatCompletionResult(this, model, new AssistantMessage("Empty content")));
 		}
 
-		protected override Task<CompletionResult> CreateCompletionsOverrideAsync(LLModelDescriptor model, string prompt, string? suffix, int count, IEnumerable<CompletionProperty> properties, CancellationToken cancellationToken)
+		protected override Task<CompletionResult> CreateCompletionsOverrideAsync(
+			LLModelDescriptor model,
+			string prompt,
+			string? suffix,
+			int count,
+			List<CompletionProperty> properties,
+			CancellationToken cancellationToken)
 		{
 			return Task.FromResult(new CompletionResult(this, model, new Completion("Empty content")));
 		}
 
-		protected override Task<PartialChatCompletionResult> CreateStreamingChatCompletionsOverrideAsync(LLModelDescriptor model, IEnumerable<IMessage> messages, int count, IEnumerable<CompletionProperty> properties, OutputFormatDefinition outputFormatDefinition, IEnumerable<ITool> tools, CancellationToken cancellationToken)
+		protected override Task<PartialChatCompletionResult> CreateStreamingChatCompletionsOverrideAsync(
+			LLModelDescriptor model,
+			List<IMessage> messages,
+			int count,
+			List<CompletionProperty> properties,
+			OutputFormatDefinition outputFormatDefinition,
+			ToolSet tools,
+			CancellationToken cancellationToken)
 		{
 			var partialMessage = new PartialAssistantMessage();
 			partialMessage.Complete();
 			return Task.FromResult(new PartialChatCompletionResult(this, model, partialMessage));
 		}
 
-		protected override Task<PartialCompletionResult> CreateStreamingCompletionsOverrideAsync(LLModelDescriptor model, string prompt, string? suffix, int count, IEnumerable<CompletionProperty> properties, CancellationToken cancellationToken)
+		protected override Task<PartialCompletionResult> CreateStreamingCompletionsOverrideAsync(
+			LLModelDescriptor model,
+			string prompt,
+			string? suffix,
+			int count,
+			List<CompletionProperty> properties,
+			CancellationToken cancellationToken)
 		{
 			var partialCompletion = new PartialCompletion();
 			partialCompletion.Complete();
 			return Task.FromResult(new PartialCompletionResult(this, model, partialCompletion));
 		}
 
-		protected override Task<EmbeddingResult> CreateEmbeddingsOverrideAsync(LLModelDescriptor model, IEnumerable<string> inputs, IEnumerable<CompletionProperty> properties, CancellationToken cancellationToken)
+		protected override Task<EmbeddingResult> CreateEmbeddingsOverrideAsync(
+			LLModelDescriptor model,
+			List<string> inputs,
+			List<CompletionProperty> properties,
+			CancellationToken cancellationToken)
 		{
 			return Task.FromResult(new EmbeddingResult(this, model, new Embedding(new float[] { 1.0f })));
 		}

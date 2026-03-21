@@ -8,6 +8,6 @@
 		/// <summary>
 		/// Gets the text content of the attachment.
 		/// </summary>
-		string Content { get; }
+		string GetContent();
 	}
 }

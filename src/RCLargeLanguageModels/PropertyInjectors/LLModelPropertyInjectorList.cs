@@ -4,6 +4,7 @@ using RCLargeLanguageModels.Messages;
 using RCLargeLanguageModels.Formats;
 using RCLargeLanguageModels.Tools;
 using RCLargeLanguageModels.Completions;
+using System.Threading.Tasks;
 
 namespace RCLargeLanguageModels.PropertyInjectors
 {
@@ -38,44 +39,36 @@ namespace RCLargeLanguageModels.PropertyInjectors
 		/// <summary>
 		/// Executes all injectors in the collection.
 		/// </summary>
-		/// <param name="model">The model that uses injector.</param>
-		/// <param name="prompt">The prompt to complete.</param>
-		/// <param name="suffix">The suffix to use in fill-in-the-middle completions.</param>
-		/// <param name="count">The count of completions to create.</param>
-		/// <param name="completionProperties">The completion properties.</param>
-		public void InjectCompletion(
-			LLModel model,
-			ref string prompt,
-			ref string? suffix,
-			ref int count,
-			ref IEnumerable<CompletionProperty> completionProperties)
+		/// <param name="parameters">The parameters for injecting in the general completions.</param>
+		public async Task InjectCompletionAsync(CompletionInjectionParameters parameters)
 		{
 			foreach (var injector in this)
 			{
-				injector?.InjectCompletion(model, ref prompt, ref suffix, ref count, ref completionProperties);
+				await injector.InjectCompletionAsync(parameters);
 			}
 		}
 
 		/// <summary>
 		/// Executes all injectors in the collection.
 		/// </summary>
-		/// <param name="model">The model that uses injector.</param>
-		/// <param name="messages">The messages.</param>
-		/// <param name="count">The count of completions to create.</param>
-		/// <param name="chatProperties">The chat properties.</param>
-		/// <param name="tools">The tools.</param>
-		/// <param name="outputFormatDefinition">The native output format definition.</param>
-		public void InjectChatCompletion(
-			LLModel model,
-			ref IEnumerable<IMessage> messages,
-			ref int count,
-			ref IEnumerable<CompletionProperty> chatProperties,
-			ref IEnumerable<ITool> tools,
-			ref OutputFormatDefinition outputFormatDefinition)
+		/// <param name="parameters">The parameters for injecting in the chat completions.</param>
+		public async Task InjectChatCompletionAsync(ChatCompletionInjectionParameters parameters)
 		{
 			foreach (var injector in this)
 			{
-				injector?.InjectChatCompletion(model, ref messages, ref count, ref chatProperties, ref tools, ref outputFormatDefinition);
+				await injector.InjectChatCompletionAsync(parameters);
+			}
+		}
+
+		/// <summary>
+		/// Executes all injectors in the collection.
+		/// </summary>
+		/// <param name="parameters">The parameters for injecting in the embeddings generations.</param>
+		public async Task InjectEmbeddingAsync(EmbeddingInjectionParameters parameters)
+		{
+			foreach (var injector in this)
+			{
+				await injector.InjectEmbeddingAsync(parameters);
 			}
 		}
 
@@ -122,44 +115,36 @@ namespace RCLargeLanguageModels.PropertyInjectors
 		/// <summary>
 		/// Executes all injectors in the collection.
 		/// </summary>
-		/// <param name="model">The model that uses injector.</param>
-		/// <param name="prompt">The prompt to complete.</param>
-		/// <param name="suffix">The suffix to use in fill-in-the-middle completions.</param>
-		/// <param name="count">The count of completions to create.</param>
-		/// <param name="completionProperties">The completion properties.</param>
-		public void InjectCompletion(
-			LLModel model,
-			ref string prompt,
-			ref string? suffix,
-			ref int count,
-			ref IEnumerable<CompletionProperty> completionProperties)
+		/// <param name="parameters">The parameters for injecting in the general completions.</param>
+		public async Task InjectCompletionAsync(CompletionInjectionParameters parameters)
 		{
 			foreach (var injector in this)
 			{
-				injector?.InjectCompletion(model, ref prompt, ref suffix, ref count, ref completionProperties);
+				await injector.InjectCompletionAsync(parameters);
 			}
 		}
-		
+
 		/// <summary>
 		/// Executes all injectors in the collection.
 		/// </summary>
-		/// <param name="model">The model that uses injector.</param>
-		/// <param name="messages">The messages.</param>
-		/// <param name="count">The count of completions to create.</param>
-		/// <param name="chatProperties">The chat properties.</param>
-		/// <param name="tools">The tools.</param>
-		/// <param name="outputFormatDefinition">The native output format definition.</param>
-		public void InjectChatCompletion(
-			LLModel model,
-			ref IEnumerable<IMessage> messages,
-			ref int count,
-			ref IEnumerable<CompletionProperty> chatProperties,
-			ref IEnumerable<ITool> tools,
-			ref OutputFormatDefinition outputFormatDefinition)
+		/// <param name="parameters">The parameters for injecting in the chat completions.</param>
+		public async Task InjectChatCompletionAsync(ChatCompletionInjectionParameters parameters)
 		{
 			foreach (var injector in this)
 			{
-				injector?.InjectChatCompletion(model, ref messages, ref count, ref chatProperties, ref tools, ref outputFormatDefinition);
+				await injector.InjectChatCompletionAsync(parameters);
+			}
+		}
+
+		/// <summary>
+		/// Executes all injectors in the collection.
+		/// </summary>
+		/// <param name="parameters">The parameters for injecting in the embeddings generations.</param>
+		public async Task InjectEmbeddingAsync(EmbeddingInjectionParameters parameters)
+		{
+			foreach (var injector in this)
+			{
+				await injector.InjectEmbeddingAsync(parameters);
 			}
 		}
 

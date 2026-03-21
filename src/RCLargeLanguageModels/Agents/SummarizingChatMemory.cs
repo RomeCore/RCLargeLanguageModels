@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -18,6 +19,59 @@ namespace RCLargeLanguageModels.Agents
 		private readonly AsyncCache<(IMessage, IEnumerable<ITool>), int> _tokenCountCache;
 
 		/// <summary>
+		/// The default summarization prompt used by the <see cref="CreateSummarizer(ILLMProvider)"/>.
+		/// </summary>
+		public const string DefaultSummarizationPrompt = @"You are a conversation memory summarizer used inside an AI system.
+
+Your task is to compress a conversation into a concise but information-dense summary that will be used as long-term memory for future interactions.
+
+CRITICAL REQUIREMENTS:
+
+1. Preserve all important information:
+	- User goals, intents, and requests
+	- Key facts and constraints
+	- Decisions that were made
+	- Unresolved questions or tasks
+	- Important context needed for future responses
+
+2. Preserve technical details when present:
+	- Code logic, architecture decisions, APIs
+	- Error messages and their causes
+	- Tool usage results and outcomes
+
+3. Maintain continuity:
+	- If a previous summary is provided, integrate it with new information
+	- Do NOT repeat information unnecessarily
+	- Do NOT contradict earlier context
+
+4. Remove unimportant content:
+	- Small talk
+	- Repetitions
+	- Irrelevant details
+
+5. Be structured and compact:
+	- Use clear sections if helpful
+	- Prefer bullet points for dense information
+	- Avoid long prose
+
+6. Be precise:
+	- Do not generalize important details
+	- Do not invent information
+	- Do not omit critical steps in reasoning or workflow
+
+7. Tool usage handling:
+	- If tools were used, include:
+		- What tool was used
+		- Why it was used
+		- The result of the tool
+
+OUTPUT FORMAT:
+
+Return only the summary text.
+
+The summary should be compact but complete enough so that another AI can continue the conversation without needing the original messages.";
+
+		/// <summary>
 		/// Creates the summarizer agent from the given LLM provider.
 		/// </summary>
 		/// <param name="llm">The LLM provider.</param>
@@ -26,9 +80,7 @@ namespace RCLargeLanguageModels.Agents
 		{
 			return new StatelessAgent
 			{
-				SystemInstructions = "You are a conversation summarizer. " +
-					"Your task is to summarize input LLM conversation history " +
-					"(including a previous summary, if provided) and return a next summary.",
+				SystemInstructions = DefaultSummarizationPrompt,
 				LLMProvider = llm
 			};
 		}
@@ -44,6 +96,12 @@ namespace RCLargeLanguageModels.Agents
 		public string? LatestSummary { get; set; }
 
 		/// <summary>
+		/// Gets or sets the list of latest summarized messages.
+		/// This list contains the messages that was removed from <see cref="Messages"/> upon last summarization.
+		/// </summary>
+		public ImmutableList<IMessage> LatestSummarizedMessages { get; set; } = ImmutableList<IMessage>.Empty;
+
+		/// <summary>
 		/// Gets or sets the list of non-system messages. Messages can be removed from this list if them will be summarized.
 		/// </summary>
 		public List<IMessage> Messages { get; set; } = new();
@@ -55,6 +113,7 @@ namespace RCLargeLanguageModels.Agents
 
 		/// <summary>
 		/// Gets or sets the token counter used for summarization triggering.
+		/// Default is <see cref="Statistics.TokenCounter.Naive"/>, which counts tokens by dividing count of characters by 2.5.
 		/// </summary>
 		public ITokenCounter TokenCounter { get; set; } = Statistics.TokenCounter.Naive;
 
@@ -124,7 +183,7 @@ namespace RCLargeLanguageModels.Agents
 				targetModel, cancellationToken);
 		}
 
-		private ISystemMessage BuildSystemMessage()
+		protected virtual ISystemMessage BuildSystemMessage()
 		{
 			string sysMsgContent = string.IsNullOrWhiteSpace(LatestSummary) ?
 				SystemInstructions :
@@ -258,6 +317,7 @@ namespace RCLargeLanguageModels.Agents
 				var summaryMessage = new UserMessage(summaryInput.ToString());
 				var summary = await Summarizer.Execute(summaryMessage, cancellationToken);
 				LatestSummary = summary.Content;
+				LatestSummarizedMessages = messagesToSummarize.ToImmutableList();
 				Messages.RemoveRange(0, messagesToSummarize.Count);
 
 				totalTokens = 0;

@@ -42,7 +42,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 
 
 		protected override async Task<ChatCompletionResult> CreateChatCompletionsOverrideAsync(LLModelDescriptor model,
-			IEnumerable<IMessage> messages, int count, IEnumerable<CompletionProperty> properties, OutputFormatDefinition outputFormatDefinition, IEnumerable<ITool> tools, CancellationToken cancellationToken)
+			List<IMessage> messages, int count, List<CompletionProperty> properties, OutputFormatDefinition outputFormatDefinition, ToolSet tools, CancellationToken cancellationToken)
 		{
 			var body = BuildChatRequestBody(model, messages, outputFormatDefinition, tools, properties, count, false);
 			var headers = GetRequestHeaders();
@@ -76,7 +76,8 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			return new ChatCompletionResult(this, model, resultMessages, metadata);
 		}
 
-		protected override Task<PartialChatCompletionResult> CreateStreamingChatCompletionsOverrideAsync(LLModelDescriptor model, IEnumerable<IMessage> messages, int count, IEnumerable<CompletionProperty> properties, OutputFormatDefinition outputFormatDefinition, IEnumerable<ITool> tools, CancellationToken cancellationToken)
+		protected override Task<PartialChatCompletionResult> CreateStreamingChatCompletionsOverrideAsync(LLModelDescriptor model,
+			List<IMessage> messages, int count, List<CompletionProperty> properties, OutputFormatDefinition outputFormatDefinition, ToolSet tools, CancellationToken cancellationToken)
 		{
 			var resultMessages = Enumerable.Range(0, count).Select(i => new PartialAssistantMessage()).ToImmutableArray();
 			var contexts = Enumerable.Range(0, count).Select(i => new List<PartialMessageToolCallContext?>()).ToImmutableArray();

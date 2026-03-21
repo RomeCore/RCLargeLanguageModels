@@ -22,7 +22,8 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 {
 	public partial class OpenAICompatibleClient
 	{
-		protected override async Task<EmbeddingResult> CreateEmbeddingsOverrideAsync(LLModelDescriptor model, IEnumerable<string> inputs, IEnumerable<CompletionProperty>? properties, CancellationToken cancellationToken)
+		protected override async Task<EmbeddingResult> CreateEmbeddingsOverrideAsync(LLModelDescriptor model,
+			List<string> inputs, List<CompletionProperty>? properties, CancellationToken cancellationToken)
 		{
 			var body = BuildEmbeddingRequestBody(model, inputs, properties);
 			var headers = GetRequestHeaders();
@@ -69,8 +70,8 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 
 		protected virtual JsonObject BuildEmbeddingRequestBody(
 			LLModelDescriptor model,
-			IEnumerable<string> inputs,
-			IEnumerable<CompletionProperty>? properties)
+			List<string> inputs,
+			List<CompletionProperty>? properties)
 		{
 			var inputsArray = new JsonArray(inputs.Select(i => JsonValue.Create(i)).ToArray());
 

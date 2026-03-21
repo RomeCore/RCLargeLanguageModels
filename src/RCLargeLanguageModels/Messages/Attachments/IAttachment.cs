@@ -8,25 +8,13 @@ using System.Threading.Tasks;
 namespace RCLargeLanguageModels.Messages.Attachments
 {
 	/// <summary>
-	/// Represents an message attachment.
+	/// Represents an attachment that can be included in a message.
 	/// </summary>
-	/// <remarks>
-	/// Implementations should not retrive data after the construction, data should be stored to be used in serialization (for example,
-	/// file attachment should read file from disk when it being constructed).
-	/// </remarks>
 	public interface IAttachment
 	{
 		/// <summary>
-		/// Gets the type of the attachment.
+		/// Gets the title of attachment, used for display purposes.
 		/// </summary>
-		AttachmentType Type { get; }
-
-		/// <summary>
-		/// Gets the title of attachment.
-		/// </summary>
-		/// <remarks>
-		/// Typically, this is the name of the file without its full path.
-		/// </remarks>
 		string Title { get; }
 	}
 }

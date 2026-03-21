@@ -43,11 +43,11 @@ namespace RCLargeLanguageModels
 		/// <returns>The <see cref="ChatCompletionResult"/> that contains chat completions.</returns>
 		protected abstract Task<ChatCompletionResult> CreateChatCompletionsOverrideAsync(
 			LLModelDescriptor model,
-			IEnumerable<IMessage> messages,
+			List<IMessage> messages,
 			int count,
-			IEnumerable<CompletionProperty> properties,
+			List<CompletionProperty> properties,
 			OutputFormatDefinition outputFormatDefinition,
-			IEnumerable<ITool> tools,
+			ToolSet tools,
 			CancellationToken cancellationToken);
 
 		/// <summary>
@@ -80,11 +80,11 @@ namespace RCLargeLanguageModels
 		/// <returns>The <see cref="PartialChatCompletionResult"/> that contains the streaming chat completions.</returns>
 		protected abstract Task<PartialChatCompletionResult> CreateStreamingChatCompletionsOverrideAsync(
 			LLModelDescriptor model,
-			IEnumerable<IMessage> messages,
+			List<IMessage> messages,
 			int count,
-			IEnumerable<CompletionProperty> properties,
+			List<CompletionProperty> properties,
 			OutputFormatDefinition outputFormatDefinition,
-			IEnumerable<ITool> tools,
+			ToolSet tools,
 			CancellationToken cancellationToken);
 
 		/// <summary>
@@ -104,25 +104,24 @@ namespace RCLargeLanguageModels
 		/// <exception cref="ArgumentOutOfRangeException"></exception>
 		protected virtual void ValidateChatCompletionParameters(
 			LLModelDescriptor model,
-			ref IEnumerable<IMessage> messages,
+			ref List<IMessage> messages,
 			bool streaming,
 			int count,
-			ref IEnumerable<CompletionProperty> properties,
+			ref List<CompletionProperty> properties,
 			ref OutputFormatDefinition outputFormatDefinition,
-			ref IEnumerable<ITool> tools,
+			ref ToolSet tools,
 			bool validateCapabilities)
 		{
 			if (model == null)
 				throw new ArgumentNullException(nameof(model));
 
-			var messagesList = messages?.ToList() ?? throw new ArgumentNullException(nameof(messages));
-			if (messagesList.Count == 0)
+			messages = messages ?? throw new ArgumentNullException(nameof(messages));
+			if (messages.Count == 0)
 				throw new ArgumentException("Messages cannot be empty.", nameof(messages));
-			messages = messagesList;
 
-			properties ??= Enumerable.Empty<CompletionProperty>();
+			properties ??= new List<CompletionProperty>();
 
-			var toolList = tools?.ToList() ?? Enumerable.Empty<ITool>();
+			tools ??= new ToolSet();
 
 			if (outputFormatDefinition == null)
 				outputFormatDefinition = OutputFormatDefinition.Empty;
@@ -159,7 +158,7 @@ namespace RCLargeLanguageModels
 						throw new LLMException($"Model does not support multiple completions per one request. (count:{count} > 1)", model);
 				}
 
-				if (toolList.Any())
+				if (tools.Count > 0)
 				{
 					if (selfCapsKnown && !selfCaps.HasFlag(LLMCapabilities.ToolSupport))
 						throw new LLMException("Client does not support tools.", this);
@@ -177,8 +176,6 @@ namespace RCLargeLanguageModels
 						throw new LLMException($"Output format type {outputFormatDefinition.Type} is not supported by the model.", model);
 				}
 			}
-
-			tools = toolList;
 		}
 
 		/// <summary>
@@ -204,22 +201,26 @@ namespace RCLargeLanguageModels
 			bool validateCapabilities = false,
 			CancellationToken cancellationToken = default)
 		{
+			var messagesList = messages as List<IMessage> ?? new List<IMessage>(messages);
+			var propertiesList = properties as List<CompletionProperty> ?? properties?.ToList();
+			var toolSet = tools as ToolSet ?? (tools != null ? new ToolSet(tools) : null);
+
 			ValidateChatCompletionParameters(model,
-				ref messages,
+				ref messagesList,
 				false,
 				1,
-				ref properties,
+				ref propertiesList,
 				ref outputFormatDefinition,
-				ref tools,
+				ref toolSet,
 				validateCapabilities);
 
 			return await CreateChatCompletionsOverrideAsync(
 				model,
-				messages,
+				messagesList,
 				1,
-				properties,
+				propertiesList,
 				outputFormatDefinition,
-				tools,
+				toolSet,
 				cancellationToken);
 		}
 
@@ -246,22 +247,26 @@ namespace RCLargeLanguageModels
 			bool validateCapabilities = false,
 			CancellationToken cancellationToken = default)
 		{
+			var messagesList = messages as List<IMessage> ?? new List<IMessage>(messages);
+			var propertiesList = properties as List<CompletionProperty> ?? properties?.ToList();
+			var toolSet = tools as ToolSet ?? (tools != null ? new ToolSet(tools) : null);
+
 			ValidateChatCompletionParameters(model,
-				ref messages,
+				ref messagesList,
 				true,
 				1,
-				ref properties,
+				ref propertiesList,
 				ref outputFormatDefinition,
-				ref tools,
+				ref toolSet,
 				validateCapabilities);
 
 			return await CreateStreamingChatCompletionsOverrideAsync(
 				model,
-				messages,
+				messagesList,
 				1,
-				properties,
+				propertiesList,
 				outputFormatDefinition,
-				tools,
+				toolSet,
 				cancellationToken);
 		}
 
@@ -290,22 +295,26 @@ namespace RCLargeLanguageModels
 			bool validateCapabilities = false,
 			CancellationToken cancellationToken = default)
 		{
+			var messagesList = messages as List<IMessage> ?? new List<IMessage>(messages);
+			var propertiesList = properties as List<CompletionProperty> ?? properties?.ToList();
+			var toolSet = tools as ToolSet ?? (tools != null ? new ToolSet(tools) : null);
+
 			ValidateChatCompletionParameters(model,
-				ref messages,
+				ref messagesList,
 				false,
 				count,
-				ref properties,
+				ref propertiesList,
 				ref outputFormatDefinition,
-				ref tools,
+				ref toolSet,
 				validateCapabilities);
 
 			return await CreateChatCompletionsOverrideAsync(
 				model,
-				messages,
+				messagesList,
 				count,
-				properties,
+				propertiesList,
 				outputFormatDefinition,
-				tools,
+				toolSet,
 				cancellationToken);
 		}
 
@@ -334,22 +343,26 @@ namespace RCLargeLanguageModels
 			bool validateCapabilities = false,
 			CancellationToken cancellationToken = default)
 		{
+			var messagesList = messages as List<IMessage> ?? new List<IMessage>(messages);
+			var propertiesList = properties as List<CompletionProperty> ?? properties?.ToList();
+			var toolSet = tools as ToolSet ?? (tools != null ? new ToolSet(tools) : null);
+
 			ValidateChatCompletionParameters(model,
-				ref messages,
+				ref messagesList,
 				true,
 				count,
-				ref properties,
+				ref propertiesList,
 				ref outputFormatDefinition,
-				ref tools,
+				ref toolSet,
 				validateCapabilities);
 
 			return await CreateStreamingChatCompletionsOverrideAsync(
 				model,
-				messages,
+				messagesList,
 				count,
-				properties,
+				propertiesList,
 				outputFormatDefinition,
-				tools,
+				toolSet,
 				cancellationToken);
 		}
 	}

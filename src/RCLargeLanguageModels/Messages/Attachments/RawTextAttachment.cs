@@ -11,7 +11,6 @@ namespace RCLargeLanguageModels.Messages.Attachments
 	/// </summary>
 	public class RawTextAttachment : ITextAttachment
 	{
-		public AttachmentType Type => AttachmentType.Text;
 		public string Title { get; }
 		public string Content { get; }
 
@@ -25,6 +24,11 @@ namespace RCLargeLanguageModels.Messages.Attachments
 		{
 			Title = title ?? throw new ArgumentNullException(nameof(title));
 			Content = content ?? string.Empty;
+		}
+
+		public string GetContent()
+		{
+			return Content;
 		}
 	}
 }

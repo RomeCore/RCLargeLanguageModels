@@ -20,7 +20,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 	public partial class OpenAICompatibleClient
 	{
 		protected override async Task<CompletionResult> CreateCompletionsOverrideAsync(LLModelDescriptor model,
-			string prompt, string? suffix, int count, IEnumerable<CompletionProperty> properties, CancellationToken cancellationToken)
+			string prompt, string? suffix, int count, List<CompletionProperty> properties, CancellationToken cancellationToken)
 		{
 			var body = BuildCompletionRequestBody(model, prompt, suffix, properties, count, false);
 			var headers = GetRequestHeaders();
@@ -53,7 +53,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 		}
 
 		protected override Task<PartialCompletionResult> CreateStreamingCompletionsOverrideAsync(LLModelDescriptor model,
-			string prompt, string? suffix, int count, IEnumerable<CompletionProperty> properties, CancellationToken cancellationToken)
+			string prompt, string? suffix, int count, List<CompletionProperty> properties, CancellationToken cancellationToken)
 		{
 			var results = Enumerable.Range(0, count).Select(i => new PartialCompletion()).ToImmutableArray();
 			var result = new PartialCompletionResult(this, model, results);

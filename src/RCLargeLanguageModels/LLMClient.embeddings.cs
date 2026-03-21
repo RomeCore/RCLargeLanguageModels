@@ -22,8 +22,8 @@ namespace RCLargeLanguageModels
 		/// <returns>The <see cref="EmbeddingResult"/> containing the generated embeddings.</returns>
 		protected abstract Task<EmbeddingResult> CreateEmbeddingsOverrideAsync(
 			LLModelDescriptor model,
-			IEnumerable<string> inputs,
-			IEnumerable<CompletionProperty> properties,
+			List<string> inputs,
+			List<CompletionProperty> properties,
 			CancellationToken cancellationToken);
 
 		/// <summary>
@@ -38,19 +38,18 @@ namespace RCLargeLanguageModels
 		/// <exception cref="LLMException"></exception>
 		protected virtual void ValidateEmbeddingParameters(
 			LLModelDescriptor model,
-			ref IEnumerable<string> inputs,
-			ref IEnumerable<CompletionProperty> properties,
+			ref List<string> inputs,
+			ref List<CompletionProperty> properties,
 			bool validateCapabilities)
 		{
 			if (model == null)
 				throw new ArgumentNullException(nameof(model));
 
-			var inputsList = inputs?.ToList() ?? throw new ArgumentNullException(nameof(inputs));
-			if (inputsList.Count == 0)
+			inputs = inputs ?? throw new ArgumentNullException(nameof(inputs));
+			if (inputs.Count == 0)
 				throw new ArgumentException("Inputs cannot be empty.", nameof(inputs));
-			inputs = inputsList;
 
-			properties ??= Enumerable.Empty<CompletionProperty>();
+			properties ??= new List<CompletionProperty>();
 
 			if (validateCapabilities)
 			{
@@ -83,10 +82,12 @@ namespace RCLargeLanguageModels
 			bool validateCapabilities = false,
 			CancellationToken cancellationToken = default)
 		{
-			IEnumerable<string> inputs = new[] { input };
-			ValidateEmbeddingParameters(model, ref inputs, ref properties, validateCapabilities);
+			List<string> inputs = new() { input };
+			var propertiesList = properties as List<CompletionProperty> ?? new List<CompletionProperty>(properties);
 
-			return await CreateEmbeddingsOverrideAsync(model, inputs, properties, cancellationToken);
+			ValidateEmbeddingParameters(model, ref inputs, ref propertiesList, validateCapabilities);
+
+			return await CreateEmbeddingsOverrideAsync(model, inputs, propertiesList, cancellationToken);
 		}
 
 		/// <summary>
@@ -105,9 +106,12 @@ namespace RCLargeLanguageModels
 			bool validateCapabilities = false,
 			CancellationToken cancellationToken = default)
 		{
-			ValidateEmbeddingParameters(model, ref inputs, ref properties, validateCapabilities);
+			var inputsList = inputs as List<string> ?? new List<string>(inputs);
+			var propertiesList = properties as List<CompletionProperty> ?? new List<CompletionProperty>(properties);
 
-			return await CreateEmbeddingsOverrideAsync(model, inputs, properties, cancellationToken);
+			ValidateEmbeddingParameters(model, ref inputsList, ref propertiesList, validateCapabilities);
+
+			return await CreateEmbeddingsOverrideAsync(model, inputsList, propertiesList, cancellationToken);
 		}
 	}
 }

@@ -31,9 +31,19 @@ namespace RCLargeLanguageModels
 			if (!inputs.Any())
 				throw new ArgumentException("Inputs cannot be empty.", nameof(inputs));
 
-			if (injectors != null)
-				foreach (var injector in injectors)
-					injector?.InjectEmbedding(this, ref inputs, ref properties);
+			var injectorsList = injectors != null ? (injectors as IReadOnlyList<ILLModelPropertyInjector> ?? new List<ILLModelPropertyInjector>(injectors)) : null;
+			if (injectors != null && injectorsList.Count > 0)
+			{
+				var inputList = inputs as List<string> ?? new List<string>(inputs);
+				var propertiesList = properties as List<CompletionProperty> ?? new List<CompletionProperty>(properties);
+
+				var injectionParameters = new EmbeddingInjectionParameters(this, inputList, propertiesList);
+				foreach (var injector in injectorsList)
+					await injector.InjectEmbeddingAsync(injectionParameters);
+
+				inputs = injectionParameters.Inputs;
+				properties = injectionParameters.Properties;
+			}
 
 			return await TaskQueueMaster.EnqueueAsync<EmbeddingResult>(queueParameters ?? QueueParameters, async () =>
 			{

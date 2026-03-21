@@ -40,7 +40,7 @@ namespace RCLargeLanguageModels
 			string prompt,
 			string? suffix,
 			int count,
-			IEnumerable<CompletionProperty> properties,
+			List<CompletionProperty> properties,
 			CancellationToken cancellationToken);
 
 		/// <inheritdoc cref="CreateCompletionsOverrideAsync"/>
@@ -53,7 +53,7 @@ namespace RCLargeLanguageModels
 			string prompt,
 			string? suffix,
 			int count,
-			IEnumerable<CompletionProperty> properties,
+			List<CompletionProperty> properties,
 			CancellationToken cancellationToken);
 
 		/// <summary>
@@ -75,7 +75,7 @@ namespace RCLargeLanguageModels
 			string? suffix,
 			bool streaming,
 			int count,
-			ref IEnumerable<CompletionProperty> properties,
+			ref List<CompletionProperty> properties,
 			bool validateCapabilities)
 		{
 			if (model == null)
@@ -123,7 +123,7 @@ namespace RCLargeLanguageModels
 				}
 			}
 
-			properties ??= Enumerable.Empty<CompletionProperty>();
+			properties ??= new List<CompletionProperty>();
 		}
 
 		/// <summary>
@@ -144,12 +144,14 @@ namespace RCLargeLanguageModels
 			bool validateCapabilities = false,
 			CancellationToken cancellationToken = default)
 		{
+			var propertiesList = properties as List<CompletionProperty> ?? (properties != null ? new(properties) : new List<CompletionProperty>());
+
 			ValidateCompletionParameters(model,
 				prompt,
 				suffix,
 				false,
 				1,
-				ref properties,
+				ref propertiesList,
 				validateCapabilities);
 
 			return await CreateCompletionsOverrideAsync(
@@ -157,7 +159,7 @@ namespace RCLargeLanguageModels
 				prompt,
 				suffix,
 				1,
-				properties,
+				propertiesList,
 				cancellationToken);
 		}
 
@@ -179,12 +181,14 @@ namespace RCLargeLanguageModels
 			bool validateCapabilities = false,
 			CancellationToken cancellationToken = default)
 		{
+			var propertiesList = properties as List<CompletionProperty> ?? (properties != null ? new(properties) : new List<CompletionProperty>());
+
 			ValidateCompletionParameters(model,
 				prompt,
 				suffix,
 				true,
 				1,
-				ref properties,
+				ref propertiesList,
 				validateCapabilities);
 
 			return await CreateStreamingCompletionsOverrideAsync(
@@ -192,7 +196,7 @@ namespace RCLargeLanguageModels
 				prompt,
 				suffix,
 				1,
-				properties,
+				propertiesList,
 				cancellationToken);
 		}
 
@@ -216,12 +220,14 @@ namespace RCLargeLanguageModels
 			bool validateCapabilities = false,
 			CancellationToken cancellationToken = default)
 		{
+			var propertiesList = properties as List<CompletionProperty> ?? (properties != null ? new(properties) : new List<CompletionProperty>());
+
 			ValidateCompletionParameters(model,
 				prompt,
 				suffix,
 				false,
 				count,
-				ref properties,
+				ref propertiesList,
 				validateCapabilities);
 
 			return await CreateCompletionsOverrideAsync(
@@ -229,7 +235,7 @@ namespace RCLargeLanguageModels
 				prompt,
 				suffix,
 				count,
-				properties,
+				propertiesList,
 				cancellationToken);
 		}
 
@@ -253,12 +259,14 @@ namespace RCLargeLanguageModels
 			bool validateCapabilities = false,
 			CancellationToken cancellationToken = default)
 		{
+			var propertiesList = properties as List<CompletionProperty> ?? (properties != null ? new(properties) : new List<CompletionProperty>());
+
 			ValidateCompletionParameters(model,
 				prompt,
 				suffix,
 				true,
 				count,
-				ref properties,
+				ref propertiesList,
 				validateCapabilities);
 
 			return await CreateStreamingCompletionsOverrideAsync(
@@ -266,7 +274,7 @@ namespace RCLargeLanguageModels
 				prompt,
 				suffix,
 				count,
-				properties,
+				propertiesList,
 				cancellationToken);
 		}
 
@@ -286,12 +294,14 @@ namespace RCLargeLanguageModels
 			bool validateCapabilities = false,
 			CancellationToken cancellationToken = default)
 		{
+			var propertiesList = properties as List<CompletionProperty> ?? (properties != null ? new(properties) : new List<CompletionProperty>());
+
 			ValidateCompletionParameters(model,
 				prompt,
 				null,
 				false,
 				1,
-				ref properties,
+				ref propertiesList,
 				validateCapabilities);
 
 			return await CreateCompletionsOverrideAsync(
@@ -299,7 +309,7 @@ namespace RCLargeLanguageModels
 				prompt,
 				null,
 				1,
-				properties,
+				propertiesList,
 				cancellationToken);
 		}
 
@@ -319,12 +329,14 @@ namespace RCLargeLanguageModels
 			bool validateCapabilities = false,
 			CancellationToken cancellationToken = default)
 		{
+			var propertiesList = properties as List<CompletionProperty> ?? (properties != null ? new(properties) : new List<CompletionProperty>());
+
 			ValidateCompletionParameters(model,
 				prompt,
 				null,
 				true,
 				1,
-				ref properties,
+				ref propertiesList,
 				validateCapabilities);
 
 			return await CreateStreamingCompletionsOverrideAsync(
@@ -332,7 +344,7 @@ namespace RCLargeLanguageModels
 				prompt,
 				null,
 				1,
-				properties,
+				propertiesList,
 				cancellationToken);
 		}
 
@@ -354,12 +366,14 @@ namespace RCLargeLanguageModels
 			bool validateCapabilities = false,
 			CancellationToken cancellationToken = default)
 		{
+			var propertiesList = properties as List<CompletionProperty> ?? (properties != null ? new(properties) : new List<CompletionProperty>());
+
 			ValidateCompletionParameters(model,
 				prompt,
 				null,
 				false,
 				count,
-				ref properties,
+				ref propertiesList,
 				validateCapabilities);
 
 			return await CreateCompletionsOverrideAsync(
@@ -367,7 +381,7 @@ namespace RCLargeLanguageModels
 				prompt,
 				null,
 				count,
-				properties,
+				propertiesList,
 				cancellationToken);
 		}
 
@@ -389,12 +403,14 @@ namespace RCLargeLanguageModels
 			bool validateCapabilities = false,
 			CancellationToken cancellationToken = default)
 		{
+			var propertiesList = properties as List<CompletionProperty> ?? (properties != null ? new(properties) : new List<CompletionProperty>());
+
 			ValidateCompletionParameters(model,
 				prompt,
 				null,
 				true,
 				count,
-				ref properties,
+				ref propertiesList,
 				validateCapabilities);
 
 			return await CreateStreamingCompletionsOverrideAsync(
@@ -402,7 +418,7 @@ namespace RCLargeLanguageModels
 				prompt,
 				null,
 				count,
-				properties,
+				propertiesList,
 				cancellationToken);
 		}
 	}

@@ -119,9 +119,10 @@ namespace RCLargeLanguageModels.Tools
 				ret != typeof(Task<ToolResult>) &&
 				ret != typeof(string) &&
 				ret != typeof(Task<string>) &&
+				ret != typeof(void) &&
 				ret != typeof(Task)
 				)
-				throw new ArgumentException("Return type must be ToolResult, Task<ToolResult>, string, Task<string> or Task.", nameof(method));
+				throw new ArgumentException("Return type must be ToolResult, Task<ToolResult>, string, Task<string>, void or Task.", nameof(method));
 
 			var methodAccessor = new JsonMemberAccessor(method);
 			schemaProperties ??= new JsonSchemaGeneratorProperties();

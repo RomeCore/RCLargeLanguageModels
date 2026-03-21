@@ -1,15 +1,18 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using RCLargeLanguageModels.Completions;
 using RCLargeLanguageModels.Messages;
 using RCLargeLanguageModels.Messages.Attachments;
 using RCLargeLanguageModels.Tasks;
 using RCLargeLanguageModels.Tools;
+using RCLargeLanguageModels.Utilities;
 using Serilog;
 
 namespace RCLargeLanguageModels.Agents
@@ -25,9 +28,9 @@ namespace RCLargeLanguageModels.Agents
 		public int MaxToolCalls { get; set; } = -1;
 
 		/// <summary>
-		/// The maximum number of tool messages that can be received from language model before block it from tool use. If set to negative, there is no limit.
+		/// The maximum number of tool cycles that can be executed before block model from tool use. If set to negative, there is no limit.
 		/// </summary>
-		public int MaxToolMessages { get; set; } = -1;
+		public int MaxToolCycles { get; set; } = -1;
 
 		/// <summary>
 		/// The maximum number or parallel tool executions. If set to negative, there is no limit.
@@ -60,7 +63,7 @@ namespace RCLargeLanguageModels.Agents
 		public event EventHandler<ToolExecutionEndEventArgs>? ToolExecutionEnd;
 
 		/// <summary>
-		/// Callback mehod that is invoked when specific message is added to the memory/context.
+		/// Callback method that is invoked when specific message is added to the memory/context.
 		/// </summary>
 		/// <param name="message">The message that added to the memory.</param>
 		protected virtual void OnMessageReceived(IMessage message)
@@ -69,7 +72,9 @@ namespace RCLargeLanguageModels.Agents
 		}
 
 		/// <summary>
-		/// Callback method that is invoked when a tool execution begins. This can be used to perform additional actions or logging.
+		/// Callback method that is invoked when a tool execution begins.
+		/// This method can be used to prevent actually executing a tool.
+		/// This can be used to perform additional actions or logging.
 		/// </summary>
 		/// <param name="tool">The tool that is being executed.</param>
 		/// <param name="toolCall">The tool call that is being executed.</param>
@@ -107,13 +112,13 @@ namespace RCLargeLanguageModels.Agents
 		}
 
 		/// <summary>
-		/// Gets the fallback LLM-readable content for a tool result if no specific content is provided.
+		/// Gets the fallback LLM-readable content for a tool result status.
 		/// </summary>
-		/// <param name="result">The tool result that does not contain specific content (text or attachments).</param>
+		/// <param name="status">The status of the tool result.</param>
 		/// <returns>The fallback content for the tool result.</returns>
-		protected virtual string GetToolFallbackContent(ToolResult result)
+		protected virtual string GetToolFallbackContent(ToolResultStatus status)
 		{
-			return result.Status switch
+			return status switch
 			{
 				ToolResultStatus.Cancelled => "Tool execution was cancelled.",
 				ToolResultStatus.Error => "Tool execution resulted in an error.",
@@ -129,80 +134,9 @@ namespace RCLargeLanguageModels.Agents
 		/// <param name="userMessage">The current user's message.</param>
 		/// <param name="cancellationToken">The cancellation token used to cancel the operation.</param>
 		/// <returns>The generated assistant messages mixed with tool messages as an asynchronous enumerable.</returns>
-		public async Task<IAssistantMessage> GenerateResponseAsync(IUserMessage userMessage, CancellationToken cancellationToken = default)
+		public Task<IAssistantMessage> GenerateResponseAsync(IUserMessage userMessage, CancellationToken cancellationToken = default)
 		{
-			var provider = LLMProvider;
-			var memory = Memory;
-			var maxToolCalls = MaxToolCalls;
-			var maxToolMessages = MaxToolMessages;
-			var maxParallelToolExecutions = MaxParallelToolExecutions;
-
-			if (provider == null)
-				throw new InvalidOperationException($"LLM provider is not set. See property {nameof(LLMProvider)}");
-			if (memory == null)
-				throw new InvalidOperationException($"Memory is not set. See property {nameof(Memory)}");
-
-			OnMessageReceived(userMessage);
-			var llm = provider.GetLLM();
-			var messages = (await memory.AppendAsync(userMessage, llm, cancellationToken)).ToList();
-			var toolset = llm.Tools;
-
-			var response = await llm.ChatAsync(messages, cancellationToken: cancellationToken);
-			var responseMessage = response.Message;
-			OnMessageReceived(responseMessage);
-
-			int toolCallsCount = 0, toolMessagesCount = 0;
-
-			while (true)
-			{
-				ConcurrentDictionary<IToolCall, IToolMessage> toolMessageMap = new();
-				List<Task> toolExecutionTasks = new();
-				SemaphoreSlim? semaphore = maxParallelToolExecutions > 0 ?
-					new SemaphoreSlim(maxParallelToolExecutions, maxParallelToolExecutions) :
-					null;
-
-				foreach (var toolCall in responseMessage.ToolCalls)
-				{
-					toolCallsCount++;
-					toolExecutionTasks.Add(ProcessToolCallAsync(toolCall, toolset, semaphore, toolMessageMap, cancellationToken));
-				}
-
-				if (toolExecutionTasks.Count > 0)
-				{
-					toolMessagesCount++;
-				}
-				if ((maxToolCalls >= 0 && toolCallsCount >= maxToolCalls) ||
-					(maxToolMessages >= 0 && toolMessagesCount >= maxToolMessages))
-				{
-					llm = llm.WithoutTools();
-					toolset = ImmutableToolSet.Empty;
-				}
-				if (toolExecutionTasks.Count > 0)
-				{
-					await Task.WhenAll(toolExecutionTasks);
-					var toolMessages = new List<IToolMessage>();
-
-					foreach (var toolCall in responseMessage.ToolCalls)
-					{
-						var toolMessage = toolMessageMap[toolCall];
-						toolMessages.Add(toolMessage);
-					}
-
-					messages = (await memory.AppendAsync(messages, responseMessage, toolMessages, llm, cancellationToken)).ToList();
-					response = await llm.ChatAsync(messages, cancellationToken: cancellationToken);
-					responseMessage = response.Message;
-					OnMessageReceived(responseMessage);
-				}
-				else
-				{
-					break;
-				}
-			}
-
-			var finalMessage = (await memory.AppendAsync(messages, responseMessage, Array.Empty<IToolMessage>(), llm, cancellationToken)).LastOrDefault();
-			if (finalMessage is not IAssistantMessage finalAssistantMessage)
-				throw new InvalidCastException($"Memory returned a sequence of messages that not finishes with assistant message. Got message: {finalMessage?.GetType()}.");
-			return finalAssistantMessage;
+			return GenerateResponseInternalAsync(userMessage, false, cancellationToken);
 		}
 
 		/// <summary>
@@ -211,12 +145,19 @@ namespace RCLargeLanguageModels.Agents
 		/// <param name="userMessage">The current user's message.</param>
 		/// <param name="cancellationToken">The cancellation token used to cancel the operation.</param>
 		/// <returns>The generated assistant messages mixed with tool messages as an asynchronous enumerable.</returns>
-		public async Task<IAssistantMessage> GenerateStreamingResponseAsync(IUserMessage userMessage, CancellationToken cancellationToken = default)
+		public Task<IAssistantMessage> GenerateStreamingResponseAsync(IUserMessage userMessage,
+			CancellationToken cancellationToken = default)
+		{
+			return GenerateResponseInternalAsync(userMessage, true, cancellationToken);
+		}
+
+		private async Task<IAssistantMessage> GenerateResponseInternalAsync(IUserMessage userMessage,
+			bool stream, CancellationToken cancellationToken = default)
 		{
 			var provider = LLMProvider;
 			var memory = Memory;
 			var maxToolCalls = MaxToolCalls;
-			var maxToolMessages = MaxToolMessages;
+			var maxToolCycles = MaxToolCycles;
 			var maxParallelToolExecutions = MaxParallelToolExecutions;
 
 			if (provider == null)
@@ -229,17 +170,23 @@ namespace RCLargeLanguageModels.Agents
 			var messages = (await memory.AppendAsync(userMessage, llm, cancellationToken)).ToList();
 			var toolset = llm.Tools;
 
-			var response = await llm.ChatStreamingAsync(messages, cancellationToken: cancellationToken);
-			var responseMessage = response.Message;
+			IChatCompletionResult response;
+			if (stream)
+				response = await llm.ChatStreamingAsync(messages, cancellationToken: cancellationToken);
+			else
+				response = await llm.ChatAsync(messages, cancellationToken: cancellationToken);
+
+			var responseMessage = response.Completion;
 			OnMessageReceived(responseMessage);
 
-			int toolCallsCount = 0, toolMessagesCount = 0;
+			int toolCallsCount = 0, toolCycleCount = 0;
 
 			while (true)
 			{
-				ConcurrentDictionary<IToolCall, IToolMessage> toolMessageMap = new();
+				ConcurrentDictionary<IToolCall, IToolMessage> toolMessageMap = new(ReferenceEqualityComparer<IToolCall>.Instance);
 				List<Task> toolExecutionTasks = new();
-				SemaphoreSlim? semaphore = maxParallelToolExecutions > 0 ?
+				var lockObject = new object();
+				using SemaphoreSlim? semaphore = maxParallelToolExecutions > 0 ?
 					new SemaphoreSlim(maxParallelToolExecutions, maxParallelToolExecutions) :
 					null;
 
@@ -249,39 +196,38 @@ namespace RCLargeLanguageModels.Agents
 					toolExecutionTasks.Add(ProcessToolCallAsync(toolCall, toolset, semaphore, toolMessageMap, cancellationToken));
 				}
 
-				void PartHandler(object? s, AssistantMessageDelta e)
+				if (responseMessage is PartialAssistantMessage partialAssistantMessage)
 				{
-					if (e.NewToolCalls?.Count > 0)
-						foreach (var toolCall in e.NewToolCalls)
-						{
-							toolCallsCount++;
-							toolExecutionTasks.Add(ProcessToolCallAsync(toolCall, toolset, semaphore, toolMessageMap, cancellationToken));
-						}
-				}
-				void CompletedHandler(object? s, CompletedEventArgs e)
-				{
-					responseMessage.PartAdded -= PartHandler;
-					responseMessage.Completed -= CompletedHandler;
-				}
+					void PartHandler(object? s, AssistantMessageDelta e)
+					{
+						if (e.NewToolCalls?.Count > 0)
+							foreach (var toolCall in e.NewToolCalls)
+							{
+								lock (lockObject)
+								{
+									toolCallsCount++;
+									toolExecutionTasks.Add(ProcessToolCallAsync(toolCall, toolset, semaphore, toolMessageMap, cancellationToken));
+								}
+							}
+					}
 
-				try
-				{
-					responseMessage.PartAdded += PartHandler;
-					responseMessage.Completed += CompletedHandler;
-					await responseMessage;
-				}
-				finally
-				{
-					responseMessage.PartAdded -= PartHandler;
-					responseMessage.Completed -= CompletedHandler;
+					try
+					{
+						partialAssistantMessage.PartAdded += PartHandler;
+						await partialAssistantMessage;
+					}
+					finally
+					{
+						partialAssistantMessage.PartAdded -= PartHandler;
+					}
 				}
 
 				if (toolExecutionTasks.Count > 0)
 				{
-					toolMessagesCount++;
+					toolCycleCount++;
 				}
 				if ((maxToolCalls >= 0 && toolCallsCount >= maxToolCalls) ||
-					(maxToolMessages >= 0 && toolMessagesCount >= maxToolMessages))
+					(maxToolCycles >= 0 && toolCycleCount >= maxToolCycles))
 				{
 					llm = llm.WithoutTools();
 					toolset = ImmutableToolSet.Empty;
@@ -293,13 +239,19 @@ namespace RCLargeLanguageModels.Agents
 
 					foreach (var toolCall in responseMessage.ToolCalls)
 					{
-						var toolMessage = toolMessageMap[toolCall];
-						toolMessages.Add(toolMessage);
+						if (toolMessageMap.TryGetValue(toolCall, out var toolMessage))
+							toolMessages.Add(toolMessage);
+						else
+							toolMessages.Add(new ToolMessage(new ToolResult(ToolResultStatus.NoResult, GetToolFallbackContent(ToolResultStatus.NoResult)),
+								toolCall.Id, toolCall.ToolName));
 					}
 
 					messages = (await memory.AppendAsync(messages, responseMessage, toolMessages, llm, cancellationToken)).ToList();
-					response = await llm.ChatStreamingAsync(messages, cancellationToken: cancellationToken);
-					responseMessage = response.Message;
+					if (stream)
+						response = await llm.ChatStreamingAsync(messages, cancellationToken: cancellationToken);
+					else
+						response = await llm.ChatAsync(messages, cancellationToken: cancellationToken);
+					responseMessage = response.Completion;
 					OnMessageReceived(responseMessage);
 				}
 				else
@@ -325,10 +277,11 @@ namespace RCLargeLanguageModels.Agents
 					var tool = toolset.Get(toolCall.ToolName) as FunctionTool ??
 						throw new InvalidOperationException($"FunctionTool '{functionCall.ToolName}' not found in the current toolset.");
 
+					if (semaphore != null)
+						await semaphore.WaitAsync(cancellationToken);
+
 					try
 					{
-						if (semaphore != null)
-							await semaphore.WaitAsync(cancellationToken);
 						Task<ToolResult?> toolResultTask;
 
 						try
@@ -341,7 +294,7 @@ namespace RCLargeLanguageModels.Agents
 							toolResultTask = Task.FromException<ToolResult>(ex);
 						}
 
-						if (toolResultTask != null && toolResultTask.IsCompletedSuccessfully() && toolResultTask.Result != null)
+						if (toolResultTask.IsCompletedSuccessfully() && toolResultTask.Result != null)
 						{
 							var toolResult = await OnToolExecutionEnd(tool, toolCall, toolResultTask, cancellationToken);
 							var toolMessage = new ToolMessage(toolResult, toolCall.Id, toolCall.ToolName);
@@ -364,7 +317,7 @@ namespace RCLargeLanguageModels.Agents
 
 							if (string.IsNullOrEmpty(toolResult.Content) && toolResult.Attachments.Count == 0)
 							{
-								var newContent = GetToolFallbackContent(toolResult);
+								var newContent = GetToolFallbackContent(toolResult.Status);
 								toolResult = new ToolResult(toolResult.Status, newContent, toolResult.Attachments);
 							}
 
@@ -377,7 +330,6 @@ namespace RCLargeLanguageModels.Agents
 					{
 						semaphore?.Release();
 					}
-
 
 					break;
 

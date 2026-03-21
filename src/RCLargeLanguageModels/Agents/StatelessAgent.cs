@@ -6,7 +6,7 @@ using RCLargeLanguageModels.Messages;
 namespace RCLargeLanguageModels.Agents
 {
 	/// <summary>
-	/// The simplest, stateless agent, with just 
+	/// The simplest, stateless agent with just system instructions.
 	/// </summary>
 	public class StatelessAgent : LLMAgent
 	{

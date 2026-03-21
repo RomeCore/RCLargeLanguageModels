@@ -37,9 +37,24 @@ namespace RCLargeLanguageModels
 			if (!messages.Any())
 				throw new ArgumentException("Messages cannot be empty.", nameof(messages));
 
-			if (injectors != null)
-				foreach (var injector in injectors)
-					injector?.InjectChatCompletion(this, ref messages, ref count, ref properties, ref tools, ref outputFormatDefinition);
+			var injectorsList = injectors != null ? (injectors as IReadOnlyList<ILLModelPropertyInjector> ?? new List<ILLModelPropertyInjector>(injectors)) : null;
+			if (injectors != null && injectorsList.Count > 0)
+			{
+				var messageList = messages as List<IMessage> ?? new List<IMessage>(messages);
+				var propertiesList = properties as List<CompletionProperty> ?? new List<CompletionProperty>(properties);
+				var toolSet = tools as ToolSet ?? new ToolSet(tools);
+
+				var injectionParameters = new ChatCompletionInjectionParameters(this, messageList, count, propertiesList,
+					toolSet, outputFormatDefinition);
+				foreach (var injector in injectorsList)
+					await injector.InjectChatCompletionAsync(injectionParameters);
+
+				messages = injectionParameters.Messages;
+				count = injectionParameters.Count;
+				properties = injectionParameters.Properties;
+				tools = injectionParameters.Tools;
+				outputFormatDefinition = injectionParameters.OutputFormatDefinition;
+			}
 
 			return await TaskQueueMaster.EnqueueAsync<ChatCompletionResult>(queueParameters, async () =>
 			{
@@ -77,9 +92,24 @@ namespace RCLargeLanguageModels
 			if (!messages.Any())
 				throw new ArgumentException("Messages cannot be empty.", nameof(messages));
 
-			if (injectors != null)
-				foreach (var injector in injectors)
-					injector?.InjectChatCompletion(this, ref messages, ref count, ref properties, ref tools, ref outputFormatDefinition);
+			var injectorsList = injectors != null ? (injectors as IReadOnlyList<ILLModelPropertyInjector> ?? new List<ILLModelPropertyInjector>(injectors)) : null;
+			if (injectors != null && injectorsList.Count > 0)
+			{
+				var messageList = messages as List<IMessage> ?? new List<IMessage>(messages);
+				var propertiesList = properties as List<CompletionProperty> ?? new List<CompletionProperty>(properties);
+				var toolSet = tools as ToolSet ?? new ToolSet(tools);
+
+				var injectionParameters = new ChatCompletionInjectionParameters(this, messageList, count, propertiesList,
+					toolSet, outputFormatDefinition);
+				foreach (var injector in injectorsList)
+					await injector.InjectChatCompletionAsync(injectionParameters);
+
+				messages = injectionParameters.Messages;
+				count = injectionParameters.Count;
+				properties = injectionParameters.Properties;
+				tools = injectionParameters.Tools;
+				outputFormatDefinition = injectionParameters.OutputFormatDefinition;
+			}
 
 			return await TaskQueueMaster.EnqueueAsync<PartialChatCompletionResult>(queueParameters, async () =>
 			{

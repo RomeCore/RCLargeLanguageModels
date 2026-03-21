@@ -32,9 +32,20 @@ namespace RCLargeLanguageModels
 			if (prompt == null)
 				throw new ArgumentNullException(nameof(prompt));
 
-			if (injectors != null)
-				foreach (var injector in injectors)
-					injector?.InjectCompletion(this, ref prompt, ref suffix, ref count, ref properties);
+			var injectorsList = injectors != null ? (injectors as IReadOnlyList<ILLModelPropertyInjector> ?? new List<ILLModelPropertyInjector>(injectors)) : null;
+			if (injectors != null && injectorsList.Count > 0)
+			{
+				var propertiesList = properties as List<CompletionProperty> ?? new List<CompletionProperty>(properties);
+
+				var injectionParameters = new CompletionInjectionParameters(this, prompt, suffix, count, propertiesList);
+				foreach (var injector in injectorsList)
+					await injector.InjectCompletionAsync(injectionParameters);
+
+				prompt = injectionParameters.Prompt;
+				suffix = injectionParameters.Suffix;
+				count = injectionParameters.Count;
+				properties = injectionParameters.Properties;
+			}
 
 			return await TaskQueueMaster.EnqueueAsync<CompletionResult>(queueParameters, async () =>
 			{
@@ -70,9 +81,20 @@ namespace RCLargeLanguageModels
 			if (prompt == null)
 				throw new ArgumentNullException(nameof(prompt));
 
-			if (injectors != null)
-				foreach (var injector in injectors)
-					injector?.InjectCompletion(this, ref prompt, ref suffix, ref count, ref properties);
+			var injectorsList = injectors != null ? (injectors as IReadOnlyList<ILLModelPropertyInjector> ?? new List<ILLModelPropertyInjector>(injectors)) : null;
+			if (injectors != null && injectorsList.Count > 0)
+			{
+				var propertiesList = properties as List<CompletionProperty> ?? new List<CompletionProperty>(properties);
+
+				var injectionParameters = new CompletionInjectionParameters(this, prompt, suffix, count, propertiesList);
+				foreach (var injector in injectorsList)
+					await injector.InjectCompletionAsync(injectionParameters);
+
+				prompt = injectionParameters.Prompt;
+				suffix = injectionParameters.Suffix;
+				count = injectionParameters.Count;
+				properties = injectionParameters.Properties;
+			}
 
 			return await TaskQueueMaster.EnqueueAsync<PartialCompletionResult>(queueParameters, async () =>
 			{

@@ -221,17 +221,36 @@ namespace RCLargeLanguageModels.Clients.Ollama
 					message.Complete(metadata);
 			}
 
-			var _ = RequestUtility.ProcessStreamingJsonResponseAsync<JsonObject>(
-				RequestType.Post,
-				_endpoint.GenerateChatCompletion,
-				body, OnDataReceived, _http, headers, cancellationToken: cancellationToken)
-				.ContinueWith(t =>
+			var _ = Task.Run(async () =>
+			{
+				try
 				{
-					if (t.IsFaulted)
-						message.Fail(t.Exception);
-					else if (t.IsCanceled)
+					await RequestUtility.ProcessStreamingJsonResponseAsync<JsonObject>(
+						RequestType.Post,
+						_endpoint.GenerateChatCompletion,
+						body, OnDataReceived, _http, headers, cancellationToken: cancellationToken);
+				}
+				catch (AggregateException aex) when (aex.InnerExceptions.Any(ex => ex is OperationCanceledException))
+				{
+					if (!message.CompletionToken.IsCompleted)
 						message.Cancel();
-				}, cancellationToken);
+				}
+				catch (OperationCanceledException)
+				{
+					if (!message.CompletionToken.IsCompleted)
+						message.Cancel();
+				}
+				catch (Exception ex)
+				{
+					if (!message.CompletionToken.IsCompleted)
+						message.Fail(ex);
+				}
+				finally
+				{
+					if (!message.CompletionToken.IsCompleted)
+						message.Complete();
+				}
+			}, CancellationToken.None);
 
 			return new PartialChatCompletionResult(this, model, message);
 		}
@@ -283,17 +302,36 @@ namespace RCLargeLanguageModels.Clients.Ollama
 					completion.Complete(metadata);
 			}
 
-			var _ = RequestUtility.ProcessStreamingJsonResponseAsync<JsonObject>(
-				RequestType.Post,
-				_endpoint.GenerateChatCompletion,
-				body, OnStreamResponse, _http, headers, cancellationToken: cancellationToken)
-				.ContinueWith(t =>
+			var _ = Task.Run(async () =>
+			{
+				try
 				{
-					if (t.IsFaulted)
-						completion.Fail(t.Exception);
-					else if (t.IsCanceled)
+					await RequestUtility.ProcessStreamingJsonResponseAsync<JsonObject>(
+						RequestType.Post,
+						_endpoint.GenerateChatCompletion,
+						body, OnStreamResponse, _http, headers, cancellationToken: cancellationToken);
+				}
+				catch (AggregateException aex) when (aex.InnerExceptions.Any(ex => ex is OperationCanceledException))
+				{
+					if (!completion.CompletionToken.IsCompleted)
 						completion.Cancel();
-				}, cancellationToken);
+				}
+				catch (OperationCanceledException)
+				{
+					if (!completion.CompletionToken.IsCompleted)
+						completion.Cancel();
+				}
+				catch (Exception ex)
+				{
+					if (!completion.CompletionToken.IsCompleted)
+						completion.Fail(ex);
+				}
+				finally
+				{
+					if (!completion.CompletionToken.IsCompleted)
+						completion.Complete();
+				}
+			}, CancellationToken.None);
 
 			return new PartialCompletionResult(this, model, completion);
 		}

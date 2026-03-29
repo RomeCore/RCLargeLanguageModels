@@ -118,20 +118,38 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			var body = BuildChatRequestBody(model, messages, outputFormatDefinition, tools, properties, count, true);
 			var headers = GetRequestHeaders();
 
-			Task.Run(() => RequestUtility.ProcessStreamingJsonResponseAsync<JsonObject>(RequestType.Post, _endpoint.GenerateChatCompletion,
-				body, OnDataReceived, _http, headers, cancellationToken), cancellationToken)
-				.ContinueWith(t =>
+			Task.Run(async () =>
+			{
+				try
+				{
+					await RequestUtility.ProcessStreamingJsonResponseAsync<JsonObject>(RequestType.Post, _endpoint.GenerateChatCompletion,
+						body, OnDataReceived, _http, headers, cancellationToken);
+				}
+				catch (AggregateException aex) when (aex.InnerExceptions.Any(ex => ex is OperationCanceledException))
 				{
 					foreach (var message in resultMessages)
-					{
-						if (message.CompletionToken.IsCompleted)
-							continue;
-						if (t.IsFaulted)
-							message.Fail(t.Exception);
-						else if (t.IsCanceled)
+						if (!message.CompletionToken.IsCompleted)
 							message.Cancel();
-					}
-				}, cancellationToken);
+				}
+				catch (OperationCanceledException)
+				{
+					foreach (var message in resultMessages)
+						if (!message.CompletionToken.IsCompleted)
+							message.Cancel();
+				}
+				catch (Exception ex)
+				{
+					foreach (var message in resultMessages)
+						if (!message.CompletionToken.IsCompleted)
+							message.Fail(ex);
+				}
+				finally
+				{
+					foreach (var message in resultMessages)
+						if (!message.CompletionToken.IsCompleted)
+							message.Complete();
+				}
+			}, CancellationToken.None);
 
 			return Task.FromResult(result);
 		}

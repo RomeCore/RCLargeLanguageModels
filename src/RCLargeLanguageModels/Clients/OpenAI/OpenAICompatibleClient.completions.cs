@@ -90,20 +90,38 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			var body = BuildCompletionRequestBody(model, prompt, suffix, properties, count, true);
 			var headers = GetRequestHeaders();
 
-			Task.Run(() => RequestUtility.ProcessStreamingJsonResponseAsync<JsonObject>(RequestType.Post, _endpoint.GenerateCompletion,
-				body, OnDataReceived, _http, headers, cancellationToken))
-				.ContinueWith(t =>
+			Task.Run(async () =>
+			{
+				try
 				{
-					foreach (var completion in results)
-					{
-						if (completion.CompletionToken.IsCompleted)
-							continue;
-						if (t.IsFaulted)
-							completion.Fail(t.Exception);
-						else if (t.IsCanceled)
-							completion.Cancel();
-					}
-				}, TaskScheduler.Default);
+					await RequestUtility.ProcessStreamingJsonResponseAsync<JsonObject>(RequestType.Post, _endpoint.GenerateCompletion,
+						body, OnDataReceived, _http, headers, cancellationToken);
+				}
+				catch (AggregateException aex) when (aex.InnerExceptions.Any(ex => ex is OperationCanceledException))
+				{
+					foreach (var result in results)
+						if (!result.CompletionToken.IsCompleted)
+							result.Cancel();
+				}
+				catch (OperationCanceledException)
+				{
+					foreach (var result in results)
+						if (!result.CompletionToken.IsCompleted)
+							result.Cancel();
+				}
+				catch (Exception ex)
+				{
+					foreach (var result in results)
+						if (!result.CompletionToken.IsCompleted)
+							result.Fail(ex);
+				}
+				finally
+				{
+					foreach (var result in results)
+						if (!result.CompletionToken.IsCompleted)
+							result.Complete();
+				}
+			}, CancellationToken.None);
 
 			return Task.FromResult(result);
 		}

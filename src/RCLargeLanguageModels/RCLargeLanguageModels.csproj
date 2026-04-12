@@ -28,7 +28,7 @@
 
 	<PropertyGroup>
 		<PackageId>RCLLM</PackageId>
-		<Version>0.4.2</Version>
+		<Version>0.4.7</Version>
 		<Authors>Roman K.</Authors>
 		<Company>RomeCore</Company>
 		<Product>RCLargeLanguageModels</Product>

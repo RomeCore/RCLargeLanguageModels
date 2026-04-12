@@ -1,5 +1,6 @@
 ﻿using RCLargeLanguageModels;
 using RCLargeLanguageModels.Agents;
+using RCLargeLanguageModels.Clients;
 using RCLargeLanguageModels.Clients.Deepseek;
 using RCLargeLanguageModels.Clients.Ollama;
 using RCLargeLanguageModels.Clients.OpenAI;
@@ -17,27 +18,10 @@ var gpt = new LLModel(openrouterClient, "openai/gpt-5.4");
 var minimax = new LLModel(openrouterClient, "minimax/minimax-m2.5");
 var gemini = new LLModel(openrouterClient, "google/gemini-3-flash-preview");
 var sonnet = new LLModel(openrouterClient, "anthropic/claude-sonnet-4.6");
+var mimo = new LLModel(openrouterClient, "xiaomi/mimo-v2-pro");
 var deepseek = new LLModel(deepseekClient, "deepseek-chat");
 
-static string GetWeather(string city)
-{
-	return $"Weather in {city} is sunny.";
-}
-var weatherTool = FunctionTool.From(GetWeather, "get_weather");
-
-var executor = new LLMToolExecutor
-{
-	LLMProvider = sonnet,
-	Memory = new SummarizingChatMemory
-	{
-		SystemInstructions = "You are a helpful assistant.",
-		TargetTokens = 128000,
-		MaxSummarizerTokens = 128000,
-		Summarizer = SummarizingChatMemory.CreateSummarizer(deepseek)
-	}
-};
-
-executor.MessageReceived += (s, m) =>
+void WriteMessage(IMessage m)
 {
 	if (m is not IAssistantMessage)
 		return;
@@ -70,6 +54,14 @@ executor.MessageReceived += (s, m) =>
 	}
 };
 
+List<IMessage> messages = [];
+
+var rresponse = await deepseek.ChatStreamingAsync(
+	[ new UserMessage("Hello!"),
+	  new AssistantMessage("Hello! How") ]);
+WriteMessage(rresponse.Message);
+await rresponse;
+
 while (true)
 {
 	Console.Write("Enter your message: ");
@@ -77,6 +69,21 @@ while (true)
 
 	if (!string.IsNullOrWhiteSpace(input))
 	{
-		await executor.GenerateStreamingResponseAsync(new UserMessage(input));
+		var userMessage = new UserMessage(input);
+		messages.Add(userMessage);
+		var response = await deepseek.ChatStreamingAsync(messages);
+		WriteMessage(response.Message);
+		await response;
+
+		var usageMetadata = response.UsageMetadata;
+		if (usageMetadata != null)
+		{
+			Console.WriteLine($"Usage: {usageMetadata.InputTokens} input tokens, {usageMetadata.OutputTokens} output tokens.");
+			Console.WriteLine($"Total tokens: {usageMetadata.TotalTokens}.");
+		}
+		else
+		{
+			Console.WriteLine("Usage metadata not available.");
+		}
 	}
 }

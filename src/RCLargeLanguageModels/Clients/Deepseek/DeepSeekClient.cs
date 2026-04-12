@@ -30,11 +30,6 @@ namespace RCLargeLanguageModels.Clients.Deepseek
 	public class DeepSeekClient : OpenAICompatibleClient
 	{
 		/// <summary>
-		/// The name of the API key in the token storage.
-		/// </summary>
-		public const string ApiKeyName = "deepseek-api-key";
-
-		/// <summary>
 		/// The base URI of the DeepSeek API.
 		/// </summary>
 		public const string BaseUri = "https://api.deepseek.com/beta";
@@ -105,12 +100,12 @@ namespace RCLargeLanguageModels.Clients.Deepseek
 			return Task.FromResult(new LLModelDescriptor[]
 			{
 				new LLModelDescriptor(this,
-					"deepseek-chat", "DeepSeek V3.2",
+					"deepseek-chat", "DeepSeek Chat",
 					LLMCapabilities.ChatWithTools | LLMCapabilities.SuffixCompletions | LLMCapabilities.StreamingCompletions,
 						supportedOutputFormats: OutputFormatSupportSet.Text.With(OutputFormatType.Json)),
 
 				new LLModelDescriptor(this,
-					"deepseek-reasoner", "DeepSeek V3.2 Reasoning",
+					"deepseek-reasoner", "DeepSeek Reasoning",
 					LLMCapabilities.ChatWithReasoningAndTools | LLMCapabilities.StreamingCompletions,
 						supportedOutputFormats: OutputFormatSupportSet.Text.With(OutputFormatType.Json))
 			});
@@ -126,13 +121,22 @@ namespace RCLargeLanguageModels.Clients.Deepseek
 				};
 		}
 
-		protected override JsonObject BuildAssistantMessage(IAssistantMessage message, bool isLast)
+		protected override JsonObject BuildAssistantMessage(IAssistantMessage message, List<IMessage> list, int messageIndex)
 		{
-			var res = base.BuildAssistantMessage(message, isLast);
+			var res = base.BuildAssistantMessage(message, list, messageIndex);
 
-			if (isLast)
+			bool hasUserMessageAfter = false;
+			for (int i = messageIndex + 1; i < list.Count; i++)
+				if (list[i] is IUserMessage)
+				{
+					hasUserMessageAfter = true;
+					break;
+				}
+
+			if (!hasUserMessageAfter)
 			{
-				res["prefix"] = true;
+				if (messageIndex == list.Count - 1)
+					res["prefix"] = true;
 				if (!string.IsNullOrEmpty(message.ReasoningContent))
 					res["reasoning_content"] = message.ReasoningContent;
 			}

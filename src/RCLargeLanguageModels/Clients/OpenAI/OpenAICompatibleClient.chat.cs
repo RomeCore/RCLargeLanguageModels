@@ -81,7 +81,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 		{
 			var resultMessages = Enumerable.Range(0, count).Select(i => new PartialAssistantMessage()).ToImmutableArray();
 			var contexts = Enumerable.Range(0, count).Select(i => new List<PartialMessageToolCallContext?>()).ToImmutableArray();
-			var result = new PartialChatCompletionResult(this, model, resultMessages);
+			var result = new PartialChatCompletionResult(this, model, resultMessages, Tasks.CompletionState.Incomplete);
 
 			void OnDataReceived(JsonObject data)
 			{
@@ -93,11 +93,15 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 					int index = choice!["index"]!.GetValue<int>();
 					var message = resultMessages[index];
 
+					if (message.CompletionToken.IsCompleted)
+						continue;
+
 					var delta = choice["delta"] as JsonObject
 						?? throw new InvalidDataException("No delta in 'choice'.");
 					var context = contexts[index];
 
-					ParseStreamingAssistantMessage(delta, message, context, tools);
+					var messageDelta = ParseStreamingAssistantMessage(delta, message, context, tools);
+					message.Add(messageDelta);
 
 					var completionMetadata = new List<IMetadata>();
 					if (choice["finish_reason"]?.GetValue<string>() is string finishReason)
@@ -130,24 +134,32 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 					foreach (var message in resultMessages)
 						if (!message.CompletionToken.IsCompleted)
 							message.Cancel();
+					if (!result.CompletionToken.IsCompleted)
+						result.Cancel();
 				}
 				catch (OperationCanceledException)
 				{
 					foreach (var message in resultMessages)
 						if (!message.CompletionToken.IsCompleted)
 							message.Cancel();
+					if (!result.CompletionToken.IsCompleted)
+						result.Cancel();
 				}
 				catch (Exception ex)
 				{
 					foreach (var message in resultMessages)
 						if (!message.CompletionToken.IsCompleted)
 							message.Fail(ex);
+					if (!result.CompletionToken.IsCompleted)
+						result.Fail(ex);
 				}
 				finally
 				{
 					foreach (var message in resultMessages)
 						if (!message.CompletionToken.IsCompleted)
 							message.Complete();
+					if (!result.CompletionToken.IsCompleted)
+						result.Complete();
 				}
 			}, CancellationToken.None);
 
@@ -190,19 +202,19 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			};
 		}
 
-		protected virtual JsonObject BuildMessage(IMessage message, bool isLast)
+		protected virtual JsonObject BuildMessage(IMessage message, List<IMessage> list, int messageIndex)
 		{
 			return message switch
 			{
-				ISystemMessage systemMessage => BuildSystemMessage(systemMessage, isLast),
-				IUserMessage userMessage => BuildUserMessage(userMessage, isLast),
-				IAssistantMessage assistantMessage => BuildAssistantMessage(assistantMessage, isLast),
-				IToolMessage toolMessage => BuildToolMessage(toolMessage, isLast),
+				ISystemMessage systemMessage => BuildSystemMessage(systemMessage, list, messageIndex),
+				IUserMessage userMessage => BuildUserMessage(userMessage, list, messageIndex),
+				IAssistantMessage assistantMessage => BuildAssistantMessage(assistantMessage, list, messageIndex),
+				IToolMessage toolMessage => BuildToolMessage(toolMessage, list, messageIndex),
 				_ => throw new InvalidOperationException("Unknown message type."),
 			};
 		}
 
-		protected virtual JsonObject BuildSystemMessage(ISystemMessage message, bool isLast)
+		protected virtual JsonObject BuildSystemMessage(ISystemMessage message, List<IMessage> list, int messageIndex)
 		{
 			return new JsonObject
 			{
@@ -211,7 +223,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			};
 		}
 
-		protected virtual JsonObject BuildUserMessage(IUserMessage message, bool isLast)
+		protected virtual JsonObject BuildUserMessage(IUserMessage message, List<IMessage> list, int messageIndex)
 		{
 			return new JsonObject
 			{
@@ -220,7 +232,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			};
 		}
 
-		protected virtual JsonObject BuildAssistantMessage(IAssistantMessage message, bool isLast)
+		protected virtual JsonObject BuildAssistantMessage(IAssistantMessage message, List<IMessage> list, int messageIndex)
 		{
 			var res = new JsonObject
 			{
@@ -235,7 +247,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			return res;
 		}
 
-		protected virtual JsonObject BuildToolMessage(IToolMessage message, bool isLast)
+		protected virtual JsonObject BuildToolMessage(IToolMessage message, List<IMessage> list, int messageIndex)
 		{
 			return new JsonObject
 			{
@@ -266,20 +278,17 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			}
 		}
 
-		protected virtual JsonObject BuildChatRequestBody(LLModelDescriptor model, IEnumerable<IMessage> _messages,
+		protected virtual JsonObject BuildChatRequestBody(LLModelDescriptor model, List<IMessage> messages,
 			OutputFormatDefinition outputFormatDefinition, IEnumerable<ITool> tools, IEnumerable<CompletionProperty> properties,
 			int count, bool stream)
 		{
-			var messagesList = _messages.ToList();
-			int c = 0, lastIndex = messagesList.Count - 1;
-			var messages = new JsonArray(messagesList
-				.Select(m => BuildMessage(m, c++ == lastIndex))
-				.ToArray());
-
 			var result = new JsonObject
 			{
 				["model"] = model.Name,
-				["messages"] = messages,
+				["messages"] = new JsonArray(messages.Select((m, i) =>
+				{
+					return BuildMessage(m, messages, i);
+				}).ToArray()),
 				["stream"] = stream
 			};
 
@@ -372,7 +381,8 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			LLModelDescriptor model, IEnumerable<ITool> tools, IEnumerable<IMetadata> metadata)
 		{
 			var content = message["content"]?.GetValue<string>();
-			var reasoningContent = message["reasoning_content"]?.GetValue<string>(); // The DeepSeek is using that currently, why OpenAI can't?
+			var reasoningContent = message["reasoning"]?.GetValue<string>() ??
+				message["reasoning_content"]?.GetValue<string>();
 
 			var parsedToolCalls = !(message["tool_calls"] is JsonArray toolCalls)
 				? new List<IToolCall>()
@@ -381,11 +391,12 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			return new AssistantMessage(content, reasoningContent, parsedToolCalls, completionMetadata: metadata);
 		}
 
-		protected virtual void ParseStreamingAssistantMessage(JsonObject delta, PartialAssistantMessage message,
+		protected virtual AssistantMessageDelta ParseStreamingAssistantMessage(JsonObject delta, PartialAssistantMessage message,
 			List<PartialMessageToolCallContext?> contexts, IEnumerable<ITool> tools)
 		{
 			var content = delta["content"]?.GetValue<string>();
-			var reasoningContent = delta["reasoning_content"]?.GetValue<string>();
+			var reasoningContent = delta["reasoning"]?.GetValue<string>() ??
+				delta["reasoning_content"]?.GetValue<string>();
 
 			var toolCalls = delta["tool_calls"] as JsonArray;
 			var parsedToolCalls = new List<IToolCall>();
@@ -411,7 +422,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 				}
 			}
 
-			message.Add(content, reasoningContent, parsedToolCalls.AsReadOnly());
+			return new AssistantMessageDelta(content, reasoningContent, parsedToolCalls.AsReadOnly());
 		}
 
 		protected virtual IFinishReasonMetadata GetFinishReasonMetadata(string reason)

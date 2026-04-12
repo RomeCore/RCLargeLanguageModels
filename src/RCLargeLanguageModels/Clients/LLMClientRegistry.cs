@@ -144,7 +144,7 @@ namespace RCLargeLanguageModels.Clients
 					}
 					finally
 					{
-						cts.Dispose();
+						cts?.Dispose();
 						cts = null;
 					}
 				}

@@ -212,6 +212,8 @@ namespace RCLargeLanguageModels.Clients.Ollama
 
 			bool gettingThinking = false;
 			var message = new PartialAssistantMessage();
+			var result = new PartialChatCompletionResult(this, model, new List<PartialAssistantMessage> { message },
+				Tasks.CompletionState.Incomplete);
 
 			void OnDataReceived(JsonObject response)
 			{
@@ -234,25 +236,33 @@ namespace RCLargeLanguageModels.Clients.Ollama
 				{
 					if (!message.CompletionToken.IsCompleted)
 						message.Cancel();
+					if (!result.CompletionToken.IsCompleted)
+						result.Cancel();
 				}
 				catch (OperationCanceledException)
 				{
 					if (!message.CompletionToken.IsCompleted)
 						message.Cancel();
+					if (!result.CompletionToken.IsCompleted)
+						result.Cancel();
 				}
 				catch (Exception ex)
 				{
 					if (!message.CompletionToken.IsCompleted)
 						message.Fail(ex);
+					if (!result.CompletionToken.IsCompleted)
+						result.Fail(ex);
 				}
 				finally
 				{
 					if (!message.CompletionToken.IsCompleted)
 						message.Complete();
+					if (!result.CompletionToken.IsCompleted)
+						result.Complete();
 				}
 			}, CancellationToken.None);
 
-			return new PartialChatCompletionResult(this, model, message);
+			return result;
 		}
 
 		protected override async Task<CompletionResult> CreateCompletionsOverrideAsync(
@@ -292,6 +302,8 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			var body = BuildRequestBody(model, prompt, suffix, true, properties);
 
 			var completion = new PartialCompletion();
+			var result = new PartialCompletionResult(this, model, new List<PartialCompletion> { completion },
+				Tasks.CompletionState.Incomplete);
 
 			void OnStreamResponse(JsonObject response)
 			{
@@ -315,25 +327,33 @@ namespace RCLargeLanguageModels.Clients.Ollama
 				{
 					if (!completion.CompletionToken.IsCompleted)
 						completion.Cancel();
+					if (!result.CompletionToken.IsCompleted)
+						result.Cancel();
 				}
 				catch (OperationCanceledException)
 				{
 					if (!completion.CompletionToken.IsCompleted)
 						completion.Cancel();
+					if (!result.CompletionToken.IsCompleted)
+						result.Cancel();
 				}
 				catch (Exception ex)
 				{
 					if (!completion.CompletionToken.IsCompleted)
 						completion.Fail(ex);
+					if (!result.CompletionToken.IsCompleted)
+						result.Fail(ex);
 				}
 				finally
 				{
 					if (!completion.CompletionToken.IsCompleted)
 						completion.Complete();
+					if (!result.CompletionToken.IsCompleted)
+						result.Complete();
 				}
 			}, CancellationToken.None);
 
-			return new PartialCompletionResult(this, model, completion);
+			return result;
 		}
 
 		protected override async Task<EmbeddingResult> CreateEmbeddingsOverrideAsync(

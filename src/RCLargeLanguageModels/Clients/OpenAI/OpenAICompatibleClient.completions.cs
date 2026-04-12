@@ -56,7 +56,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			string prompt, string? suffix, int count, List<CompletionProperty> properties, CancellationToken cancellationToken)
 		{
 			var results = Enumerable.Range(0, count).Select(i => new PartialCompletion()).ToImmutableArray();
-			var result = new PartialCompletionResult(this, model, results);
+			var result = new PartialCompletionResult(this, model, results, Tasks.CompletionState.Incomplete);
 
 			void OnDataReceived(JsonObject data)
 			{
@@ -67,6 +67,9 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 				{
 					int index = choice!["index"]!.GetValue<int>();
 					var completion = results[index];
+
+					if (completion.CompletionToken.IsCompleted)
+						continue;
 
 					if (choice["text"]?.GetValue<string>() is string delta)
 						completion.Add(delta);
@@ -102,24 +105,32 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 					foreach (var result in results)
 						if (!result.CompletionToken.IsCompleted)
 							result.Cancel();
+					if (!result.CompletionToken.IsCompleted)
+						result.Cancel();
 				}
 				catch (OperationCanceledException)
 				{
 					foreach (var result in results)
 						if (!result.CompletionToken.IsCompleted)
 							result.Cancel();
+					if (!result.CompletionToken.IsCompleted)
+						result.Cancel();
 				}
 				catch (Exception ex)
 				{
 					foreach (var result in results)
 						if (!result.CompletionToken.IsCompleted)
 							result.Fail(ex);
+					if (!result.CompletionToken.IsCompleted)
+						result.Fail(ex);
 				}
 				finally
 				{
 					foreach (var result in results)
 						if (!result.CompletionToken.IsCompleted)
 							result.Complete();
+					if (!result.CompletionToken.IsCompleted)
+						result.Complete();
 				}
 			}, CancellationToken.None);
 

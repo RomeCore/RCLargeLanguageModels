@@ -50,6 +50,12 @@ namespace RCLargeLanguageModels.Clients.Ollama
 		private readonly ITokenAccessor? _apiKeyAccessor;
 		private Version? _version = null;
 
+		private void SetDefaultName()
+		{
+			Name = "ollama";
+			DisplayName = "Ollama";
+		}
+
 		/// <summary>
 		/// Creates a new instance of the Ollama client using the default base URI.
 		/// </summary>
@@ -57,6 +63,7 @@ namespace RCLargeLanguageModels.Clients.Ollama
 		{
 			_http = CreateHttpClient();
 			_endpoint = new OllamaEndpointConfig(DefaultBaseUri);
+			SetDefaultName();
 		}
 
 		/// <summary>
@@ -72,6 +79,7 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			_apiKeyAccessor = apiKey == null ? null : new StringTokenAccessor(apiKey);
 			_endpoint = new OllamaEndpointConfig(baseUri ?? throw new ArgumentNullException(nameof(baseUri)));
 			_version = serverVersion;
+			SetDefaultName();
 		}
 
 		/// <summary>
@@ -87,6 +95,7 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			_apiKeyAccessor = apiKeyAccessor;
 			_endpoint = new OllamaEndpointConfig(baseUri ?? throw new ArgumentNullException(nameof(baseUri)));
 			_version = serverVersion;
+			SetDefaultName();
 		}
 
 		/// <summary>
@@ -100,10 +109,8 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			_http = http ?? CreateHttpClient();
 			_endpoint = endpointConfig ?? throw new ArgumentNullException(nameof(endpointConfig));
 			_version = serverVersion;
+			SetDefaultName();
 		}
-
-		public override string Name => "ollama";
-		public override string DisplayName => "Ollama";
 
 		public override LLMCapabilities Capabilities =>
 			LLMCapabilities.ChatCompletions | LLMCapabilities.SuffixCompletions | LLMCapabilities.Embeddings |
@@ -564,7 +571,7 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			if (_version >= new Version(0, 9, 0))
 			{
 				if (model.Capabilities.IsReasoning() || model.Capabilities.IsUnknown())
-					result["think"] = properties.OfType<ThinkProperty>().FirstOrDefault()?.Value ?? true;
+					result["think"] = properties.OfType<ReasoningProperty>().FirstOrDefault()?.Value ?? true;
 			}
 
 			return result;
@@ -589,7 +596,7 @@ namespace RCLargeLanguageModels.Clients.Ollama
 						break;
 
 					case KeepAliveProperty:
-					case ThinkProperty:
+					case ReasoningProperty:
 						continue;
 				}
 
@@ -609,28 +616,55 @@ namespace RCLargeLanguageModels.Clients.Ollama
 			else if (outputFormatDefinition is JsonSchemaOutputFormatDefinition jsonSchemaOutput)
 				body["format"] = jsonSchemaOutput.Schema;
 			
-			var keepAlive = properties.OfType<KeepAliveProperty>().FirstOrDefault()?.Value;
-
-			if (keepAlive.HasValue)
+			foreach (var property in properties)
 			{
-				var timeSpan = keepAlive.Value;
-
-				if (timeSpan.TotalSeconds < 1)
+				switch (property)
 				{
-					body["keep_alive"] = "0s";
-				}
-				else
-				{
-					var parts = new List<string>();
+					case KeepAliveProperty kap:
+						var timeSpan = kap.Value;
 
-					if (timeSpan.Hours > 0)
-						parts.Add($"{Math.Floor(timeSpan.TotalHours)}h");
-					if (timeSpan.Minutes > 0)
-						parts.Add($"{timeSpan.Minutes}m");
-					if (timeSpan.Seconds > 0)
-						parts.Add($"{timeSpan.Seconds}s");
+						if (timeSpan.TotalSeconds < 1)
+						{
+							body["keep_alive"] = "0s";
+						}
+						else
+						{
+							var parts = new List<string>();
 
-					body["keep_alive"] = string.Join(" ", parts);
+							if (timeSpan.Hours > 0)
+								parts.Add($"{Math.Floor(timeSpan.TotalHours)}h");
+							if (timeSpan.Minutes > 0)
+								parts.Add($"{timeSpan.Minutes}m");
+							if (timeSpan.Seconds > 0)
+								parts.Add($"{timeSpan.Seconds}s");
+
+							body["keep_alive"] = string.Join(" ", parts);
+						}
+						break;
+
+					case ReasoningProperty rp:
+
+						if (rp.Value)
+						{
+							body["think"] = rp.Effort switch
+							{
+								ReasoningEffort.Default => true,
+								ReasoningEffort.None => "low",
+								ReasoningEffort.Minimal => "low",
+								ReasoningEffort.Low => "low",
+								ReasoningEffort.Medium => "medium",
+								ReasoningEffort.High => "high",
+								ReasoningEffort.XHigh => "high",
+								ReasoningEffort.Max => "high",
+								_ => true
+							};
+						}
+						else
+						{
+							body["think"] = false;
+						}
+
+						break;
 				}
 			}
 		}
@@ -669,7 +703,7 @@ namespace RCLargeLanguageModels.Clients.Ollama
 						["function"] = new JsonObject
 						{
 							["name"] = functionCall.ToolName,
-							["arguments"] = functionCall.Args
+							["arguments"] = functionCall.Args.DeepClone()
 						}
 					};
 

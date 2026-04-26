@@ -26,8 +26,11 @@ namespace RCLargeLanguageModels.Clients.OpenRouter
 		/// </summary>
 		public const string BaseUri = "https://openrouter.ai/api/v1";
 
-		public override string Name => "openrouter";
-		public override string DisplayName => "OpenRouter";
+		private void SetDefaultName()
+		{
+			Name = "openrouter";
+			DisplayName = "OpenRouter";
+		}
 
 		/// <summary>
 		/// Creates a new instance of the OpenRouter client.
@@ -36,6 +39,7 @@ namespace RCLargeLanguageModels.Clients.OpenRouter
 		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
 		public OpenRouterClient(string apiKey, HttpClient? http = null) : base(BaseUri, apiKey, http)
 		{
+			SetDefaultName();
 		}
 
 		/// <summary>
@@ -45,6 +49,7 @@ namespace RCLargeLanguageModels.Clients.OpenRouter
 		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
 		public OpenRouterClient(ITokenAccessor tokenAccessor, HttpClient? http = null) : base(BaseUri, tokenAccessor, http)
 		{
+			SetDefaultName();
 		}
 
 		/// <summary>
@@ -55,6 +60,7 @@ namespace RCLargeLanguageModels.Clients.OpenRouter
 		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
 		public OpenRouterClient(string endpointUri, string apiKey, HttpClient? http = null) : base(endpointUri, apiKey, http)
 		{
+			SetDefaultName();
 		}
 
 		/// <summary>
@@ -65,6 +71,7 @@ namespace RCLargeLanguageModels.Clients.OpenRouter
 		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
 		public OpenRouterClient(string endpointUri, ITokenAccessor tokenAccessor, HttpClient? http = null) : base(endpointUri, tokenAccessor, http)
 		{
+			SetDefaultName();
 		}
 
 		/// <summary>
@@ -75,6 +82,7 @@ namespace RCLargeLanguageModels.Clients.OpenRouter
 		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
 		public OpenRouterClient(LLMEndpointConfig endpointConfig, string apiKey, HttpClient? http = null) : base(endpointConfig, apiKey, http)
 		{
+			SetDefaultName();
 		}
 
 		/// <summary>
@@ -85,6 +93,7 @@ namespace RCLargeLanguageModels.Clients.OpenRouter
 		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
 		public OpenRouterClient(LLMEndpointConfig endpointConfig, ITokenAccessor tokenAccessor, HttpClient? http = null) : base(endpointConfig, tokenAccessor, http)
 		{
+			SetDefaultName();
 		}
 
 		protected override JsonObject BuildAssistantMessage(IAssistantMessage message, List<IMessage> list, int messageIndex)

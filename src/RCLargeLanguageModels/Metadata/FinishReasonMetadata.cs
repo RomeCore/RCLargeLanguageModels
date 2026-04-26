@@ -34,6 +34,12 @@ namespace RCLargeLanguageModels.Metadata
 		ContentFilter,
 
 		/// <summary>
+		/// An error occurred during the generation process.
+		/// Maps to API value: "error"
+		/// </summary>
+		Error,
+
+		/// <summary>
 		/// The model called a tool/function.
 		/// Maps to API value: "tool_calls" or "function_call"
 		/// </summary>

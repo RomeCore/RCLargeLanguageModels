@@ -15,8 +15,11 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 		/// </summary>
 		public const string BaseUri = "https://api.openai.com";
 
-		public override string Name => "openai";
-		public override string DisplayName => "OpenAI";
+		private void SetDefaultName()
+		{
+			Name = "openai";
+			DisplayName = "OpenAI";
+		}
 
 		/// <summary>
 		/// Creates a new instance of the OpenAI client.
@@ -24,6 +27,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 		/// <param name="apiKey">The API key for authentication.</param>
 		public OpenAIClient(string apiKey) : base(BaseUri, apiKey)
 		{
+			SetDefaultName();
 		}
 
 		/// <summary>
@@ -32,6 +36,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 		/// <param name="tokenAccessor">The API key accessor for authentication.</param>
 		public OpenAIClient(ITokenAccessor tokenAccessor) : base(BaseUri, tokenAccessor)
 		{
+			SetDefaultName();
 		}
 
 		/// <summary>
@@ -41,6 +46,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
 		public OpenAIClient(string apiKey, HttpClient? http) : base(BaseUri, apiKey, http)
 		{
+			SetDefaultName();
 		}
 
 		/// <summary>
@@ -50,6 +56,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
 		public OpenAIClient(ITokenAccessor tokenAccessor, HttpClient? http) : base(BaseUri, tokenAccessor, http)
 		{
+			SetDefaultName();
 		}
 
 		/// <summary>
@@ -60,6 +67,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
 		public OpenAIClient(string endpointUri, string apiKey, HttpClient? http = null) : base(endpointUri, apiKey, http)
 		{
+			SetDefaultName();
 		}
 
 		/// <summary>
@@ -70,6 +78,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
 		public OpenAIClient(string endpointUri, ITokenAccessor tokenAccessor, HttpClient? http = null) : base(endpointUri, tokenAccessor, http)
 		{
+			SetDefaultName();
 		}
 
 		/// <summary>
@@ -80,6 +89,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
 		public OpenAIClient(LLMEndpointConfig endpointConfig, string apiKey, HttpClient? http = null) : base(endpointConfig, apiKey, http)
 		{
+			SetDefaultName();
 		}
 
 		/// <summary>
@@ -90,6 +100,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
 		public OpenAIClient(LLMEndpointConfig endpointConfig, ITokenAccessor tokenAccessor, HttpClient? http = null) : base(endpointConfig, tokenAccessor, http)
 		{
+			SetDefaultName();
 		}
 	}
 }

@@ -22,9 +22,6 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 		private readonly LLMEndpointConfig _endpoint;
 		private readonly ITokenAccessor _apiKeyAccessor;
 
-		public override string Name => "openai-compatible";
-		public override string DisplayName => "OpenAI Compatible";
-
 		/// <summary>
 		/// Creates a new instance of the OpenAI-compatible client using the specified base URI and API key.
 		/// </summary>
@@ -32,10 +29,9 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 		/// <param name="apiKey">The API key for authentication.</param>
 		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
 		public OpenAICompatibleClient(string baseUri, string apiKey, HttpClient? http = null)
+			: this(new OpenAIEndpointConfig(baseUri ?? throw new ArgumentNullException(nameof(baseUri))),
+				  new StringTokenAccessor(apiKey), http)
 		{
-			_apiKeyAccessor = new StringTokenAccessor(apiKey);
-			_http = http ?? CreateHttpClient();
-			_endpoint = new OpenAIEndpointConfig(baseUri ?? throw new ArgumentNullException(nameof(baseUri)));
 		}
 
 		/// <summary>
@@ -45,10 +41,9 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 		/// <param name="tokenAccessor">The API key accessor for authentication.</param>
 		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
 		public OpenAICompatibleClient(string baseUri, ITokenAccessor tokenAccessor, HttpClient? http = null)
+			: this(new OpenAIEndpointConfig(baseUri ?? throw new ArgumentNullException(nameof(baseUri))),
+				  tokenAccessor, http)
 		{
-			_apiKeyAccessor = tokenAccessor ?? throw new ArgumentNullException(nameof(tokenAccessor));
-			_http = http ?? CreateHttpClient();
-			_endpoint = new OpenAIEndpointConfig(baseUri ?? throw new ArgumentNullException(nameof(baseUri)));
 		}
 
 		/// <summary>
@@ -58,10 +53,8 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 		/// <param name="apiKey">The API key for authentication.</param>
 		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
 		public OpenAICompatibleClient(LLMEndpointConfig endpointConfig, string apiKey, HttpClient? http = null)
+			: this(endpointConfig, new StringTokenAccessor(apiKey), http)
 		{
-			_apiKeyAccessor = new StringTokenAccessor(apiKey);
-			_http = http ?? CreateHttpClient();
-			_endpoint = endpointConfig ?? throw new ArgumentNullException(nameof(endpointConfig));
 		}
 
 		/// <summary>
@@ -75,6 +68,8 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			_apiKeyAccessor = tokenAccessor ?? throw new ArgumentNullException(nameof(tokenAccessor));
 			_http = http ?? CreateHttpClient();
 			_endpoint = endpointConfig ?? throw new ArgumentNullException(nameof(endpointConfig));
+			Name = "openai-compatible";
+			DisplayName = "OpenAI Compatible";
 		}
 
 		protected virtual Dictionary<string, string> GetRequestHeaders()

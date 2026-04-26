@@ -16,7 +16,11 @@ namespace RCLargeLanguageModels.Clients
 	/// </summary>
 	public class EmptyLLMClient : LLMClient
 	{
-		public override string Name => "empty";
+		public EmptyLLMClient()
+		{
+			Name = "empty";
+			DisplayName = "Empty";
+		}
 
 		protected override Task<LLModelDescriptor[]> ListModelsOverrideAsync(CancellationToken cancellationToken)
 		{

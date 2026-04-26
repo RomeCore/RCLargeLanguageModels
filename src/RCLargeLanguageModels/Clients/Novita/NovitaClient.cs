@@ -36,8 +36,11 @@ namespace RCLargeLanguageModels.Clients.Novita
 		/// </summary>
 		public const string BaseUri = "https://api.novita.ai/v3/openai";
 
-		public override string Name => "novita";
-		public override string DisplayName => "Novita";
+		private void SetDefaultName()
+		{
+			Name = "novita";
+			DisplayName = "Novita";
+		}
 
 		/// <summary>
 		/// Creates a new instance of the Novita client.
@@ -45,6 +48,7 @@ namespace RCLargeLanguageModels.Clients.Novita
 		/// <param name="apiKey">The API key for authentication.</param>
 		public NovitaClient(string apiKey) : base(BaseUri, apiKey)
 		{
+			SetDefaultName();
 		}
 
 		/// <summary>
@@ -53,6 +57,7 @@ namespace RCLargeLanguageModels.Clients.Novita
 		/// <param name="tokenAccessor">The API key accessor for authentication.</param>
 		public NovitaClient(ITokenAccessor tokenAccessor) : base(BaseUri, tokenAccessor)
 		{
+			SetDefaultName();
 		}
 
 		/// <summary>
@@ -62,6 +67,7 @@ namespace RCLargeLanguageModels.Clients.Novita
 		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
 		public NovitaClient(string apiKey, HttpClient? http) : base(BaseUri, apiKey)
 		{
+			SetDefaultName();
 		}
 
 		/// <summary>
@@ -71,6 +77,7 @@ namespace RCLargeLanguageModels.Clients.Novita
 		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
 		public NovitaClient(ITokenAccessor tokenAccessor, HttpClient? http) : base(BaseUri, tokenAccessor, http)
 		{
+			SetDefaultName();
 		}
 
 		/// <summary>
@@ -81,6 +88,7 @@ namespace RCLargeLanguageModels.Clients.Novita
 		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
 		public NovitaClient(string endpointUri, string apiKey, HttpClient? http = null) : base(endpointUri, apiKey, http)
 		{
+			SetDefaultName();
 		}
 
 		/// <summary>
@@ -91,6 +99,7 @@ namespace RCLargeLanguageModels.Clients.Novita
 		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
 		public NovitaClient(string endpointUri, ITokenAccessor tokenAccessor, HttpClient? http = null) : base(endpointUri, tokenAccessor, http)
 		{
+			SetDefaultName();
 		}
 
 		/// <summary>
@@ -101,6 +110,7 @@ namespace RCLargeLanguageModels.Clients.Novita
 		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
 		public NovitaClient(LLMEndpointConfig endpointConfig, string apiKey, HttpClient? http = null) : base(endpointConfig, apiKey, http)
 		{
+			SetDefaultName();
 		}
 
 		/// <summary>
@@ -111,6 +121,7 @@ namespace RCLargeLanguageModels.Clients.Novita
 		/// <param name="http">The HTTP client to use for requests. If not provided, a default one will be created.</param>
 		public NovitaClient(LLMEndpointConfig endpointConfig, ITokenAccessor tokenAccessor, HttpClient? http = null) : base(endpointConfig, tokenAccessor, http)
 		{
+			SetDefaultName();
 		}
 
 		protected override async Task<LLModelDescriptor[]> ListModelsOverrideAsync(CancellationToken cancellationToken = default)

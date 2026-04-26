@@ -12,6 +12,7 @@ using RCLargeLanguageModels.Completions;
 using RCLargeLanguageModels.Completions.Properties;
 using RCLargeLanguageModels.Formats;
 using RCLargeLanguageModels.Messages;
+using RCLargeLanguageModels.Messages.Attachments;
 using RCLargeLanguageModels.Metadata;
 using RCLargeLanguageModels.Statistics;
 using RCLargeLanguageModels.Tools;
@@ -223,12 +224,49 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			};
 		}
 
+		protected virtual JsonNode BuildAttachmentsMessageContent(IAttachmentsMessage message)
+		{
+			JsonNode? content = null;
+
+			foreach (var attachment in message.Attachments)
+			{
+				if (attachment is IImageAttachment imageAttachment)
+				{
+					content ??= new JsonArray();
+					var url = $"data:image/{imageAttachment.Format};base64,{imageAttachment.GetBase64()}";
+					content.AsArray().Add(new JsonObject
+					{
+						["type"] = "image_url",
+						["image_url"] = new JsonObject
+						{
+							["url"] = url
+						}
+					});
+				}
+			}
+
+			if (content == null)
+			{
+				content = JsonValue.Create(message.Content);
+			}
+			else if (message.Content != null)
+			{
+				content.AsArray().Add(new JsonObject
+				{
+					["type"] = "text",
+					["text"] = message.Content
+				});
+			}
+
+			return content;
+		}
+
 		protected virtual JsonObject BuildUserMessage(IUserMessage message, List<IMessage> list, int messageIndex)
 		{
 			return new JsonObject
 			{
 				["role"] = "user",
-				["content"] = message.Content
+				["content"] = BuildAttachmentsMessageContent(message)
 			};
 		}
 
@@ -253,28 +291,49 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			{
 				["role"] = "tool",
 				["tool_call_id"] = message.ToolCallId,
-				["content"] = message.Content
+				["content"] = BuildAttachmentsMessageContent(message)
 			};
+		}
+
+		protected virtual KeyValuePair<string, JsonNode>? SerializeProperty(CompletionProperty property)
+		{
+			var propertyName = property.Name;
+			var value = property.RawValue;
+			switch (property)
+			{
+				case TemperatureProperty tp:
+					value = tp.ToRange(0, 2);
+					break;
+				case StopSequencesProperty ssp:
+					value = ssp.Value.ToArray();
+					break;
+				case ReasoningProperty rp:
+					value = new
+					{
+						effort = rp.Effort switch
+						{
+							ReasoningEffort.None => "none",
+							ReasoningEffort.Minimal => "minimal",
+							ReasoningEffort.Low => "low",
+							ReasoningEffort.Medium => "medium",
+							ReasoningEffort.High => "high",
+							ReasoningEffort.XHigh => "xhigh",
+							ReasoningEffort.Max => "max",
+							_ => "none"
+						}
+					};
+					break;
+			}
+			return new KeyValuePair<string, JsonNode>(propertyName, JsonSerializer.SerializeToNode(value));
 		}
 
 		protected virtual void PopulateBodyWithProperties(JsonObject body, LLModelDescriptor model, OutputFormatDefinition outputFormatDefinition, IEnumerable<ITool> tools, IEnumerable<CompletionProperty> properties)
 		{
 			foreach (var property in properties)
 			{
-				var propertyName = property.Name;
-				var value = property.RawValue;
-
-				switch (property)
-				{
-					case TemperatureProperty tp:
-						value = tp.ToRange(-2, 2);
-						break;
-					case StopSequencesProperty ssp:
-						value = ssp.Value.ToArray();
-						break;
-				}
-
-				body.Add(propertyName, JsonSerializer.SerializeToNode(value));
+				var serializedProperty = SerializeProperty(property);
+				if (serializedProperty != null)
+					body.Add(serializedProperty.Value.Key, serializedProperty.Value.Value);
 			}
 		}
 
@@ -332,7 +391,8 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			}
 		}
 
-		protected virtual IToolCall? ParseStreamingToolCall(JsonObject toolCall, PartialMessageToolCallContext context, IEnumerable<ITool> tools)
+		protected virtual IToolCall? ParseStreamingToolCall(JsonObject toolCall, PartialMessageToolCallContext context,
+			IEnumerable<ITool> tools, PartialAssistantMessage message)
 		{
 			var id = toolCall["id"]?.GetValue<string>();
 			if (id != null)
@@ -346,8 +406,11 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			if (function != null)
 			{
 				var name = function["name"]?.GetValue<string>();
-				if (name != null)
+				if (name != null && context.ToolCallFunctionName != name)
+				{
 					context.ToolCallFunctionName = name;
+					message.Add(newPartialMetadata: new IMetadata[] { new ToolCallPendingMetadata(name) });
+				}
 
 				var args = function["arguments"]?.GetValue<string>();
 				if (args != null)
@@ -413,7 +476,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 					if (context == null)
 						continue;
 
-					var parsedToolCall = ParseStreamingToolCall(toolCall, context, tools);
+					var parsedToolCall = ParseStreamingToolCall(toolCall, context, tools, message);
 					if (parsedToolCall != null)
 					{
 						parsedToolCalls.Add(parsedToolCall);
@@ -431,6 +494,7 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 			{
 				"stop" => FinishReason.Stop,
 				"length" => FinishReason.Length,
+				"error" => FinishReason.Error,
 				"content_filter" => FinishReason.ContentFilter,
 				"tool_calls" => FinishReason.ToolCalls,
 				"insufficient_system_resource" => FinishReason.InsufficientResources,
@@ -442,12 +506,12 @@ namespace RCLargeLanguageModels.Clients.OpenAI
 		protected virtual IUsageMetadata GetUsageMetadata(JsonObject usage)
 		{
 			var promptTokens = usage["prompt_tokens"]?.GetValue<int>() ?? 0;
-			var promptCHTokens = usage["prompt_cache_hit_tokens"]?.GetValue<int>() ?? 0;
-			var promptCMTokens = usage["prompt_cache_miss_tokens"]?.GetValue<int>() ?? 0;
+			var promptCHTokens = usage["prompt_tokens_details"]?["cached_tokens"]?.GetValue<int>() ?? 0;
+			var promptCWTokens = usage["prompt_tokens_details"]?["cache_write_tokens"]?.GetValue<int>() ?? 0;
 			var completionTokens = usage["completion_tokens"]?.GetValue<int>() ?? 0;
 
-			if (promptCHTokens != 0 && promptCMTokens != 0)
-				return new UsageCacheMetadata(promptCHTokens, promptCMTokens, completionTokens, 0);
+			if (promptCHTokens != 0)
+				return new UsageCacheMetadata(promptCHTokens, promptTokens - promptCHTokens, completionTokens, promptCWTokens);
 
 			return new UsageMetadata(promptTokens, completionTokens);
 		}

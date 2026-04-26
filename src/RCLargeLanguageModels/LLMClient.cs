@@ -59,12 +59,12 @@ namespace RCLargeLanguageModels
 		/// <summary>
 		/// Gets the name of the LLM client.
 		/// </summary>
-		public abstract string Name { get; }
+		public string Name { get; set; } = "unknown";
 
 		/// <summary>
 		/// Gets the display name of the LLM client.
 		/// </summary>
-		public virtual string DisplayName => Name;
+		public string DisplayName { get; set; } = "Unknown";
 
 		/// <summary>
 		/// Gets the LLM client's API capabilities.
